@@ -5,6 +5,8 @@
 #include <iostream>
 #include "mex.h"
 
+/* usage: yoca(x0,@objective,[@gradient]) 
+*/
 
 void mexFunction(int outLen, mxArray* outArr[], int inLen, const mxArray* inArr[]) {
     // just testing cppnumerical(guess,@objective)
