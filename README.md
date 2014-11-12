@@ -1,42 +1,45 @@
 CppNumericalSolvers (C++11 implementation with MATLAB bindings)
-===================
+=================================================================
 
-This repository contains some solvers written in C++11 using the Eigen3 library for linear algebra. You can use this library in **C++ and Matlab**.
+This repository contains some solvers written in C++11 using the [Eigen3][eigen3] library. All implementations were written from scratch. 
+You can use this library in **C++ and [Matlab][matlab]** in a simple way.
 
-There are currently the following solvers:
+The library currently contains the following solvers:
 - gradient descent solver
 - Newton descent solver (c++ only)
 - BFGS solver
 - L-BFGS solver
 - L-BFGS-B solver (c++ only)
 
+Look at the issue list to see recent and planned changes.
 Additional helpful functions are
 
 - check gradient
 - compute gradient by finite differences
 - compute Hessian matrix by finite differences
 
-There is a simple "unittest" inside (minimization of the Rosenbrock function). By convention these solvers minimize a function.
+There is a simple "unittest" inside (minimization of the Rosenbrock function). By convention these solvers minimize a given objective function.
 
-#Usage in C++
-
-You only have to define c++11-functionals for calculating the function value and gradient:
-
+# Usage in C++
+First, make sure that you have the [Eigen3][eigen3] in your include paths and your compiler is C++11-ready. To minimze a function it is sufficient to define the objective function as a C++11 functional:
 
 	auto function_value = [] (const Vector &x) -> double {};
-	auto gradient_value = [] (const Vector x, Vector &grad) -> void {};
+	auto gradient_value = [] (const Vector x, Vector &grad) -> void {}; // this definition is optional
 
-
-While I discourage you from using the numerical approximation of the gradient, the definition of the gradient functional is *optional*. To use `Newton Descent` without explicitly computing the Hessian matrix you should use `computeHessian` from `Meta.h`.
-To optimize (minimize) the function you can use:
+If you only implement the objective function then the library will compute a numerical approximation of the gradient. If you want to use `Newton Descent` without explicitly computing the gradient or Hessian matrix you should use `computeGradient`, `computeHessian` from `Meta.h` (check the examples).
+To optimize (minimize) the defined objective function you need to select a solver and provide a intial guess:
 
 
 	Vector x0;                  // initial guess
-	LbfgsSolver lbfgs;      // choose a solver
-	lbfgs.Solve(x0,function_value,gradient_value);
-	// or using a numerical approximation of the gradient
+	LbfgsSolver lbfgs;          // choose a solver
+
+	// solve without explicitly declaring a gradient
 	lbfgs.Solve(x0,function_value);
-	// or newton
+
+	// or solve with given gradient
+	lbfgs.Solve(x0,function_value, gradient_value);
+
+	// or use the Newton method
 	auto hessian_value = [&](const Vector x, Matrix & hes) -> void
 	{
 	    hes = Matrix::Zero(x.rows(), x.rows());
@@ -46,13 +49,13 @@ To optimize (minimize) the function you can use:
 	newton.Solve(x0,function_value,gradient_value,hessian_value);
 
 
-I encourage you to check you gradient by 
+I encourage you to check you gradient once by 
 
 	checkGradient(YOUR-OBJECTIVE-FUNCTION, X, A-SAMPLE-GRADIENT-VECTOR_FROM-YOUR-FUNCTIONAL);
 
+to make sure that there are not mistakes in your objective or gradient function.
 
-##full sample
-
+## full sample
 
 	int main(void) {
 
@@ -87,70 +90,56 @@ I encourage you to check you gradient by
 	}
 
 
-# Usage in MATLAB (beta)
-This is just a beta. If something goes wrong MATLAB will tell it to you by crashing.
+# Usage in MATLAB (experimental)
+If something goes wrong MATLAB will tell it to you by simply crashing. Hence, it is an experimental version. 
 
-- Checkout the `matlab-bindings` branch using git
-
-	`cd PATH_TO_THIS_LIBRARY` and 
-	`git pull origin matlab` and
-	`git checkout matlab`
-
-
-- Download Eigen and copy the `Eigen` folder into `matlab-bindings`. The compilation script will check if Eigen exists.
-- Mex files are no fun! But if your configs are correct (reminder: set -std=c++11) you can run `make` inside the `matlab-bindings` folder. This should create a file name `cppsolver.mexw64` or `cppsolver.mexw32`.
+- Download [Eigen][eigen3] and copy the `Eigen` folder into `matlab-bindings`. The compilation script will check if Eigen exists.
+- Mex files are no fun! But if your configs are correct ("make.m" will use "-std=c++11") you can run `make` inside the `matlab-bindings` folder. This should create a file `cppsolver.mexw64` or `cppsolver.mexw32`.
 
 To solve your problem just define the objective as a function like
 
 	function y = rosenbrock( x )
-	t1 = (1-x(1));
-	t2 = (x(2)-x(1)*x(1));
-	y =t1*t1 + 100*t2*t2; 
+	  t1 = (1 - x(1));
+	  t2 = (x(2) - x(1) * x(1));
+	  y  = t1 * t1 + 100 * t2 * t2; 
 	end
 
-an save it under `rosenbrock.m` and run
+an save it under `rosenbrock.m`. If everything is correct you should be able to minimize your function:
 
-	solution=cppsolver([-1;2],@rosenbrock)
+	[solution, value] = cppsolver([-1;2], @rosenbrock)
 	% or if you specify a gradient:
-	cppsolver([-1;2],@rosenbrock,'gradient',@rosenbrock_grad)
+	[solution, value] = cppsolver([-1;2], @rosenbrock, 'gradient', @rosenbrock_grad)
 
 
+If you pass a gradient function the call of the mex-file, it will check the gradient function once in the initial guess to make sure you have no typos in your gradient function. You can skip this check by calling 
 
-If you pass a gradient function the mex-file will check the gradient function in the initialization point to make sure you have no typos in your gradient function. You can skip this check by calling 
-
-	solution=cppsolver([-1;2],@rosenbrock,'gradient',@rosenbrock_grad,'skip_gradient_check','true')
+	[solution, value] = cppsolver([-1;2],@rosenbrock,'gradient',@rosenbrock_grad,'skip_gradient_check','true')
 
 
-The default solver is `L-BFGS`. To specify another solver you can call
+The default solver is `BFGS`. To specify another solver you can call
 
-	solution=cppsolver([-1;2],@rosenbrock,'gradient',@rosenbrock_grad,'solver','THE-SOLVER-TYPE')
+	[solution, value] = cppsolver([-1;2],@rosenbrock,'gradient',@rosenbrock_grad,'solver','THE-SOLVER-TYPE')
 
-where you can select a solver from:
+There is an example in the folder `matlab-bindings`. The output should be something like
 
-- l-bfgs
-- bfgs
-- gradientdescent
-
-The other solver have not matlab bindings yet. 
-There is an example in the folder `matlab-bindings`. The output should be
-
-	cppsolver([-1;2],@rosenbrock,'gradient',@rosenbrock_grad);
-	------------------------------------------------------------
-	Found objective function: rosenbrock
-	parsing key: gradient
-	Found gradient function: rosenbrock_grad
-	Elapsed time is 0.106917 seconds.
 	cppsolver([-1;2],@rosenbrock);
 	------------------------------------------------------------
 	Found objective function: rosenbrock
-	Elapsed time is 0.014738 seconds.
+	Elapsed time is 0.018334 seconds.
+
+
 	fminsearch(@rosenbrock,[-1;2]);
 	------------------------------------------------------------
-	Elapsed time is 0.094601 seconds.
+	Elapsed time is 0.086369 seconds.
 
-Notice that specifying a gradient increase the optimization speed. Notice, that fminsearch will use caches if you run this file multiple times.
 
-#License
+	fminunc(@rosenbrock,[-1;2]);
+	------------------------------------------------------------
+	Elapsed time is 0.749841 seconds.
+
+Notice, that fminsearch probably use caches if you run this file multiple times. If you do not specify at least one bound for the L-BFGS-B algorithm, the mex-file will use call the L-BFGS-algorithm instead.
+
+# License
 
 	Copyright (c) 2014 Patrick Wieschollek
 	url: https://github.com/PatWie/CppNumericalSolvers
@@ -177,3 +166,8 @@ Notice that specifying a gradient increase the optimization speed. Notice, that 
 Rebase - Warning
 -----------------
 The commit `3122fa1710a0f592b99938ad728c59d787c3077a` was a rebase of the old history to clean things up. Fork this project again, if you have trouble to pull commits. I will never do a rebase on this repository again. I promise.
+
+
+[eigen3]: http://eigen.tuxfamily.org/
+[matlab]: http://www.mathworks.de/products/matlab/
+[matlab-binding]: https://github.com/PatWie/CppNumericalSolvers/archive/matlab.zip

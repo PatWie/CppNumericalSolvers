@@ -45,6 +45,8 @@ class LbfgsbSolver : public ISolver
     double theta;
     int DIM;
     bool hasbounds = false;
+    bool hasbound_lower = false;
+    bool hasbound_upper = false;
 private:
     /// <summary>
     /// find cauchy point in x
@@ -79,7 +81,8 @@ public:
                        const GradientOracleType & FunctionGradient,
                        const HessianOracleType & FunctionHessian = std::function<void(const Eigen::VectorXd & x, Eigen::MatrixXd & hessian)>());
 
-    void setBounds(const Vector & lower, const Vector & upper);
+    void setLowerBound(const Vector & lower);
+    void setUpperBound(const Vector & upper);
 };
 
 } /* namespace pwie */

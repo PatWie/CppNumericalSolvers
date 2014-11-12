@@ -45,14 +45,20 @@ LbfgsbSolver::LbfgsbSolver() : ISolver()
 {
     // TODO Auto-generated constructor stub
     hasbounds = false;
+    hasbound_lower = false;
+    hasbound_upper = false;
 
 }
 
-void LbfgsbSolver::setBounds(const Vector & lower, const Vector & upper)
+void LbfgsbSolver::setLowerBound(const Vector & lower)
 {
     lb = lower;
+    hasbound_lower = true;
+}
+void LbfgsbSolver::setUpperBound(const Vector & upper)
+{
     ub = upper;
-    hasbounds = true;
+    hasbound_lower = true;
 }
 
 void LbfgsbSolver::GetGeneralizedCauchyPoint(Vector & x, Vector & g, Vector & x_cauchy,
@@ -302,11 +308,17 @@ void LbfgsbSolver::internalSolve(Vector & x0,
 {
 
     DIM = x0.rows();
-    if(!hasbounds)
+
+    if(!hasbound_lower)
     {
         lb = (-1 * Vector::Ones(DIM)) * INF;
+        hasbound_lower = true;
+    }
+
+    if(!hasbound_upper)
+    {
         ub = Vector::Ones(DIM) * INF;
-        hasbounds = true;
+        hasbound_upper = true;
     }
     theta = 1.0;
 

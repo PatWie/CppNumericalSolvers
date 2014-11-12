@@ -26,4 +26,15 @@
 *.exe
 *.out
 *.app
+
+# Eigen3
 /matlab-bindings/eigen
+
+# Matlab 
+*.m~
+*.mexa64
+*.mexa32
+*.mexw64
+*.mexw32
+*.mexmaci64
+*.mexglx
