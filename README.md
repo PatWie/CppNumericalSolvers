@@ -1,15 +1,15 @@
 CppNumericalSolvers (C++11 implementation with MATLAB bindings)
 =================================================================
 
-This repository contains some solvers written in C++11 using the [Eigen3][eigen3] library. All implementations were written from scratch. 
-You can use this library in **C++ and [Matlab][matlab]** in a simple way.
+This repository contains solvers implemented in C++11 using the [Eigen3][eigen3] library. All implementations were written from scratch. 
+You can use this library in **C++ and [Matlab][matlab]** in an easy way.
 
 The library currently contains the following solvers:
 - gradient descent solver
-- Newton descent solver (c++ only)
+- Newton descent solver
 - BFGS solver
 - L-BFGS solver
-- L-BFGS-B solver (c++ only)
+- L-BFGS-B solver
 
 Look at the issue list to see recent and planned changes.
 Additional helpful functions are
@@ -91,13 +91,7 @@ to make sure that there are not mistakes in your objective or gradient function.
 
 
 # Usage in MATLAB (experimental)
-If something goes wrong MATLAB will tell it to you by simply crashing. First, you will need the matlab bindings from the `matlab` branch
-
-There two ways to get this binding by just downloading the archiv file from [github][matlab-binding] or by using git:
-
-	`cd PATH_TO_THIS_LIBRARY` and 
-	`git pull origin matlab` and
-	`git checkout matlab`
+If something goes wrong MATLAB will tell it to you by simply crashing. Hence, it is an experimental version. 
 
 - Download [Eigen][eigen3] and copy the `Eigen` folder into `matlab-bindings`. The compilation script will check if Eigen exists.
 - Mex files are no fun! But if your configs are correct ("make.m" will use "-std=c++11") you can run `make` inside the `matlab-bindings` folder. This should create a file `cppsolver.mexw64` or `cppsolver.mexw32`.
@@ -112,27 +106,20 @@ To solve your problem just define the objective as a function like
 
 an save it under `rosenbrock.m`. If everything is correct you should be able to minimize your function:
 
-	solution = cppsolver([-1;2], @rosenbrock)
+	[solution, value] = cppsolver([-1;2], @rosenbrock)
 	% or if you specify a gradient:
-	solution = cppsolver([-1;2], @rosenbrock, 'gradient', @rosenbrock_grad)
+	[solution, value] = cppsolver([-1;2], @rosenbrock, 'gradient', @rosenbrock_grad)
 
 
 If you pass a gradient function the call of the mex-file, it will check the gradient function once in the initial guess to make sure you have no typos in your gradient function. You can skip this check by calling 
 
-	solution=cppsolver([-1;2],@rosenbrock,'gradient',@rosenbrock_grad,'skip_gradient_check','true')
+	[solution, value] = cppsolver([-1;2],@rosenbrock,'gradient',@rosenbrock_grad,'skip_gradient_check','true')
 
 
-The default solver is `L-BFGS`. To specify another solver you can call
+The default solver is `BFGS`. To specify another solver you can call
 
-	solution=cppsolver([-1;2],@rosenbrock,'gradient',@rosenbrock_grad,'solver','THE-SOLVER-TYPE')
+	[solution, value] = cppsolver([-1;2],@rosenbrock,'gradient',@rosenbrock_grad,'solver','THE-SOLVER-TYPE')
 
-where you can select a solver from:
-
-- l-bfgs
-- bfgs
-- gradientdescent
-
-The other solvers have not matlab bindings yet. Hence, it is the experimental version.
 There is an example in the folder `matlab-bindings`. The output should be something like
 
 	cppsolver([-1;2],@rosenbrock);
@@ -150,7 +137,7 @@ There is an example in the folder `matlab-bindings`. The output should be someth
 	------------------------------------------------------------
 	Elapsed time is 0.749841 seconds.
 
-Notice, that fminsearch probably use caches if you run this file multiple times.
+Notice, that fminsearch probably use caches if you run this file multiple times. If you do not specify at least one bound for the L-BFGS-B algorithm, the mex-file will use call the L-BFGS-algorithm instead.
 
 # License
 
