@@ -306,7 +306,7 @@ void LbfgsbSolver::internalSolve(Vector & x0,
                                  const GradientOracleType & FunctionGradient,
                                  const HessianOracleType & FunctionHessian)
 {
-
+    UNUSED(FunctionHessian);
     DIM = x0.rows();
 
     if(!hasbound_lower)
@@ -349,7 +349,7 @@ void LbfgsbSolver::internalSolve(Vector & x0,
     Matrix sHistory = Matrix::Zero(DIM, 0);
 
     Vector x = x0, g;
-    int k = 0;
+    size_t k = 0;
 
     double f = FunctionObjectiveOracle_(x);
 

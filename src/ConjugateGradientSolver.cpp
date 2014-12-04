@@ -20,34 +20,49 @@
  * SOFTWARE.
  */
 
-#include "GradientDescentSolver.h"
+#include "ConjugateGradientSolver.h"
 #include <iostream>
 namespace pwie
 {
 
-GradientDescentSolver::GradientDescentSolver() : ISolver()
+ConjugateGradientSolver::ConjugateGradientSolver() : ISolver()
 {
 
 
 }
 
 
-void GradientDescentSolver::internalSolve(Vector & x,
+void ConjugateGradientSolver::internalSolve(Vector & x,
         const FunctionOracleType & FunctionValue,
         const GradientOracleType & FunctionGradient,
         const HessianOracleType & FunctionHessian)
 {
     UNUSED(FunctionHessian);
-    Vector grad(x.rows());
-
     size_t iter = 0;
-    do
-    {
-        FunctionGradient(x, grad);
-        const double rate = linesearch(x, -grad, FunctionValue, FunctionGradient) ;
 
-        x = x - rate * grad;
+    Vector grad(x.rows());
+    Vector grad_old(x.rows());
+    Vector Si(x.rows());
+    Vector Si_old(x.rows());
+    do
+    { 
+        FunctionGradient(x, grad);
+
+        if(iter==0){
+            Si = -grad;
+        }else{
+            const double beta = grad.dot(grad)/(grad_old.dot(grad_old));
+            Si = -grad + beta*Si_old;
+        }
+        
+        const double rate = linesearch(x, Si, FunctionValue, FunctionGradient) ;
+
+        x = x + rate * Si;
+
         iter++;
+        grad_old = grad;
+        Si_old = Si;
+        
     }
     while((grad.lpNorm<Eigen::Infinity>() > settings.gradTol) && (iter < settings.maxIter));
 

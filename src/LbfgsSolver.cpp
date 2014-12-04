@@ -37,7 +37,7 @@ void LbfgsSolver::internalSolve(Vector & x,
                                 const GradientOracleType & FunctionGradient,
                                 const HessianOracleType & FunctionHessian)
 {
-
+    UNUSED(FunctionHessian);
     const size_t m = 10;
     const size_t DIM = x.rows();
 

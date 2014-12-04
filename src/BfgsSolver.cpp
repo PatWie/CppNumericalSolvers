@@ -36,7 +36,7 @@ void BfgsSolver::internalSolve(Vector & x,
                                const GradientOracleType & FunctionGradient,
                                const HessianOracleType & FunctionHessian)
 {
-
+    UNUSED(FunctionHessian);
 
     const size_t DIM = x.rows();
     size_t iter = 0;

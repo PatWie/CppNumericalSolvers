@@ -37,13 +37,14 @@ typedef std::function<void(const Eigen::VectorXd & x, Eigen::MatrixXd & hessian)
 typedef Eigen::MatrixXd Matrix;
 typedef Eigen::VectorXd Vector;
 typedef Eigen::VectorXd::Scalar Scalar;
+typedef unsigned int uint;
 
 typedef struct Options
 {
     double gradTol;
     double rate;
     size_t maxIter;
-    int m;
+    size_t m;
 
     Options()
     {
@@ -89,7 +90,7 @@ bool AssertEqual(T a, T b)
 #define INF HUGE_VAL
 #define Assert(x,m) if (!(x)) { throw (std::runtime_error(m)); }
 
-
+#define UNUSED(arg) (void)arg;    //  trick of Qt
 
 #define FAST
 

@@ -41,16 +41,8 @@ bool checkGradient(const FunctionOracleType & FunctionValue, const Vector & x, c
     }
     const double error = static_cast<Vector>((finite - grad)).norm() / static_cast<Vector>((finite + grad)).norm();
 
-
-    if(error > eps)
-    {
-        std::cout << "Warning! Gradient could be wrong." << std::endl;
-        return false;
-    }
-
-    return true;
+    return !(error > eps);
 }
-
 
 void computeGradient(const FunctionOracleType & FunctionValue, const Vector & x, Vector & grad, const double eps)
 {
@@ -65,8 +57,8 @@ void computeGradient(const FunctionOracleType & FunctionValue, const Vector & x,
         finite[i] = (FunctionValue(xx) - FunctionValue(xy)) / (2.0 * eps);
     }
     grad = finite;
-
 }
+
 void computeHessian(const FunctionOracleType & FunctionValue, const Vector & x, Matrix & hessian, const double eps)
 {
     Assert(x.rows() == hessian.rows(), "hessian has wrong dimension (number of rows)");
@@ -90,12 +82,8 @@ void computeHessian(const FunctionOracleType & FunctionValue, const Vector & x, 
             double f3 = FunctionValue(xx);
 
             hessian(i, j) = (f1 - f2 - f3 + f4) / (eps * eps);
-
-
         }
     }
-
-
 }
 
 

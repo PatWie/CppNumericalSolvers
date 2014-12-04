@@ -20,39 +20,23 @@
  * SOFTWARE.
  */
 
-#include "GradientDescentSolver.h"
-#include <iostream>
+#ifndef CONJUGATEGRADIENTSOLVER_H_
+#define CONJUGATEGRADIENTSOLVER_H_
+#include "ISolver.h"
 namespace pwie
 {
 
-GradientDescentSolver::GradientDescentSolver() : ISolver()
+class ConjugateGradientSolver : public ISolver
 {
+public:
+    ConjugateGradientSolver();
+    void internalSolve(Vector & x0,
+                       const FunctionOracleType & FunctionValue,
+                       const GradientOracleType & FunctionGradient,
+                       const HessianOracleType & FunctionHessian = std::function<void(const Eigen::VectorXd & x, Eigen::MatrixXd & hessian)>());
 
+};
 
-}
+} /* namespace pwie */
 
-
-void GradientDescentSolver::internalSolve(Vector & x,
-        const FunctionOracleType & FunctionValue,
-        const GradientOracleType & FunctionGradient,
-        const HessianOracleType & FunctionHessian)
-{
-    UNUSED(FunctionHessian);
-    Vector grad(x.rows());
-
-    size_t iter = 0;
-    do
-    {
-        FunctionGradient(x, grad);
-        const double rate = linesearch(x, -grad, FunctionValue, FunctionGradient) ;
-
-        x = x - rate * grad;
-        iter++;
-    }
-    while((grad.lpNorm<Eigen::Infinity>() > settings.gradTol) && (iter < settings.maxIter));
-
-
-}
-}
-
-/* namespace pwie */
+#endif /* CONJUGATEGRADIENTSOLVER_H_ */

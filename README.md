@@ -1,11 +1,22 @@
 CppNumericalSolvers (C++11 implementation with MATLAB bindings)
 =================================================================
 
+Quick Intro
+-----------
+- run `make install` to download and build dependencies
+- run `make test` to verify the results by unit tests
+- run `make main` to build cpp examples
+- run `make.m` within MATLAB to build the MATLAB wrapper
+
+Long Intro
+-----------
+
 This repository contains solvers implemented in C++11 using the [Eigen3][eigen3] library. All implementations were written from scratch. 
 You can use this library in **C++ and [Matlab][matlab]** in an easy way.
 
 The library currently contains the following solvers:
 - gradient descent solver
+- conjugate gradient descent solver
 - Newton descent solver
 - BFGS solver
 - L-BFGS solver
