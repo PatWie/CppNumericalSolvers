@@ -27,30 +27,3 @@ install:
 	mv eigen-eigen-* eigen 
 	rm -Rf eigen-3.2.2.tar
 	rm -Rf eigen-3.2.2.tar.bz2
-
-
-
-# test: unittests.cpp 
-# 	$(CXX) $(CXXFLAGSTEST) -o test Neighborhood.hpp Neighborhood.cpp Vector.hpp Vector.cpp ProQuantization.hpp ProQuantization.cpp ProTree.hpp ProTree.cpp unittests.cpp libgtest.a  -lglog
-# 	GLOG_logtostderr=1 ./test
-
-# gtest:
-# 	rm -f gtest-1.7.0.zip
-# 	rm -fR gtest-1.7.0
-# 	wget -O gtest-1.7.0.zip https://googletest.googlecode.com/files/gtest-1.7.0.zip
-# 	unzip gtest-1.7.0.zip
-# 	g++ -Igtest-1.7.0/include -Igtest-1.7.0 -c "gtest-1.7.0/src/gtest-all.cc" 
-# 	ar -rv libgtest.a gtest-all.o
-# 	rm -f gtest-1.7.0.zip
-# 	mv gtest-1.7.0 gtest
-
-
-# cleanall:
-# 	rm -f test
-# 	rm -f main
-
-# cleanmain:
-# 	rm -f main
-
-# cleantest:
-# 	rm -f test
