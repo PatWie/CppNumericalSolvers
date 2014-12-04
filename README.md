@@ -1,5 +1,7 @@
-CppNumericalSolvers (C++11 implementation with MATLAB bindings)
+CppNumericalSolvers (C++11 implementation with MATLAB bindings)   
 =================================================================
+
+[![Build Status](https://api.travis-ci.org/PatWie/CppNumericalSolvers.svg?branch=master)](http://travis-ci.org/PatWie/CppNumericalSolvers)
 
 Quick Intro
 -----------
