@@ -49,7 +49,7 @@ void BfgsSolver::internalSolve(Vector & x,
     {
         FunctionGradient(x, grad);
         Vector p = -1 * H * grad;
-        const double rate = linesearch(x, p, FunctionValue, FunctionGradient) ;
+        const double rate = linesearch(x, p, H, FunctionValue, FunctionGradient) ;
         x = x + rate * p;
         Vector grad_old = grad;
         FunctionGradient(x, grad);

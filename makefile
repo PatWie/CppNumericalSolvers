@@ -1,7 +1,8 @@
-CXX=g++
+CXX=clang++
 CXXFLAGS := -Wall -Wextra -pedantic-errors -std=c++11 -fopenmp -Ieigen 
 CXXFLAGSTEST := -Wall -Wextra -pedantic-errors -std=c++11 -fopenmp -Ieigen -Igtest/include 
 
+.PHONY: main test
 
 main: src/main.cpp 
 	$(CXX) $(CXXFLAGS) -o main src/Meta.cpp src/ISolver.cpp src/GradientDescentSolver.cpp src/ConjugateGradientSolver.cpp src/NewtonDescentSolver.cpp src/BfgsSolver.cpp src/LbfgsSolver.cpp src/LbfgsbSolver.cpp src/main.cpp  

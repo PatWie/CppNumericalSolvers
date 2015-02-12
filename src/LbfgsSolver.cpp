@@ -72,7 +72,7 @@ void LbfgsSolver::internalSolve(Vector & x,
             q = q + sVector.col(i) * (alpha(i) - beta);
         }
 
-        const double rate = linesearch(x, -q, FunctionValue, FunctionGradient) ;
+        const double rate = linesearch(x, -q, H, FunctionValue, FunctionGradient) ;
         x = x - rate * q;
         Vector grad_old = grad;
         FunctionGradient(x, grad);

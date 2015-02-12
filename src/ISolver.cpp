@@ -80,4 +80,30 @@ double ISolver::linesearch(const Vector & x, const Vector & direction,
 
 }
 
+double ISolver::linesearch(const Vector & x, const Vector & direction,
+                         const Eigen::MatrixXd & hessian,
+                           const FunctionOracleType & FunctionValue,
+                           const GradientOracleType & FunctionGradient)
+{
+
+    const double alpha = 0.2;
+    const double beta = 0.9;
+    double t = 1.0;
+
+    double f = FunctionValue(x + t * direction);
+    const double f_in = FunctionValue(x);
+    Vector grad(x.rows());
+    FunctionGradient(x, grad);
+    const double Cache = alpha * grad.dot(direction) + 0.5*alpha*direction.transpose()*(hessian*direction);
+
+    while(f > f_in + t * Cache)
+    {
+        t *= beta;
+        f = FunctionValue(x + t * direction);
+    }
+
+    return t;
+
+}
+
 } /* namespace pwie */

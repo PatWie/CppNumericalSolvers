@@ -50,6 +50,7 @@ public:
                                const GradientOracleType & FunctionGradient,
                                const HessianOracleType & FunctionHessian = std::function<void(const Eigen::VectorXd & x, Eigen::MatrixXd & hessian)>()) = 0;
     double linesearch(const Vector & x, const Vector & direction, const FunctionOracleType & FunctionValue, const GradientOracleType & FunctionGradient);
+    double linesearch(const Vector & x, const Vector & direction, const Eigen::MatrixXd & hessian, const FunctionOracleType & FunctionValue, const GradientOracleType & FunctionGradient);
 
 };
 
