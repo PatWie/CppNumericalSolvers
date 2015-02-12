@@ -2,9 +2,8 @@ CppNumericalSolvers (C++11 implementation with MATLAB bindings)
 =================================================================
 
 [![Build Status](https://api.travis-ci.org/PatWie/CppNumericalSolvers.svg?branch=master)](http://travis-ci.org/PatWie/CppNumericalSolvers)
-![Build Status](https://img.shields.io/github/release/PatWie/CppNumericalSolvers.svg)
-![Build Status](https://img.shields.io/github/issues/PatWie/CppNumericalSolvers.svg)
-
+[![Build Status](https://img.shields.io/github/release/PatWie/CppNumericalSolvers.svg)](https://github.com/PatWie/CppNumericalSolvers/releases)
+[![Build Status](https://img.shields.io/github/issues/PatWie/CppNumericalSolvers.svg)](https://github.com/PatWie/CppNumericalSolvers/issues)
 Quick Intro
 -----------
 - run `make install` to download and build dependencies

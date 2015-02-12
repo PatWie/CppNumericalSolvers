@@ -58,7 +58,7 @@ void LbfgsbSolver::setLowerBound(const Vector & lower)
 void LbfgsbSolver::setUpperBound(const Vector & upper)
 {
     ub = upper;
-    hasbound_lower = true;
+    hasbound_upper = true;
 }
 
 void LbfgsbSolver::GetGeneralizedCauchyPoint(Vector & x, Vector & g, Vector & x_cauchy,
