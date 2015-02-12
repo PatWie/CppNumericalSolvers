@@ -210,15 +210,15 @@ double LbfgsbSolver::FindAlpha(Vector & x_cp, Vector & du, std::vector<int> & Fr
     return alphastar;
 }
 
-void LbfgsbSolver::LineSearch(Vector & x, Vector dx, Matrix &H, double & f, Vector & g, double & t)
+void LbfgsbSolver::LineSearch(Vector & x, Vector dx, double theta, Matrix &W,  Matrix &M, double & f, Vector & g, double & t)
 {
-
+    // W*M*W.transpose()
     const double alpha = 0.2;
     const double beta = 0.8;
 
     const double f_in = f;
     const Vector g_in = g;
-    const double Cache = alpha * g_in.dot(dx) + 0.5*alpha*dx.transpose()*(H*dx);
+    const double Cache = alpha * g_in.dot(dx) + 0.5*alpha*(theta*dx.dot(dx)-dx.transpose()*(W*M*W.transpose()*dx));
 
     t = 1.0;
     f = FunctionObjectiveOracle_(x + t * dx);
@@ -385,9 +385,8 @@ void LbfgsbSolver::internalSolve(Vector & x0,
 
         
         double Length = 0;
-        H = theta*Matrix::Identity(DIM, DIM)-W*M*W.transpose();
         // STEP 4: perform linesearch and STEP 5: compute gradient
-        LineSearch(x, SubspaceMin - x, H, f, g, Length);
+        LineSearch(x, SubspaceMin - x, theta, W, M, f, g, Length);
 
         xHistory.push_back(x);
 

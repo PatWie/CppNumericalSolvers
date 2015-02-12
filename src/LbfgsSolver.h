@@ -30,6 +30,10 @@ class LbfgsSolver : public ISolver
 {
 public:
     LbfgsSolver();
+    double linesearch(const Vector & x, const Vector & direction,
+                         const double theta,
+                           const FunctionOracleType & FunctionValue,
+                           const GradientOracleType & FunctionGradient);
     void internalSolve(Vector & x0,
                        const FunctionOracleType & FunctionValue,
                        const GradientOracleType & FunctionGradient,

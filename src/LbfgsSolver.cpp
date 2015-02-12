@@ -31,6 +31,31 @@ LbfgsSolver::LbfgsSolver() : ISolver()
 
 }
 
+double LbfgsSolver::linesearch(const Vector & x, const Vector & direction,
+                         const double theta,
+                           const FunctionOracleType & FunctionValue,
+                           const GradientOracleType & FunctionGradient)
+{
+
+    const double alpha = 0.2;
+    const double beta = 0.9;
+    double t = 1.0;
+
+    double f = FunctionValue(x + t * direction);
+    const double f_in = FunctionValue(x);
+    Vector grad(x.rows());
+    FunctionGradient(x, grad);
+    const double Cache = alpha * grad.dot(direction) + 0.5*alpha*theta*direction.dot(direction);
+
+    while(f > f_in + t * Cache)
+    {
+        t *= beta;
+        f = FunctionValue(x + t * direction);
+    }
+
+    return t;
+
+}
 
 void LbfgsSolver::internalSolve(Vector & x,
                                 const FunctionOracleType & FunctionValue,
@@ -53,6 +78,8 @@ void LbfgsSolver::internalSolve(Vector & x,
 
     size_t iter = 0;
 
+    double theta = 1;
+
     do
     {
         Vector q = grad;
@@ -72,7 +99,7 @@ void LbfgsSolver::internalSolve(Vector & x,
             q = q + sVector.col(i) * (alpha(i) - beta);
         }
 
-        const double rate = linesearch(x, -q, H, FunctionValue, FunctionGradient) ;
+        const double rate = linesearch(x, -q, theta, FunctionValue, FunctionGradient) ;
         x = x - rate * q;
         Vector grad_old = grad;
         FunctionGradient(x, grad);
@@ -93,8 +120,8 @@ void LbfgsSolver::internalSolve(Vector & x,
             yVector.leftCols(m - 1) = yVector.rightCols(m - 1).eval();
             yVector.rightCols(1) = y;
         }
-
-        H = y.dot(s) / static_cast<double>(y.dot(y)) * Matrix::Identity(DIM, DIM);
+        theta = y.dot(s) / static_cast<double>(y.dot(y));
+        //H = theta * Matrix::Identity(DIM, DIM);
         x_old = x;
 
         //std::cout << FunctionValue(x) << std::endl;
