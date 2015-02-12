@@ -210,7 +210,7 @@ double LbfgsbSolver::FindAlpha(Vector & x_cp, Vector & du, std::vector<int> & Fr
     return alphastar;
 }
 
-void LbfgsbSolver::LineSearch(Vector & x, Vector dx, double & f, Vector & g, double & t)
+void LbfgsbSolver::LineSearch(Vector & x, Vector dx, Matrix &H, double & f, Vector & g, double & t)
 {
 
     const double alpha = 0.2;
@@ -218,7 +218,7 @@ void LbfgsbSolver::LineSearch(Vector & x, Vector dx, double & f, Vector & g, dou
 
     const double f_in = f;
     const Vector g_in = g;
-    const double Cache = alpha * g_in.dot(dx);
+    const double Cache = alpha * g_in.dot(dx) + 0.5*alpha*dx.transpose()*(H*dx);
 
     t = 1.0;
     f = FunctionObjectiveOracle_(x + t * dx);
@@ -324,6 +324,7 @@ void LbfgsbSolver::internalSolve(Vector & x0,
 
     W = Matrix::Zero(DIM, 0);
     M = Matrix::Zero(0, 0);
+    Matrix H = Matrix::Identity(DIM, DIM);
 
 
     FunctionObjectiveOracle_ = FunctionValue;
@@ -382,11 +383,11 @@ void LbfgsbSolver::internalSolve(Vector & x0,
         Vector SubspaceMin;
         SubspaceMinimization(CauchyPoint, x, c, g, SubspaceMin);
 
-        Matrix H;
+        
         double Length = 0;
-
+        H = theta*Matrix::Identity(DIM, DIM)-W*M*W.transpose();
         // STEP 4: perform linesearch and STEP 5: compute gradient
-        LineSearch(x, SubspaceMin - x, f, g, Length);
+        LineSearch(x, SubspaceMin - x, H, f, g, Length);
 
         xHistory.push_back(x);
 
@@ -420,6 +421,9 @@ void LbfgsbSolver::internalSolve(Vector & x0,
             theta = (double)(newY.transpose() * newY)
                     / (newY.transpose() * newS);
 
+            
+
+
             W = Matrix::Zero(yHistory.rows(),
                              yHistory.cols() + sHistory.cols());
 
@@ -433,6 +437,7 @@ void LbfgsbSolver::internalSolve(Vector & x0,
                                         * theta);
 
             M = MM.inverse();
+
         }
 
         Vector ttt = Matrix::Zero(1, 1);

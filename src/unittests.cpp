@@ -49,7 +49,7 @@ TEST(BfgsTest, RosenbrockNear)             { SOLVE_1stOrder(pwie::BfgsSolver, ro
 TEST(LbfgsTest, RosenbrockFar)             { SOLVE_1stOrder(pwie::LbfgsSolver, rosenbrock, 15.0, 8.0, 0.0) }
 TEST(LbfgsTest, RosenbrockNear)            { SOLVE_1stOrder(pwie::LbfgsSolver, rosenbrock, -1.2, 1.0, 0.0) }
 
-TEST(LbfgsbTest, DISABLED_RosenbrockFar)            { SOLVE_1stOrder(pwie::LbfgsbSolver, rosenbrock, 15.0, 8.0, 0.0) }
+TEST(LbfgsbTest, RosenbrockFar)            { SOLVE_1stOrder(pwie::LbfgsbSolver, rosenbrock, 15.0, 8.0, 0.0) }
 TEST(LbfgsbTest, DISABLED_RosenbrockNear)           { SOLVE_1stOrder(pwie::LbfgsbSolver, rosenbrock, -1.2, 1.0, 0.0) }
 
 int main (int argc, char **argv)

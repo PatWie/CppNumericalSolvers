@@ -68,7 +68,7 @@ private:
     /// <parameter name="f">current value of objective (will be changed)</parameter>
     /// <parameter name="g">current gradient of objective (will be changed)</parameter>
     /// <parameter name="t">step width (will be changed)</parameter>
-    void LineSearch(Vector & x, Vector dx, double & f, Vector & g, double & t) ;
+    void LineSearch(Vector & x, Vector dx, Matrix &M, double & f,  Vector & g, double & t) ;
     /// <summary>
     /// direct primal approach
     /// </summary>
