@@ -4,11 +4,12 @@
 #include <Eigen/Eigen>
 #include <iostream>
 #include <functional>
-#include "../../src/LbfgsbSolver.h"
-#include "../../src/LbfgsSolver.h"
-#include "../../src/BfgsSolver.h"
-#include "../../src/GradientDescentSolver.h"
-#include "../../src/NewtonDescentSolver.h"
+#include "../src/LbfgsbSolver.h"
+#include "../src/LbfgsSolver.h"
+#include "../src/BfgsSolver.h"
+#include "../src/ConjugateGradientSolver.h"
+#include "../src/GradientDescentSolver.h"
+#include "../src/NewtonDescentSolver.h"
 #include "mex.h"
 
 /* usage: [x,fx] = cppsolver(x0,@objective,[args])
@@ -30,7 +31,7 @@ char error_msg[200];
 Eigen::VectorXd solution, gradient;
 Eigen::VectorXd upper, lower;
 
-enum solver_type {GRADIENTDESC, NEWTON, BFGS, LBFGS, LBFGSB};
+enum solver_type {GRADIENTDESC, NEWTON, BFGS, LBFGS, LBFGSB, CG};
 solver_type selected_solver;
 
 void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[])
@@ -109,6 +110,8 @@ void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[
 
           if (strcmp(solver_str, "gradientdescent") == 0) {
             selected_solver = GRADIENTDESC;
+          } else if (strcmp(solver_str, "cg") == 0) {
+            selected_solver = CG;
           } else if (strcmp(solver_str, "bfgs") == 0) {
             selected_solver = BFGS;
           } else if (strcmp(solver_str, "l-bfgs") == 0) {
@@ -330,7 +333,17 @@ void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[
   }
   break;
   case GRADIENTDESC: {
+    mexErrMsgIdAndTxt("MATLAB:cppsolver", "Using GradientDescentSolver in Matlab in not recommended!");
     pwie::GradientDescentSolver g;
+    if (has_gradient) {
+      g.solve(solution, objective_function, gradient_function);
+    } else {
+      g.solve(solution, objective_function);
+    }
+  }
+  break;
+  case CG: {
+    pwie::ConjugateGradientSolver g;
     if (has_gradient) {
       g.solve(solution, objective_function, gradient_function);
     } else {
