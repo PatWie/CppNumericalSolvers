@@ -31,9 +31,9 @@
 
 namespace pwie
 {
-typedef std::function<double(const Eigen::VectorXd & x)> FunctionOracleType;
-typedef std::function<void(const Eigen::VectorXd & x, Eigen::VectorXd & gradient)> GradientOracleType;
-typedef std::function<void(const Eigen::VectorXd & x, Eigen::MatrixXd & hessian)> HessianOracleType;
+typedef std::function<double(const Eigen::VectorXd & x)> function_t;
+typedef std::function<void(const Eigen::VectorXd & x, Eigen::VectorXd & gradient)> gradient_t;
+typedef std::function<void(const Eigen::VectorXd & x, Eigen::MatrixXd & hessian)> hessian_t;
 typedef Eigen::MatrixXd Matrix;
 typedef Eigen::VectorXd Vector;
 typedef Eigen::VectorXd::Scalar Scalar;
@@ -56,9 +56,9 @@ typedef struct Options
     }
 } Options;
 
-bool checkGradient(const FunctionOracleType & FunctionValue, const Vector & x, const Vector & grad, const double eps = 1e-5);
-void computeGradient(const FunctionOracleType & FunctionValue, const Vector & x, Vector & grad, const double eps = 1e-5);
-void computeHessian(const FunctionOracleType & FunctionValue, const Vector & x, Matrix & hessian, const double eps = 1e-1);
+bool checkGradient(const function_t & FunctionValue, const Vector & x, const Vector & grad, const double eps = 1e-5);
+void computeGradient(const function_t & FunctionValue, const Vector & x, Vector & grad, const double eps = 1e-5);
+void computeHessian(const function_t & FunctionValue, const Vector & x, Matrix & hessian, const double eps = 1e-1);
 
 const double EPS = 2.2204e-016;
 
@@ -86,8 +86,9 @@ bool AssertEqual(T a, T b)
 
 #define min(a,b) (((a)<(b))?(a):(b))
 #define max(a,b) (((a)>(b))?(a):(b))
+#define EMPTY_HESSIAN (std::function<void(const Eigen::VectorXd & x, Eigen::MatrixXd & hessian)>())
 
-#define INF HUGE_VAL
+#define INF HUGE_VAL // std::numeric_limits<double>::infinity()
 #define Assert(x,m) if (!(x)) { throw (std::runtime_error(m)); }
 
 #define UNUSED(arg) (void)arg;    //  trick of Qt

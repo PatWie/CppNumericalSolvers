@@ -22,6 +22,7 @@
 
 #include "GradientDescentSolver.h"
 #include <iostream>
+#include "linesearch/Armijo.h"
 namespace pwie
 {
 
@@ -33,9 +34,9 @@ GradientDescentSolver::GradientDescentSolver() : ISolver()
 
 
 void GradientDescentSolver::internalSolve(Vector & x,
-        const FunctionOracleType & FunctionValue,
-        const GradientOracleType & FunctionGradient,
-        const HessianOracleType & FunctionHessian)
+        const function_t & FunctionValue,
+        const gradient_t & FunctionGradient,
+        const hessian_t & FunctionHessian)
 {
     UNUSED(FunctionHessian);
     Vector grad(x.rows());
@@ -44,7 +45,7 @@ void GradientDescentSolver::internalSolve(Vector & x,
     do
     {
         FunctionGradient(x, grad);
-        const double rate = linesearch(x, -grad, FunctionValue, FunctionGradient) ;
+        const double rate = Armijo::linesearch(x, -grad, FunctionValue, FunctionGradient) ;
 
         x = x - rate * grad;
         iter++;

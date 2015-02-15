@@ -31,9 +31,9 @@ class NewtonDescentSolver : public ISolver
 public:
     NewtonDescentSolver();
     void internalSolve(Vector & x0,
-                       const FunctionOracleType & FunctionValue,
-                       const GradientOracleType & FunctionGradient,
-                       const HessianOracleType & FunctionHessian = std::function<void(const Eigen::VectorXd & x, Eigen::MatrixXd & hessian)>());
+                       const function_t & FunctionValue,
+                       const gradient_t & FunctionGradient,
+                       const hessian_t & FunctionHessian = EMPTY_HESSIAN);
 
 };
 

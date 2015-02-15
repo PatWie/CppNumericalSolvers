@@ -1,6 +1,6 @@
 CXX=g++
-CXXFLAGS := -Wall -Wextra -pedantic-errors -std=c++11 -fopenmp -Ieigen -O2
-CXXFLAGSTEST := -Wall -Wextra -pedantic-errors -std=c++11 -fopenmp -Ieigen -Igtest/include  -O2
+CXXFLAGS := -Wall -Wextra -pedantic-errors -std=c++11 -fopenmp -O3 -isystem gtest/include  -isystem eigen
+CXXFLAGSTEST := -Wall -Wextra -pedantic-errors -std=c++11 -fopenmp -O3 -isystem gtest/include  -isystem eigen  -DNDEBUG
 
 .PHONY: main test
 

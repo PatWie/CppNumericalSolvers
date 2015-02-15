@@ -21,6 +21,7 @@
  */
 
 #include "BfgsSolver.h"
+#include "linesearch/WolfeRule.h"
 #include <iostream>
 namespace pwie
 {
@@ -32,9 +33,9 @@ BfgsSolver::BfgsSolver() : ISolver()
 
 
 void BfgsSolver::internalSolve(Vector & x,
-                               const FunctionOracleType & FunctionValue,
-                               const GradientOracleType & FunctionGradient,
-                               const HessianOracleType & FunctionHessian)
+                               const function_t & FunctionValue,
+                               const gradient_t & FunctionGradient,
+                               const hessian_t & FunctionHessian)
 {
     UNUSED(FunctionHessian);
 
@@ -49,7 +50,7 @@ void BfgsSolver::internalSolve(Vector & x,
     {
         FunctionGradient(x, grad);
         Vector p = -1 * H * grad;
-        const double rate = linesearch(x, p, H, FunctionValue, FunctionGradient) ;
+        const double rate = WolfeRule::linesearch(x, p, FunctionValue, FunctionGradient) ;
         x = x + rate * p;
         Vector grad_old = grad;
         FunctionGradient(x, grad);

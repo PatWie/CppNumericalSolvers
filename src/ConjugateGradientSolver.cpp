@@ -21,6 +21,7 @@
  */
 
 #include "ConjugateGradientSolver.h"
+ #include "linesearch/Armijo.h"
 #include <iostream>
 namespace pwie
 {
@@ -33,11 +34,11 @@ ConjugateGradientSolver::ConjugateGradientSolver() : ISolver()
 
 
 void ConjugateGradientSolver::internalSolve(Vector & x,
-        const FunctionOracleType & FunctionValue,
-        const GradientOracleType & FunctionGradient,
-        const HessianOracleType & FunctionHessian)
+        const function_t & objective,
+        const gradient_t & gradient,
+        const hessian_t & hessian)
 {
-    UNUSED(FunctionHessian);
+    UNUSED(hessian);
     size_t iter = 0;
 
     Vector grad(x.rows());
@@ -46,7 +47,7 @@ void ConjugateGradientSolver::internalSolve(Vector & x,
     Vector Si_old(x.rows());
     do
     { 
-        FunctionGradient(x, grad);
+        gradient(x, grad);
 
         if(iter==0){
             Si = -grad;
@@ -55,7 +56,7 @@ void ConjugateGradientSolver::internalSolve(Vector & x,
             Si = -grad + beta*Si_old;
         }
         
-        const double rate = linesearch(x, Si, FunctionValue, FunctionGradient) ;
+        const double rate = Armijo::linesearch(x, Si, objective, gradient) ;
 
         x = x + rate * Si;
 

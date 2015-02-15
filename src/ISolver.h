@@ -41,16 +41,16 @@ public:
     virtual ~ISolver();
 
     void solve(Vector & x0,
-               const FunctionOracleType & FunctionValue,
-               const GradientOracleType & FunctionGradient = std::function<void(const Eigen::VectorXd & x, Eigen::VectorXd & grad)>(),
-               const HessianOracleType & FunctionHessian = std::function<void(const Eigen::VectorXd & x, Eigen::MatrixXd & hessian)>());
+               const function_t & FunctionValue,
+               const gradient_t & FunctionGradient = std::function<void(const Eigen::VectorXd & x, Eigen::VectorXd & grad)>(),
+               const hessian_t & FunctionHessian = EMPTY_HESSIAN);
 
     virtual void internalSolve(Vector & x0,
-                               const FunctionOracleType & FunctionValue,
-                               const GradientOracleType & FunctionGradient,
-                               const HessianOracleType & FunctionHessian = std::function<void(const Eigen::VectorXd & x, Eigen::MatrixXd & hessian)>()) = 0;
-    double linesearch(const Vector & x, const Vector & direction, const FunctionOracleType & FunctionValue, const GradientOracleType & FunctionGradient);
-    double linesearch(const Vector & x, const Vector & direction, const Eigen::MatrixXd & hessian, const FunctionOracleType & FunctionValue, const GradientOracleType & FunctionGradient);
+                               const function_t & FunctionValue,
+                               const gradient_t & FunctionGradient,
+                               const hessian_t & FunctionHessian = EMPTY_HESSIAN) = 0;
+    double linesearch(const Vector & x, const Vector & direction, const function_t & FunctionValue, const gradient_t & FunctionGradient);
+    double linesearch(const Vector & x, const Vector & direction, const Eigen::MatrixXd & hessian, const function_t & FunctionValue, const gradient_t & FunctionGradient);
 
 };
 

@@ -27,7 +27,7 @@
 namespace pwie
 {
 
-bool checkGradient(const FunctionOracleType & FunctionValue, const Vector & x, const Vector & grad, const double eps)
+bool checkGradient(const function_t & FunctionValue, const Vector & x, const Vector & grad, const double eps)
 {
     const size_t DIM = x.rows();
     Vector finite(DIM);
@@ -44,7 +44,7 @@ bool checkGradient(const FunctionOracleType & FunctionValue, const Vector & x, c
     return !(error > eps);
 }
 
-void computeGradient(const FunctionOracleType & FunctionValue, const Vector & x, Vector & grad, const double eps)
+void computeGradient(const function_t & FunctionValue, const Vector & x, Vector & grad, const double eps)
 {
     const size_t DIM = x.rows();
     Vector finite(DIM);
@@ -59,7 +59,7 @@ void computeGradient(const FunctionOracleType & FunctionValue, const Vector & x,
     grad = finite;
 }
 
-void computeHessian(const FunctionOracleType & FunctionValue, const Vector & x, Matrix & hessian, const double eps)
+void computeHessian(const function_t & FunctionValue, const Vector & x, Matrix & hessian, const double eps)
 {
     Assert(x.rows() == hessian.rows(), "hessian has wrong dimension (number of rows)");
     Assert(x.rows() == hessian.cols(), "hessian has wrong dimension (number of cols)");

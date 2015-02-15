@@ -33,9 +33,9 @@ NewtonDescentSolver::NewtonDescentSolver() : ISolver()
 
 
 void NewtonDescentSolver::internalSolve(Vector & x,
-                                        const FunctionOracleType & FunctionValue,
-                                        const GradientOracleType & FunctionGradient,
-                                        const HessianOracleType & FunctionHessian)
+                                        const function_t & FunctionValue,
+                                        const gradient_t & FunctionGradient,
+                                        const hessian_t & FunctionHessian)
 {
 
     if(!FunctionHessian)

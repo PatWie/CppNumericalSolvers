@@ -20,23 +20,43 @@
  * SOFTWARE.
  */
 
-#ifndef GRADIENTDESCENTSOLVER_H_
-#define GRADIENTDESCENTSOLVER_H_
-#include "ISolver.h"
+#ifndef ARMIJO_H_
+#define ARMIJO_H_
+
+
+#include <functional>
+#include "../Meta.h"
+
 namespace pwie
 {
 
-class GradientDescentSolver : public ISolver
-{
+
+
+class Armijo{
+
 public:
-    GradientDescentSolver();
-    void internalSolve(Vector & x0,
-                       const function_t & FunctionValue,
-                       const gradient_t & FunctionGradient,
-                       const hessian_t & FunctionHessian = EMPTY_HESSIAN);
+
+	static double linesearch(const Vector & x, const Vector & p, function_t objective, gradient_t gradient){
+		const double c = 0.2;
+	    const double rho = 0.9;
+	    double alpha = 1.0;
+
+	    double f = objective(x + alpha * p);
+	    const double f_in = objective(x);
+	    Vector grad(x.rows());
+	    gradient(x, grad);
+	    const double Cache = c * grad.dot(p);
+
+	    while(f > f_in + alpha * Cache)
+	    {
+	        alpha *= rho;
+	        f = objective(x + alpha * p);
+	    }
+
+	    return alpha;
+	}
 
 };
+}
 
-} /* namespace pwie */
-
-#endif /* GRADIENTDESCENTSOLVER_H_ */
+#endif

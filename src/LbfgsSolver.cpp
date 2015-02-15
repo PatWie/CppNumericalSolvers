@@ -22,114 +22,87 @@
  */
 
 #include "LbfgsSolver.h"
+#include "linesearch/WolfeRule.h"
 #include <iostream>
 namespace pwie
 {
 
 LbfgsSolver::LbfgsSolver() : ISolver()
 {
-    // TODO Auto-generated constructor stub
+  // TODO Auto-generated constructor stub
 
 }
 
-double LbfgsSolver::linesearch(const Vector & x, const Vector & direction,
-                         const double theta,
-                           const FunctionOracleType & FunctionValue,
-                           const GradientOracleType & FunctionGradient)
+
+void LbfgsSolver::internalSolve(Vector &x,
+                                const function_t &FunctionValue,
+                                const gradient_t &FunctionGradient,
+                                const hessian_t &FunctionHessian)
 {
+  UNUSED(FunctionHessian);
+  const size_t m = 10;
+  const size_t DIM = x.rows();
 
-    const double alpha = 0.2;
-    const double beta = 0.9;
-    double t = 1.0;
 
-    double f = FunctionValue(x + t * direction);
-    const double f_in = FunctionValue(x);
-    Vector grad(x.rows());
-    FunctionGradient(x, grad);
-    const double Cache = alpha * grad.dot(direction) + 0.5*alpha*theta*direction.dot(direction);
+  Matrix sVector = Matrix::Zero(DIM, m);
+  Matrix yVector = Matrix::Zero(DIM, m);
 
-    while(f > f_in + t * Cache)
+  Vector alpha = Vector::Zero(m);
+  Vector grad(DIM);
+  FunctionGradient(x, grad);
+  Vector x_old = x;
+
+  size_t iter = 0;
+
+  double theta = 1;
+
+  do
+  {
+    Vector q = grad;
+    const int mini = min(m, iter);
+
+    for (int i = mini - 1; i >= 0; i--)
     {
-        t *= beta;
-        f = FunctionValue(x + t * direction);
+      const double rho = 1.0 / static_cast<Vector>(sVector.col(i)).dot(static_cast<Vector>(yVector.col(i)));
+      alpha(i) = rho * static_cast<Vector>(sVector.col(i)).dot(q);
+      q = q - alpha(i) * yVector.col(i);
     }
-
-    return t;
-
-}
-
-void LbfgsSolver::internalSolve(Vector & x,
-                                const FunctionOracleType & FunctionValue,
-                                const GradientOracleType & FunctionGradient,
-                                const HessianOracleType & FunctionHessian)
-{
-    UNUSED(FunctionHessian);
-    const size_t m = 10;
-    const size_t DIM = x.rows();
-
-
-    Matrix sVector = Matrix::Zero(DIM, m);
-    Matrix yVector = Matrix::Zero(DIM, m);
-    Matrix H = Matrix::Identity(DIM, DIM);
-
-    Vector alpha = Vector::Zero(m);
-    Vector grad(DIM);
-    FunctionGradient(x, grad);
-    Vector x_old = x;
-
-    size_t iter = 0;
-
-    double theta = 1;
-
-    do
+    q = theta * q;
+    for (int i = 0; i < mini; i++)
     {
-        Vector q = grad;
-        const int mini = min(m, iter);
-
-        for(int i = mini - 1; i >= 0; i--)
-        {
-            const double rho = 1.0 / static_cast<Vector>(sVector.col(i)).dot(static_cast<Vector>(yVector.col(i)));
-            alpha(i) = rho * static_cast<Vector>(sVector.col(i)).dot(q);
-            q = q - alpha(i) * yVector.col(i);
-        }
-        q = H * q;
-        for(int i = 0; i < mini; i++)
-        {
-            const double rho = 1.0 / static_cast<Vector>(sVector.col(i)).dot(static_cast<Vector>(yVector.col(i)));
-            double beta = rho * static_cast<Vector>(yVector.col(i)).dot(q);
-            q = q + sVector.col(i) * (alpha(i) - beta);
-        }
-
-        const double rate = linesearch(x, -q, theta, FunctionValue, FunctionGradient) ;
-        x = x - rate * q;
-        Vector grad_old = grad;
-        FunctionGradient(x, grad);
-
-        Vector s = x - x_old;
-        Vector y = grad - grad_old;
-
-        if(iter < m)
-        {
-            sVector.col(iter) = s;
-            yVector.col(iter) = y;
-        }
-        else
-        {
-
-            sVector.leftCols(m - 1) = sVector.rightCols(m - 1).eval();
-            sVector.rightCols(1) = s;
-            yVector.leftCols(m - 1) = yVector.rightCols(m - 1).eval();
-            yVector.rightCols(1) = y;
-        }
-        theta = y.dot(s) / static_cast<double>(y.dot(y));
-        //H = theta * Matrix::Identity(DIM, DIM);
-        x_old = x;
-
-        //std::cout << FunctionValue(x) << std::endl;
-        iter++;
-
+      const double rho = 1.0 / static_cast<Vector>(sVector.col(i)).dot(static_cast<Vector>(yVector.col(i)));
+      double beta = rho * static_cast<Vector>(yVector.col(i)).dot(q);
+      q = q + sVector.col(i) * (alpha(i) - beta);
     }
-    while((grad.lpNorm<Eigen::Infinity>() > settings.gradTol) && (iter < settings.maxIter));
+    const double rate = WolfeRule::linesearch(x, -q,  FunctionValue, FunctionGradient) ;
+    x = x - rate * q;
+    Vector grad_old = grad;
+    FunctionGradient(x, grad);
+
+    Vector s = x - x_old;
+    Vector y = grad - grad_old;
+
+    if (iter < m)
+    {
+      sVector.col(iter) = s;
+      yVector.col(iter) = y;
+    }
+    else
+    {
+
+      sVector.leftCols(m - 1) = sVector.rightCols(m - 1).eval();
+      sVector.rightCols(1) = s;
+      yVector.leftCols(m - 1) = yVector.rightCols(m - 1).eval();
+      yVector.rightCols(1) = y;
+    }
+    theta = y.dot(s) / static_cast<double>(y.dot(y));
+    x_old = x;
+
+    //std::cout << FunctionValue(x) << std::endl;
+    iter++;
+
+  }
+  while ((grad.lpNorm<Eigen::Infinity>() > settings.gradTol) && (iter < settings.maxIter));
 
 
 

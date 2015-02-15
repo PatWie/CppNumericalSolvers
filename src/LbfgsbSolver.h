@@ -38,8 +38,8 @@ class LbfgsbSolver : public ISolver
     Vector ub;
     std::list<Vector> xHistory;
 
-    FunctionOracleType FunctionObjectiveOracle_;
-    GradientOracleType FunctionGradientOracle_;
+    function_t FunctionObjectiveOracle_;
+    gradient_t FunctionGradientOracle_;
 
     Matrix W, M;
     double theta;
@@ -60,15 +60,7 @@ private:
     /// <parameter name="du">unconstrained solution of subspace minimization</parameter>
     /// <parameter name="FreeVariables">flag (1 if is free variable and 0 if is not free variable)</parameter>
     double FindAlpha(Vector & x_cp, Vector & du, std::vector<int> & FreeVariables);
-    /// <summary>
-    /// using linesearch to determine step width
-    /// </summary>
-    /// <parameter name="x">start in x</parameter>
-    /// <parameter name="dx">direction</parameter>
-    /// <parameter name="f">current value of objective (will be changed)</parameter>
-    /// <parameter name="g">current gradient of objective (will be changed)</parameter>
-    /// <parameter name="t">step width (will be changed)</parameter>
-    void LineSearch(Vector & x, Vector dx, double theta, Matrix &W, Matrix &M, double & f,  Vector & g, double & t) ;
+    
     /// <summary>
     /// direct primal approach
     /// </summary>
@@ -77,9 +69,9 @@ private:
 public:
     LbfgsbSolver();
     void internalSolve(Vector & x0,
-                       const FunctionOracleType & FunctionValue,
-                       const GradientOracleType & FunctionGradient,
-                       const HessianOracleType & FunctionHessian = std::function<void(const Eigen::VectorXd & x, Eigen::MatrixXd & hessian)>());
+                       const function_t & FunctionValue,
+                       const gradient_t & FunctionGradient,
+                       const hessian_t & FunctionHessian = EMPTY_HESSIAN);
 
     void setLowerBound(const Vector & lower);
     void setUpperBound(const Vector & upper);
