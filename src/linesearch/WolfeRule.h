@@ -74,7 +74,7 @@ public:
         // curvature condition invalid ?
         if ((phi_dash < 0.9 * phi0_dash) || !decrease_direction) { 
         	// increase interval
-          alpha *= 2.0;
+          alpha *= 4.0;
         }
         else {
         	// both condition are valid --> we are happy
