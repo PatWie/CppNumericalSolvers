@@ -35,9 +35,9 @@ class WolfeRule {
 
 public:
 
-  static double linesearch(const Vector &x0, const Vector &z, function_t objective, gradient_t gradient) {
+  static double linesearch(const Vector &x0, const Vector &z, function_t objective, gradient_t gradient, float alpha_init = 1) {
 
-    double alpha = 1.0;
+    
     Vector x = x0;
 
     // evaluate phi(0)
@@ -48,7 +48,7 @@ public:
     gradient(x, grad);
     double phi0_dash = z.dot(grad);
 
-
+    double alpha =alpha_init;
 
     bool decrease_direction = true;
 

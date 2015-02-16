@@ -347,6 +347,7 @@ void LbfgsbSolver::internalSolve(Vector &x0,
     return (((x - g).cwiseMax(lb).cwiseMin(ub) - x).lpNorm<Eigen::Infinity>() >= 1e-4);
   };
 
+
   while (noConvergence(x, g) && (k < settings.maxIter))
   {
 
@@ -365,8 +366,9 @@ void LbfgsbSolver::internalSolve(Vector &x0,
 
 
     double Length = 0;
+    double initial_alpha = (k==0) ? 1.0 : 1.0/g.norm();
     // STEP 4: perform linesearch and STEP 5: compute gradient
-    WolfeRule::linesearch(x, SubspaceMin - x,FunctionValue, FunctionGradient);
+    WolfeRule::linesearch(x, SubspaceMin - x,FunctionValue, FunctionGradient, initial_alpha);
 
     xHistory.push_back(x);
 

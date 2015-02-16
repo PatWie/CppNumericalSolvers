@@ -48,40 +48,75 @@ void LbfgsSolver::internalSolve(Vector &x,
   Matrix yVector = Matrix::Zero(DIM, m);
 
   Vector alpha = Vector::Zero(m);
-  Vector grad(DIM);
+  Vector grad(DIM), q(DIM), grad_old(DIM), s(DIM), y(DIM);
   FunctionGradient(x, grad);
   Vector x_old = x;
+  Vector x_old2 = x;
 
-  size_t iter = 0;
+  double x_start = FunctionValue(x), x_end;
 
-  double theta = 1;
+  size_t iter = 0, j=0;
+
+  double H0k = 1;
+
+  
+  double oscillate_diff=0,oscillate_diff2=0;
 
   do
   {
-    Vector q = grad;
-    const int mini = min(m, iter);
 
-    for (int i = mini - 1; i >= 0; i--)
+    const double relativeEpsilon = 0.0001 * max(1.0, x.norm());
+
+    if (grad.norm() < relativeEpsilon)
+      break;
+
+    //Algorithm 7.4 (L-BFGS two-loop recursion)
+    q = grad;
+    const int k = min(m, iter);
+
+    // for i k − 1, k − 2, . . . , k − m
+    for (int i = k - 1; i >= 0; i--)
     {
+      // alpha_i <- rho_i*s_i^T*q
       const double rho = 1.0 / static_cast<Vector>(sVector.col(i)).dot(static_cast<Vector>(yVector.col(i)));
       alpha(i) = rho * static_cast<Vector>(sVector.col(i)).dot(q);
+      // q <- q - alpha_i*y_i
       q = q - alpha(i) * yVector.col(i);
     }
-    q = theta * q;
-    for (int i = 0; i < mini; i++)
+    // r <- H_k^0*q
+    q = H0k * q;
+    //for i k − m, k − m + 1, . . . , k − 1
+    for (int i = 0; i < k; i++)
     {
+      // beta <- rho_i * y_i^T * r
       const double rho = 1.0 / static_cast<Vector>(sVector.col(i)).dot(static_cast<Vector>(yVector.col(i)));
-      double beta = rho * static_cast<Vector>(yVector.col(i)).dot(q);
+      const double beta = rho * static_cast<Vector>(yVector.col(i)).dot(q);
+      // r <- r + s_i * ( alpha_i - beta)
       q = q + sVector.col(i) * (alpha(i) - beta);
     }
-    const double rate = WolfeRule::linesearch(x, -q,  FunctionValue, FunctionGradient) ;
+    // stop with result "H_k*f_f'=q"
+
+    // any issues with the descent direction ?
+    double descent = -grad.dot(q);
+    double alpha_init =  1.0/grad.norm();
+    if (descent > -0.0001 * relativeEpsilon) {
+       q = -1*grad;
+       iter = 0;
+       alpha_init = 1.0;
+    }
+
+    // find steplength
+    const double rate = WolfeRule::linesearch(x, -q,  FunctionValue, FunctionGradient, alpha_init) ;
+    // update guess
     x = x - rate * q;
-    Vector grad_old = grad;
+
+    grad_old = grad;
     FunctionGradient(x, grad);
 
-    Vector s = x - x_old;
-    Vector y = grad - grad_old;
+    s = x - x_old;
+    y = grad - grad_old;
 
+    // update the history
     if (iter < m)
     {
       sVector.col(iter) = s;
@@ -95,14 +130,29 @@ void LbfgsSolver::internalSolve(Vector &x,
       yVector.leftCols(m - 1) = yVector.rightCols(m - 1).eval();
       yVector.rightCols(1) = y;
     }
-    theta = y.dot(s) / static_cast<double>(y.dot(y));
-    x_old = x;
+    // update the scaling factor
+    H0k = y.dot(s) / static_cast<double>(y.dot(y));
 
-    //std::cout << FunctionValue(x) << std::endl;
+
+    // now the ugly part : detect convergence
+    // observation: L-BFGS seems to oscillate
+    x_start = FunctionValue(x_old);
+    x_old2 = x_old;
+    x_old = x;
+    x_end = FunctionValue(x);
+
+    oscillate_diff2 = oscillate_diff;
+    oscillate_diff = static_cast<Vector>(x_old2-x).norm();
+
     iter++;
+    j++;
+
+    if(fabs(oscillate_diff-oscillate_diff2)<1.0e-7)
+      break;
+
 
   }
-  while ((grad.lpNorm<Eigen::Infinity>() > settings.gradTol) && (iter < settings.maxIter));
+  while ((grad.norm() > 1.0e-5) && (j < settings.maxIter));
 
 
 

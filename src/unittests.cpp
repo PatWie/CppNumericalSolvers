@@ -51,7 +51,7 @@ TEST(BfgsTest, RosenbrockFarNear)               { SOLVE_1stOrder(pwie::BfgsSolve
 
 TEST(LbfgsTest, RosenbrockFar)                  { SOLVE_1stOrder(pwie::LbfgsSolver, rosenbrock, 15.0, 8.0, 0.0) }
 TEST(LbfgsTest, RosenbrockNear)                 { SOLVE_1stOrder(pwie::LbfgsSolver, rosenbrock, -1.2, 1.0, 0.0) }
-TEST(LbfgsTest, DISABLED_RosenbrockFarNear)     { SOLVE_1stOrder(pwie::LbfgsSolver, rosenbrock, -1.2, 100.0, 0.0) }
+TEST(LbfgsTest, RosenbrockFarNear)              { SOLVE_1stOrder(pwie::LbfgsSolver, rosenbrock, -1.2, 100.0, 0.0) }
 
 TEST(LbfgsbTest, DISABLED_RosenbrockFar)        { SOLVE_1stOrder(pwie::LbfgsbSolver, rosenbrock, 15.0, 8.0, 0.0) }
 TEST(LbfgsbTest, DISABLED_RosenbrockNear)       { SOLVE_1stOrder(pwie::LbfgsbSolver, rosenbrock, -1.2, 1.0, 0.0) }
