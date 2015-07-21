@@ -22,8 +22,8 @@
 
 #ifndef LBFGSBSOLVER_H_
 #define LBFGSBSOLVER_H_
-#include "ISolver.h"
 #include <list>
+#include "ISolver.h"
 namespace pwie
 {
 

@@ -28,6 +28,9 @@
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include <stdexcept>
+#include <list>
+#include <vector>
+#include <algorithm>
 
 namespace pwie
 {
@@ -84,8 +87,9 @@ bool AssertEqual(T a, T b)
 }
 }
 
-#define min(a,b) (((a)<(b))?(a):(b))
-#define max(a,b) (((a)>(b))?(a):(b))
+using std::min;
+using std::max;
+
 #define EMPTY_HESSIAN (std::function<void(const Eigen::VectorXd & x, Eigen::MatrixXd & hessian)>())
 
 #define INF HUGE_VAL // std::numeric_limits<double>::infinity()

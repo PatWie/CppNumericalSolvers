@@ -169,7 +169,7 @@ void LbfgsbSolver::GetGeneralizedCauchyPoint(Vector &x, Vector &g, Vector &x_cau
 
   }
 
-  dt_min = max(dt_min, 0);
+  dt_min = max(dt_min, 0.0);
   t_old += dt_min;
 
   Debug(SortedIndices[0] << " " << SortedIndices[1]);
