@@ -1,3 +1,11 @@
+# CMakeFiles
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+install_manifest.txt
+CppNumericalSolvers.config
+
 # Compiled Object files
 *.slo
 *.lo
@@ -28,9 +36,7 @@
 *.app
 
 # subfolders
-/eigen
-/gtest
-/local
+/build
 
 # Matlab 
 *.m~

@@ -1,21 +1,30 @@
 language: cpp
+sudo: false
 compiler:
   - g++
 
 before_install:
-  - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test;
-  - sudo apt-get update;
-  - sudo apt-get install gcc-4.8 g++-4.8;
-  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 20;
-  - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 20;
-  - g++ --version;
-  - sudo apt-get update -qq;
+  - chmod u+x get_dependencies.sh
+  - ./get_dependencies.sh
 
-install:
-  - make install
+script:
+  - g++ --version
+  - g++-4.8 --version
+  - cp CppNumericalSolvers.config.example CppNumericalSolvers.config
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make all
+  - make lint
+  - ./bin/verify
 
-script: 
-  - make test
-  - make main
-  - ./test
-  - ./main
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - gcc-4.8
+    - g++-4.8
+
+notifications:
+  email: false

@@ -1,0 +1,3 @@
+SET( EIGEN3_INCLUDE_DIR "eigen" )
+SET(CMAKE_CXX_COMPILER  "g++-4.8")
+SET(Matlab_DIR  "/path/to/matlab")
