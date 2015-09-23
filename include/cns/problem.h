@@ -9,10 +9,11 @@ namespace cns {
 template<typename T>
 class Problem {
  protected:
-  bool hasLowerBound = false;
-  bool hasUpperBound = false;
 
  public:
+
+  bool hasLowerBound = false;
+  bool hasUpperBound = false;
 
   Vector<T> lowerBound;
   Vector<T> upperBound;

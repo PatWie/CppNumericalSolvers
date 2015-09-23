@@ -144,7 +144,7 @@ def processCleanFileLine(filename, file_extension, lines, error, linenum, raw):
   
   if _settings_checks["function definition whitespace"]:
     m = RegExMatcher(line)
-    if m.search(r'[^(for)(while)(if)(else)\n&\*/\+\-=\,]+\s+\('):
+    if m.search(r'[^(for)(while)(if)(else)\n&\*/\+\-\|=\,]+\s+\('):
       # exclude special case with only whitespaces
       mm = RegExMatcher(line[0:m.span()[1]])
       if not mm.search(r'^\s+\('):

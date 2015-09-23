@@ -9,6 +9,7 @@
 #include "../../include/cns/solver/newtondescentsolver.h"
 #include "../../include/cns/solver/bfgssolver.h"
 #include "../../include/cns/solver/lbfgssolver.h"
+#include "../../include/cns/solver/lbfgsbsolver.h"
 
 #define PRECISION 1e-4
 
@@ -96,9 +97,19 @@ TEST(BfgsTest, RosenbrockFarFull)                            { SOLVE_PROBLEM(cns
 TEST(BfgsTest, RosenbrockNearFull)                           { SOLVE_PROBLEM(cns::BfgsSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
 TEST(BfgsTest, RosenbrockMixFull)                            { SOLVE_PROBLEM(cns::BfgsSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
 
-TEST(LbfgsTest, DISABLED_RosenbrockFarFull)                  { SOLVE_PROBLEM(cns::LbfgsSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
-TEST(LbfgsTest, DISABLED_RosenbrockNearFull)                 { SOLVE_PROBLEM(cns::LbfgsSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
-TEST(LbfgsTest, DISABLED_RosenbrockMixFull)                  { SOLVE_PROBLEM(cns::LbfgsSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
+TEST(LbfgsTest, RosenbrockFarValue)                          { SOLVE_PROBLEM(cns::LbfgsSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
+TEST(LbfgsTest, RosenbrockNearValue)                         { SOLVE_PROBLEM(cns::LbfgsSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
+TEST(LbfgsTest, RosenbrockMixValue)                          { SOLVE_PROBLEM(cns::LbfgsSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
+TEST(LbfgsTest, RosenbrockFarFull)                           { SOLVE_PROBLEM(cns::LbfgsSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
+TEST(LbfgsTest, RosenbrockNearFull)                          { SOLVE_PROBLEM(cns::LbfgsSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
+TEST(LbfgsTest, RosenbrockMixFull)                           { SOLVE_PROBLEM(cns::LbfgsSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
+
+TEST(LbfgsbTest, DISABLED_RosenbrockFarValue)                { SOLVE_PROBLEM(cns::LbfgsbSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
+TEST(LbfgsbTest, DISABLED_RosenbrockNearValue)               { SOLVE_PROBLEM(cns::LbfgsbSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
+TEST(LbfgsbTest, DISABLED_RosenbrockMixValue)                { SOLVE_PROBLEM(cns::LbfgsbSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
+TEST(LbfgsbTest, DISABLED_RosenbrockFarFull)                 { SOLVE_PROBLEM(cns::LbfgsbSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
+TEST(LbfgsbTest, DISABLED_RosenbrockNearFull)                { SOLVE_PROBLEM(cns::LbfgsbSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
+TEST(LbfgsbTest, DISABLED_RosenbrockMixFull)                 { SOLVE_PROBLEM(cns::LbfgsbSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
 
 TEST(CentralDifference, Gradient){
     // simple function y <- 3*a-b

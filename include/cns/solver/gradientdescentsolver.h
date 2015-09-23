@@ -4,7 +4,7 @@
 
 #include <Eigen/Dense>
 #include "isolver.h"
-#include "../linesearch/armijo.h"
+#include "../linesearch/morethuente.h"
 
 namespace cns {
 
@@ -25,7 +25,7 @@ class GradientDescentSolver : public ISolver<T, 1> {
     T gradNorm = 0;
     do {
       objFunc.gradient(x0, direction);
-      const T rate = Armijo<T, decltype(objFunc), 1>::linesearch(x0, -direction, objFunc) ;
+      const T rate = MoreThuente<T, decltype(objFunc), 1>::linesearch(x0, -direction, objFunc) ;
       x0 = x0 - rate * direction;
       gradNorm = direction.template lpNorm<Eigen::Infinity>();
       // std::cout << "iter: "<<iter<< " f = " <<  objFunc.value(x0) << " ||g||_inf "<<gradNorm  << std::endl;

@@ -2,7 +2,7 @@
 #include <iostream>
 #include <Eigen/LU>
 #include "isolver.h"
-#include "../linesearch/armijo.h"
+#include "../linesearch/morethuente.h"
 
 #ifndef LBFGSSOLVER_H_
 #define LBFGSSOLVER_H_
@@ -74,7 +74,7 @@ class LbfgsSolver : public ISolver<T, 1> {
             }
 
             // find steplength
-            const double rate = Armijo<T, decltype(objFunc), 1>::linesearch(x0, -q,  objFunc) ;
+            const double rate = MoreThuente<T, decltype(objFunc), 1>::linesearch(x0, -q,  objFunc, alpha_init) ;
             // update guess
             x0 = x0 - rate * q;
 
