@@ -34,5 +34,6 @@ include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 add_subdirectory(src/examples)
 add_subdirectory(src/test)
 
+
 add_custom_target(lint COMMAND ${CMAKE_COMMAND} -P ${PROJECT_SOURCE_DIR}/cmake/lint.cmake)
 add_custom_target(install COMMAND ${CMAKE_COMMAND} -P ${PROJECT_SOURCE_DIR}/cmake/install.cmake)

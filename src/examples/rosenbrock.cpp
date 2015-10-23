@@ -1,10 +1,10 @@
 #include <iostream>
-#include "../../include/cns/meta.h"
-#include "../../include/cns/problem.h"
-#include "../../include/cns/solver/bfgssolver.h"
+#include "../../include/cppoptlib/meta.h"
+#include "../../include/cppoptlib/problem.h"
+#include "../../include/cppoptlib/solver/bfgssolver.h"
 
-// to use CppNumericalSolvers just use the namespace "cns"
-namespace cns {
+// to use this library just use the namespace "cppoptlib"
+namespace cppoptlib {
 
 // we define a new problem for optimizing the rosenbrock function
 // we use a templated-class rather than "auto"-lambda function for a clean architecture
@@ -23,7 +23,7 @@ class Rosenbrock : public Problem<T> {
     // otherwise it will fall back to (bad) numerical finite differences
     void gradient(const Vector<T> &x, Vector<T> &grad) {
         grad[0]  = -2 * (1 - x[0]) + 200 * (x[1] - x[0] * x[0]) * (-2 * x[0]);
-        grad[1]  = 200 * (x[1] - x[0] * x[0]);
+        grad[1]  =                   200 * (x[1] - x[0] * x[0]);
     }
 
     // same for hessian (OPTIONAL)
@@ -42,16 +42,16 @@ class Rosenbrock : public Problem<T> {
 int main(int argc, char const *argv[]) {
 
     // initialize the Rosenbrock-problem
-    cns::Rosenbrock<double> f;
+    cppoptlib::Rosenbrock<double> f;
     // choose a starting point
-    cns::Vector<double> x(2); x << -1, 2;
+    cppoptlib::Vector<double> x(2); x << -1, 2;
 
     // first check the given derivative 
     // there is output, if they are NOT similar to finite differences
     bool probably_correct = f.checkGradient(x);
 
     // choose a solver
-    cns::BfgsSolver<double> solver;
+    cppoptlib::BfgsSolver<double> solver;
     // and minimize the function
     solver.minimize(f, x);
     // print argmin
