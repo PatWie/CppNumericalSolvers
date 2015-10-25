@@ -46,8 +46,7 @@ class BfgsSolver : public ISolver<T, 1> {
             H = H - rho * (s * (y.transpose() * H) + (H * y) * s.transpose()) + rho * rho * (y.dot(H * y) + 1.0 / rho)
                 * (s * s.transpose());
             gradNorm = grad.template lpNorm<Eigen::Infinity>();
-            std::cout << "iter: " << iter << ", f = " <<  objFunc.value(x0) << ", ||g||_inf " << gradNorm  << " x " << x0.transpose() << std::endl;
-
+            // std::cout << "iter: "<<iter<< " f = " <<  objFunc.value(x0) << " ||g||_inf "<<gradNorm   << std::endl;
 
             if( (x_old-x0).template lpNorm<Eigen::Infinity>() < 1e-7  )
                 break;
@@ -61,6 +60,6 @@ class BfgsSolver : public ISolver<T, 1> {
 };
 
 }
-/* namespace cns */
+/* namespace cppoptlib */
 
 #endif /* BFGSSOLVER_H_ */

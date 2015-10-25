@@ -5,8 +5,8 @@
 #ifndef MATLAB
 #include "../gtest/gtest.h"
 #else
-#define EXPECT_NEAR(x,y,z)
-#endif
+#define EXPECT_NEAR(x, y, z)
+#endif /* MATLAB */
 
 #include "meta.h"
 

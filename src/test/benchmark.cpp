@@ -133,7 +133,7 @@ class Levi   : public Problem<T> {
 
 // define test body
 // ----------------------------------------------------------------------------------
-#define BENCH2(sol, func, a,b, fx, y0, y1 )   TEST(D2Functions, func) {            \
+#define BENCH2(sol, func, a,b, fx, y0, y1 )   TEST(D2Functions##sol, func) {            \
                                                 Vector<double> x(2);               \
                                                 x(0) = a;                          \
                                                 x(1) = b;                          \
@@ -147,12 +147,19 @@ class Levi   : public Problem<T> {
 
 // optimize and test all different function
 // ----------------------------------------------------------------------------------
-BENCH2(BfgsSolver, Rosenbrock,          -1, 2,   0, 1, 1);
-BENCH2(BfgsSolver, Beale,               -1, 2,   0, 3, 0.5);
-BENCH2(BfgsSolver, GoldsteinPrice,      -1, 1.5, 3, 0, -1);
-BENCH2(BfgsSolver, Booth,               -4, 3.7, 0, 1, 3);
-BENCH2(BfgsSolver, Matyas,              -4, 3.7, 0, 0, 0);
-BENCH2(BfgsSolver, Levi,                -4, 3.7, 0, 1, 1);
+
+#define BENCHSOVLER(sol) BENCH2(sol, Rosenbrock,          -1, 2,   0, 1, 1);   \
+                         BENCH2(sol, Beale,               -1, 2,   0, 3, 0.5); \
+                         BENCH2(sol, GoldsteinPrice,      -1, 1.5, 3, 0, -1);  \
+                         BENCH2(sol, Booth,               -4, 3.7, 0, 1, 3);   \
+                         BENCH2(sol, Matyas,              -4, 3.7, 0, 0, 0);   \
+                         BENCH2(sol, Levi,                -4, 3.7, 0, 1, 1);  
+
+
+BENCHSOVLER(GradientDescentSolver)
+BENCHSOVLER(ConjugatedGradientDescentSolver)
+BENCHSOVLER(BfgsSolver)
+BENCHSOVLER(LbfgsSolver)
 
 
 int main (int argc, char **argv) {

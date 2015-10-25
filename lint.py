@@ -7,7 +7,7 @@ import unicodedata
 
 
 _settings_extensions = set(['cc', 'h', 'cpp', 'cu', 'cuh','hpp', 'cxx'])
-_settings_lineWidth  = 120
+_settings_lineWidth  = 150
 _settings_extraInfo  = True
 
 _settings_checks = {"studentname":False, 
@@ -188,15 +188,16 @@ def processFileLine(filename, file_extension, lines, error, linenum):
       error(filename, linenum, 'comment', 'found endif without comment',1 , line, m.span()[1]-1)
 
 
-def processCleanFileContent(filename, file_extension, lines, error, raw):
+def processCleanFileContent(filename, file_extension, lines, ignore_lines, error, raw):
   lines = (['// marker so line numbers and indices both start at 1'] + lines +
            ['// marker so line numbers end in a known way'])
   raw = (['// marker so line numbers and indices both start at 1'] + raw +
            ['// marker so line numbers end in a known way'])
   for line in range(len(lines)):
-    processCleanFileLine(filename, file_extension, lines, error, line, raw)
+    if line not in ignore_lines:
+      processCleanFileLine(filename, file_extension, lines, error, line, raw)
 
-def processFileContent(filename, file_extension, lines, error):
+def processFileContent(filename, file_extension, lines, ignore_lines, error):
   # test if file is ending with empty lines
   empty_lines = 0;
   for i in range(len(lines)):
@@ -205,14 +206,15 @@ def processFileContent(filename, file_extension, lines, error):
     else:
       break
 
-  if  empty_lines > 0:
-    error(filename, len(lines)-empty_lines + 1, 'empty', 'file ends with %i empty lines' % empty_lines)
+  if  empty_lines == 0:
+    error(filename, len(lines)-empty_lines, 'empty', 'file ends without empty lines')
 
 
   lines = (['// marker so line numbers and indices both start at 1'] + lines +
            ['// marker so line numbers end in a known way'])
   for line in range(len(lines)):
-    processFileLine(filename, file_extension, lines, error, line)
+    if line not in ignore_lines:
+      processFileLine(filename, file_extension, lines, error, line)
 
   processBraces(filename,lines)
 
@@ -282,14 +284,23 @@ def processFile(filename):
         error_handler(filename, len(raw_source[:mm.span()[1]].split('\n'))-1, 'empty', 'too empty new lines (count %i)' % (-2+len(raw_source[mm.span()[0]:mm.span()[1]].split('\n'))),1)
       
 
+  # get lines to ignore
+  ignore_lines = [];
+  pattern = re.compile(r'nolintnextline')
+  m.findall(pattern)
+  for mm in m.all():
+    ignore_lines.append(len(raw_source[:mm.span()[1]].split('\n')) + 1)
+  pattern = re.compile(r'nolint')
+  m.findall(pattern)
+  for mm in m.all():
+    ignore_lines.append(len(raw_source[:mm.span()[1]].split('\n')))
 
-  processFileContent(filename, file_extension, lines, error_handler)
 
+  processFileContent(filename, file_extension, lines, ignore_lines, error_handler)
   # clean lines (remove multi line comment)
-  lines = raw_source.split('\n')
+  lines  = raw_source.split('\n')
   clines = comment_remover(raw_source).split('\n')
-
-  processCleanFileContent(filename, file_extension, clines, error_handler, lines)
+  processCleanFileContent(filename, file_extension, clines, ignore_lines, error_handler, lines)
 
   if len(error_collection):
     sys.stderr.write('\033[1m\033[93m%10s\033[0m:\n' % ( filename))
@@ -301,7 +312,7 @@ def processFile(filename):
 
 
 def main():
-
+  
   filenames = sys.argv[1:];
   for filename in filenames:
     processFile(filename)

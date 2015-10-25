@@ -55,6 +55,6 @@ class ConjugatedGradientDescentSolver : public ISolver<T, 1> {
 
 };
 
-} /* namespace cns */
+} /* namespace cppoptlib */
 
 #endif /* CONJUGATEDGRADIENTDESCENTSOLVER_H_ */

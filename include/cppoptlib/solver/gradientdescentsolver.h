@@ -36,6 +36,6 @@ class GradientDescentSolver : public ISolver<T, 1> {
 
 };
 
-} /* namespace cns */
+} /* namespace cppoptlib */
 
 #endif /* GRADIENTDESCENTSOLVER_H_ */

@@ -27,7 +27,7 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
   /**
    * @brief sort pairs (k,v) according v ascending
    * @details [long description]
-   * 
+   *
    * @param v [description]
    * @return [description]
    */
@@ -44,7 +44,7 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
   /**
    * @brief Algorithm CP: Computation of the generalized Cauchy point
    * @details PAGE 8
-   * 
+   *
    * @param c [description]
    */
   void GetGeneralizedCauchyPoint(Vector<Dtype> &x, Vector<Dtype> &g, Vector<Dtype> &x_cauchy,
@@ -245,7 +245,7 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
     DIM = x0.rows();
 
     std::cout << "-->> 1" << std::endl;
-      
+
     if (!objFunc.hasLowerBound) {
       objFunc_->lowerBound = (-1 * Vector<Dtype>::Ones(DIM)) * std::numeric_limits<Dtype>::lowest();
       objFunc_->hasLowerBound = true;
@@ -262,9 +262,7 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
     M = Matrix<Dtype>::Zero(0, 0);
     Matrix<Dtype> H = Matrix<Dtype>::Identity(DIM, DIM);
 
-    
     std::cout << "-->> 3" << std::endl;
-    
 
     xHistory.push_back(x0);
     std::cout << "-->> 4" << std::endl;
@@ -274,15 +272,13 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
     Matrix<Dtype> sHistory = Matrix<Dtype>::Zero(DIM, 0);
     std::cout << "-->> 6" << std::endl;
 
-    Vector<Dtype> x = x0, g=x0;
+    Vector<Dtype> x = x0, g = x0;
     size_t k = 0;
 
     Dtype f = objFunc.value(x);
     std::cout << "-->> 7" << std::endl;
     objFunc.gradient(x, g);
     std::cout << "-->> 8" << std::endl;
-
-
 
     auto noConvergence =
     [&](Vector<Dtype> & x, Vector<Dtype> & g)->bool {
@@ -309,7 +305,7 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
       Dtype alpha_init = 1.0;
       const Dtype rate = MoreThuente<Dtype, decltype(objFunc), 1>::linesearch(x, -SubspaceMin + x,  objFunc, alpha_init);
       std::cout << "rate " << rate << std::endl;
-        
+
       x = x - rate*(SubspaceMin - x);
       xHistory.push_back(x);
 
@@ -354,7 +350,6 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
         M = MM.inverse();
 
       }
-      
 
       Vector<Dtype> ttt = Matrix<Dtype>::Zero(1, 1);
       std::cout << objFunc(x) << std::endl;
@@ -376,6 +371,6 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
 };
 
 }
-/* namespace cns */
+/* namespace cppoptlib */
 
 #endif /* LBFGSBSOLVER_H_ */

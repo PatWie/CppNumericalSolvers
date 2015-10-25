@@ -45,10 +45,16 @@ The library currently contains the following solvers:
 - L-BFGS solver
 - L-BFGS-B solver
 
+The benchmark-file contains the following test functions:
+
+*Rosenbrock, Beale, GoldsteinPrice, Booth, Matyas, Levi*
+
+Further test-functions are planned.
+
 For checking your gradient this library use high-order central difference.
 
 # Usage 
-There are currently two ways to use this library: directly in your C++ code or in MATLAB by calling the mex-File.
+There are currently two ways to use this library: directly in your C++ code or in MATLAB by calling the provided mex-File.
 
 ## C++ 
 
@@ -85,8 +91,8 @@ By convention, a solver minimizes a given objective function starting in `x`
 
 For convenience there are some typedefs:
 
-    cns::Vector<T> is a column vector Eigen::Matrix<T, Eigen::Dynamic, 1>;
-    cns::Matrix<T> is a matrix        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+    cppoptlib::Vector<T> is a column vector Eigen::Matrix<T, Eigen::Dynamic, 1>;
+    cppoptlib::Matrix<T> is a matrix        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 
 ### full example
 
@@ -114,11 +120,11 @@ For convenience there are some typedefs:
 
 ## within MATLAB
 
-Simply create a function file for the objective and replace `fminsearch` or `fminunc` with `cns`. If you want to use symbolic gradient or hessian information see file `example.m` for details. A basic example would be:
+Simply create a function file for the objective and replace `fminsearch` or `fminunc` with `cppoptlib`. If you want to use symbolic gradient or hessian information see file `example.m` for details. A basic example would be:
 
     x0 = [-1,2]';
-    [fx,x] = cns(x0, @rosenbrock,'gradient',@rosenbrock_grad,'solver','bfgs');
-    fx     = cns(x0, @rosenbrock);
+    [fx,x] = cppoptlib(x0, @rosenbrock,'gradient',@rosenbrock_grad,'solver','bfgs');
+    fx     = cppoptlib(x0, @rosenbrock);
     fx     = fminsearch(x0, @rosenbrock);
 
 Even optimizing without any gradient information this library outperforms optimization routines from MATLAB.
@@ -147,6 +153,10 @@ Even optimizing without any gradient information this library outperforms optimi
     
     (with hessian)
     (-1.00,2.00)    newton            0.0000   (1.0000,1.0000)  0.007054 
+
+# Benchmarks
+
+Currently, not all solvers are equally good at all objective functions. The file `src/test/benchmark.cpp` contains some challenging objective functions which are tested by each provided solver. Note, MATLAb will also fail at some objective functions.
 
 # Contribute
 

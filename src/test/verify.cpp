@@ -9,10 +9,7 @@
 #include "../../include/cppoptlib/solver/newtondescentsolver.h"
 #include "../../include/cppoptlib/solver/bfgssolver.h"
 #include "../../include/cppoptlib/solver/lbfgssolver.h"
-// #include "../../include/cppoptlib/solver/lbfgsbsolver.h"
-
 #define PRECISION 1e-4
-
 using namespace cppoptlib;
 
 // situation where only have to objective function

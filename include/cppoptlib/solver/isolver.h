@@ -32,6 +32,6 @@ protected:
 
 };
 
-} /* namespace cns */
+} /* namespace cppoptlib */
 
 #endif /* ISOLVER_H_ */

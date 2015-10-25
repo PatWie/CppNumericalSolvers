@@ -39,6 +39,6 @@ class NewtonDescentSolver : public ISolver<T, 2> {
 };
 
 }
-/* namespace cns */
+/* namespace cppoptlib */
 
 #endif /* NEWTONDESCENTSOLVER_H_ */

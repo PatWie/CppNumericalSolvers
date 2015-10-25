@@ -114,6 +114,6 @@ class LbfgsSolver : public ISolver<T, 1> {
 };
 
 }
-/* namespace cns */
+/* namespace cppoptlib */
 
 #endif /* LBFGSSOLVER_H_ */
