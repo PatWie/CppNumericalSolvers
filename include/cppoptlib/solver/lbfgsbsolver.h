@@ -83,7 +83,7 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
     // p :=     W^Dtype*p
     Vector<Dtype> p = (W.transpose() * d);                     // (2mn operations)
     // c :=     0
-    c = Eigen::MatrixXd::Zero(M.rows(), 1);
+    c = Eigen::Matrix<Dtype, Eigen::Dynamic, Eigen::Dynamic>::Zero(M.rows(), 1);
     // f' :=    g^Dtype*d = -d^Td
     Dtype f_prime = -d.dot(d);                         // (n operations)
     // f'' :=   \theta*d^Dtype*d-d^Dtype*W*M*W^Dtype*d = -\theta*f' - p^Dtype*M*p

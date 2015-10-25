@@ -74,7 +74,7 @@ class Problem {
     bool correct = true;
 
     for (int d = 0; d < D; ++d) {
-      T scale = std::max(std::max(fabs(actual_grad[d]), fabs(expected_grad[d])), 1.);
+      T scale = std::max(std::max(fabs(actual_grad[d]), fabs(expected_grad[d])), (T)1.);
       EXPECT_NEAR(actual_grad[d], expected_grad[d], 1e-2 * scale);
       if(fabs(actual_grad[d]-expected_grad[d])>1e-2 * scale)
         correct = false;
@@ -89,13 +89,13 @@ class Problem {
     const int D = x.rows();
     bool correct = true;
 
-    Matrix<double> actual_hessian = Matrix<double>::Zero(D, D);
-    Matrix<double> expected_hessian = Matrix<double>::Zero(D, D);
+    Matrix<T> actual_hessian = Matrix<T>::Zero(D, D);
+    Matrix<T> expected_hessian = Matrix<T>::Zero(D, D);
     hessian(x, actual_hessian);
     finiteHessian(x, expected_hessian, accuracy);
     for (int d = 0; d < D; ++d) {
       for (int e = 0; e < D; ++e) {
-        T scale = std::max(std::max(fabs(actual_hessian(d, e)), fabs(expected_hessian(d, e))), 1.);
+        T scale = std::max(std::max(fabs(actual_hessian(d, e)), fabs(expected_hessian(d, e))), (T)1.);
         EXPECT_NEAR(actual_hessian(d, e), expected_hessian(d, e), 1e-1 * scale);
         if(fabs(actual_hessian(d, e)- expected_hessian(d, e))>1e-1 * scale)
         correct = false;
