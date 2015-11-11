@@ -9,6 +9,7 @@
 #include "../../include/cppoptlib/solver/newtondescentsolver.h"
 #include "../../include/cppoptlib/solver/bfgssolver.h"
 #include "../../include/cppoptlib/solver/lbfgssolver.h"
+#include "../../include/cppoptlib/solver/lbfgsbsolver.h"
 #define PRECISION 1e-4
 using namespace cppoptlib;
 
@@ -101,12 +102,12 @@ TEST(LbfgsTest, RosenbrockFarFull)                           { SOLVE_PROBLEM(cpp
 TEST(LbfgsTest, RosenbrockNearFull)                          { SOLVE_PROBLEM(cppoptlib::LbfgsSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
 TEST(LbfgsTest, RosenbrockMixFull)                           { SOLVE_PROBLEM(cppoptlib::LbfgsSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
 
-// TEST(LbfgsbTest, DISABLED_RosenbrockFarValue)                { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
-// TEST(LbfgsbTest, DISABLED_RosenbrockNearValue)               { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
-// TEST(LbfgsbTest, DISABLED_RosenbrockMixValue)                { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
-// TEST(LbfgsbTest, DISABLED_RosenbrockFarFull)                 { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
-// TEST(LbfgsbTest, DISABLED_RosenbrockNearFull)                { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
-// TEST(LbfgsbTest, DISABLED_RosenbrockMixFull)                 { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
+TEST(LbfgsbTest, RosenbrockFarValue)                { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
+TEST(LbfgsbTest, RosenbrockNearValue)               { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
+TEST(LbfgsbTest, RosenbrockMixValue)                { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
+TEST(LbfgsbTest, RosenbrockFarFull)                 { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
+TEST(LbfgsbTest, RosenbrockNearFull)                { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
+TEST(LbfgsbTest, RosenbrockMixFull)                 { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
 
 TEST(CentralDifference, Gradient){
     // simple function y <- 3*a-b

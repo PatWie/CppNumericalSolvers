@@ -281,7 +281,7 @@ def processFile(filename):
     m = RegExMatcher(raw_source)
     if m.findall(r'(\n[ ]*){3,}'):
       for mm in m.all():
-        error_handler(filename, len(raw_source[:mm.span()[1]].split('\n'))-1, 'empty', 'too empty new lines (count %i)' % (-2+len(raw_source[mm.span()[0]:mm.span()[1]].split('\n'))),1)
+        error_handler(filename, len(raw_source[:mm.span()[1]].split('\n'))-1, 'empty', 'too many empty new lines (count %i)' % (-2+len(raw_source[mm.span()[0]:mm.span()[1]].split('\n'))),1)
       
 
   # get lines to ignore

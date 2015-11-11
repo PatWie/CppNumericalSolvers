@@ -1,7 +1,7 @@
 set(CMAKE_SOURCE_DIR ..)
 set(LINT_COMMAND ${CMAKE_SOURCE_DIR}/lint.py)
 set(SRC_FILE_EXTENSIONS h hpp hu c cpp cu cc)
-set(LINT_DIRS include/cppoptlib src/examples)
+set(LINT_DIRS include/cppoptlib include/cppoptlib/linesearch src/examples)
 
 cmake_policy(SET CMP0009 NEW)  # suppress cmake warning
 

@@ -12,6 +12,7 @@
 #include "../include/cppoptlib/solver/newtondescentsolver.h"
 #include "../include/cppoptlib/solver/bfgssolver.h"
 #include "../include/cppoptlib/solver/lbfgssolver.h"
+#include "../include/cppoptlib/solver/lbfgsbsolver.h"
 
 using namespace cppoptlib;
 
@@ -84,10 +85,18 @@ class MATLABobjective : public Problem<T> {
 
 
 void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[]) {
+
+    MATLABobjective<double> f;
+
   // check parameters
   if (inLen < 2) {
     mexErrMsgIdAndTxt("MATLAB:cppoptlib", "this function need at leat two parameters");
   }
+
+  if (mxGetClassID(inArr[0]) != mxDOUBLE_CLASS) {
+    mexErrMsgIdAndTxt("MATLAB:cppoptlib", "the first arguments needs to be an array of type double");
+  }
+
   // check starting point
   // ----------------------------------------------------------
   in_rows = mxGetM(inArr[0]);
@@ -130,7 +139,7 @@ void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[
 
       if (strcmp(key_str, "gradient") == 0) {
         if (mxGetClassID(inArr[arg + 1]) != mxFUNCTION_CLASS) {
-          mexErrMsgIdAndTxt("MATLAB:cppoptlib", "the argument following 'gradient' has to a function handle (@gradient)");
+          mexErrMsgIdAndTxt("MATLAB:cppoptlib", "the argument following 'gradient' has to be a function handle (@gradient)");
         }
         objective_param[0] = const_cast<mxArray *>( inArr[arg + 1] );
         mexCallMATLAB(1, &objective_ans, 1, objective_param, "char") ;
@@ -139,7 +148,7 @@ void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[
       }
       if (strcmp(key_str, "hessian") == 0) {
         if (mxGetClassID(inArr[arg + 1]) != mxFUNCTION_CLASS) {
-          mexErrMsgIdAndTxt("MATLAB:cppoptlib", "the argument following 'hessian' has to a function handle (@hessian)");
+          mexErrMsgIdAndTxt("MATLAB:cppoptlib", "the argument following 'hessian' has to be a function handle (@hessian)");
         }
         objective_param[0] = const_cast<mxArray *>( inArr[arg + 1] );
         mexCallMATLAB(1, &objective_ans, 1, objective_param, "char") ;
@@ -168,17 +177,56 @@ void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[
           mexErrMsgIdAndTxt("MATLAB:cppoptlib", error_msg);
         }
       }
+      if (strcmp(key_str, "lb") == 0) {
+        if (mxGetClassID(inArr[arg + 1]) != mxDOUBLE_CLASS) {
+          mexErrMsgIdAndTxt("MATLAB:cppoptlib", "the argument following 'lb' has to be an array of type double");
+        }
+        size_t lbr = mxGetM(inArr[arg + 1]);
+        size_t lbc = mxGetN(inArr[arg + 1]);
+
+        if ((in_cols != lbc) || (in_rows != lbr)) {
+          sprintf(error_msg, "expected lowerBound argument format is (format: %zu x 1), but the input format is %zu x %zu", in_rows, lbr, lbc);
+          mexErrMsgIdAndTxt("MATLAB:cppoptlib", error_msg);
+        }
+
+        Eigen::Map<Eigen::VectorXd> tmp = Eigen::Map<Eigen::VectorXd>(mxGetPr(inArr[arg + 1]), mxGetM(inArr[arg + 1]) * mxGetN(inArr[arg + 1]));
+        Vector<double> t=tmp;
+        f.setLowerBound(t);
+
+      }
+      if (strcmp(key_str, "ub") == 0) {
+        if (mxGetClassID(inArr[arg + 1]) != mxDOUBLE_CLASS) {
+          mexErrMsgIdAndTxt("MATLAB:cppoptlib", "the argument following 'lb' has to be an array of type double");
+        }
+        size_t lbr = mxGetM(inArr[arg + 1]);
+        size_t lbc = mxGetN(inArr[arg + 1]);
+
+        if ((in_cols != lbc) || (in_rows != lbr)) {
+          sprintf(error_msg, "expected lowerBound argument format is (format: %zu x 1), but the input format is %zu x %zu", in_rows, lbr, lbc);
+          mexErrMsgIdAndTxt("MATLAB:cppoptlib", error_msg);
+        }
+
+        Eigen::Map<Eigen::VectorXd> tmp = Eigen::Map<Eigen::VectorXd>(mxGetPr(inArr[arg + 1]), mxGetM(inArr[arg + 1]) * mxGetN(inArr[arg + 1]));
+        Vector<double> t=tmp;
+        f.setUpperBound(t);
+
+      }
     }
   }
 
   // solve
   // ----------------------------------------------------------
 
-  MATLABobjective<double> f;
+
 
   switch (selected_solver) {
   case LBFGS: {
     LbfgsSolver<double> solver;
+    solver.minimize(f, x);
+  }
+  break;
+  case LBFGSB: {
+    LbfgsbSolver<double> solver;
     solver.minimize(f, x);
   }
   break;

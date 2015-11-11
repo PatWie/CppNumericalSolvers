@@ -45,6 +45,7 @@ The library currently contains the following solvers:
 - L-BFGS solver
 - L-BFGS-B solver
 
+You can use all these solvers directly from MATLAB.
 The benchmark-file contains the following test functions:
 
 *Rosenbrock, Beale, GoldsteinPrice, Booth, Matyas, Levi*
@@ -118,6 +119,21 @@ For convenience there are some typedefs:
         return 0;
     }
 
+### using box-constraints
+
+The `L-BFGS-B` algorithm allows to optimize functions with box-constraints, i.e., `min_x f(x) s.t. a <= x <= b` for some `a, b`. Given a `problem`-class you can enter these constraints by
+
+    cppoptlib::YourProblem<T> f;
+    f.setLowerBound(Vector<double>::Zero(DIM));
+    f.setUpperBound(Vector<double>::Ones(DIM)*5);
+
+If you do not specify a bound, the algorithm will assume the unbounded case, eg.
+
+    cppoptlib::YourProblem<T> f;
+    f.setLowerBound(Vector<double>::Zero(DIM));
+
+will optimize in x s.t. `0 <= x`.
+
 ## within MATLAB
 
 Simply create a function file for the objective and replace `fminsearch` or `fminunc` with `cppoptlib`. If you want to use symbolic gradient or hessian information see file `example.m` for details. A basic example would be:
@@ -127,64 +143,39 @@ Simply create a function file for the objective and replace `fminsearch` or `fmi
     fx     = cppoptlib(x0, @rosenbrock);
     fx     = fminsearch(x0, @rosenbrock);
 
-Even optimizing without any gradient information this library outperforms optimization routines from MATLAB.
-
-    x0              solver            f(x*)     x*              time    
-    --------------------------------------------------------------------
-
-    (finite gradient)
-    (-1.00,2.00)    gradientdescent   0.0000   (1.0000,1.0000)  2.636182 
-    (-1.00,2.00)    cg                0.0000   (1.0000,1.0000)  0.214294 
-    (-1.00,2.00)    bfgs              0.0000   (1.0000,1.0000)  0.016319 
-    (-1.00,2.00)    l-bfgs            0.0000   (1.0000,1.0000)  0.013207 
-    (-1.00,2.00)    newton            0.0000   (1.0000,1.0000)  0.011650 
-    (-1.00,2.00)    fminsearch        0.0000   (1.0000,1.0000)  0.067297 
-    (-1.00,2.00)    fminunc           0.0000   (1.0000,1.0000)  0.343443 
-    
-    (with gradient)
-    (-1.00,2.00)    gradientdescent   0.0000   (1.0000,1.0000)  0.239810 
-    (-1.00,2.00)    cg                0.0000   (1.0000,1.0000)  0.186958 
-    (-1.00,2.00)    bfgs              0.0000   (1.0000,1.0000)  0.006902 
-    (-1.00,2.00)    l-bfgs            0.0000   (1.0000,1.0000)  0.004144 
-    (-1.00,2.00)    newton            0.0000   (1.0000,1.0000)  0.008979 
-    
-    (finite hessian)
-    (-1.00,2.00)    newton            0.0000   (1.0000,1.0000)  0.008907 
-    
-    (with hessian)
-    (-1.00,2.00)    newton            0.0000   (1.0000,1.0000)  0.007054 
+Even optimizing without any gradient information this library outperforms optimization routines from MATLAB on some problems.
 
 # Benchmarks
 
-Currently, not all solvers are equally good at all objective functions. The file `src/test/benchmark.cpp` contains some challenging objective functions which are tested by each provided solver. Note, MATLAb will also fail at some objective functions.
+Currently, not all solvers are equally good at all objective functions. The file `src/test/benchmark.cpp` contains some challenging objective functions which are tested by each provided solver. Note, MATLAB will also fail at some objective functions.
 
 # Contribute
 
-Make sure that `make lint` does not display any errors and check if travis is happy. It would be great, if some of the Forks-Owner are willing to make pull-request.
+Make sure that `make lint` does not display any errors and check if travis is happy. Do not forget to `chmod +x lint.py`. It would be great, if some of the Forks-Owner are willing to make pull-request.
 
 # License
 
-  Copyright (c) 2014-2015 Patrick Wieschollek
-  Copyright (c) 2015+,    the respective contributors
-  Url: https://github.com/PatWie/CppNumericalSolvers
+    Copyright (c) 2014-2015 Patrick Wieschollek
+    Copyright (c) 2015+,    the respective contributors
+    Url: https://github.com/PatWie/CppNumericalSolvers
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
-  
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+    
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+    
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
 
 
 [eigen3]: http://eigen.tuxfamily.org/

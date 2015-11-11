@@ -9,6 +9,7 @@
 #include "../../include/cppoptlib/solver/newtondescentsolver.h"
 #include "../../include/cppoptlib/solver/bfgssolver.h"
 #include "../../include/cppoptlib/solver/lbfgssolver.h"
+#include "../../include/cppoptlib/solver/lbfgsbsolver.h"
 #define PRECISION 1e-4
 #define PI 3.14159265358979323846
 using namespace cppoptlib;
@@ -160,6 +161,7 @@ BENCHSOVLER(GradientDescentSolver)
 BENCHSOVLER(ConjugatedGradientDescentSolver)
 BENCHSOVLER(BfgsSolver)
 BENCHSOVLER(LbfgsSolver)
+BENCHSOVLER(LbfgsbSolver)
 
 
 int main (int argc, char **argv) {

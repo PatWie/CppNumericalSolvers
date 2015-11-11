@@ -24,7 +24,6 @@ class Armijo {
         const T c = 0.2;
         const T rho = 0.9;
         T alpha = alpha_init;
-
         T f = objFunc.value(x + alpha * searchDir);
         const T f_in = objFunc.value(x);
         Vector<T> grad(x.rows());
