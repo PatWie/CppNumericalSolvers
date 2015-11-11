@@ -37,6 +37,8 @@ CppNumericalSolvers.config
 
 # subfolders
 /build
+/eigen
+/local
 
 # Matlab 
 *.m~
