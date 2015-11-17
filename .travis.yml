@@ -1,7 +1,7 @@
 language: cpp
 sudo: false
 compiler:
-  - g++
+  - clang++
 
 before_install:
   - chmod u+x get_dependencies.sh
