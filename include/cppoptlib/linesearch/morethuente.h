@@ -41,11 +41,8 @@ class MoreThuente {
 
   static int cvsrch(P &objFunc, Vector<Dtype> &x, Dtype f, Vector<Dtype> &g, Dtype &stp, Vector<Dtype> &s) {
     // we rewrite this from MIN-LAPACK and some MATLAB code
-
     int info           = 0;
     int infoc          = 1;
-
-    const int n        = x.size();
     const Dtype xtol   = 1e-15;
     const Dtype ftol   = 1e-4;
     const Dtype gtol   = 1e-2;
@@ -146,7 +143,7 @@ class MoreThuente {
         Dtype dgxm = dgx - dgtest;
         Dtype dgym = dgy - dgtest;
 
-        int rsl = cstep(objFunc, stx, fxm, dgxm, sty, fym, dgym, stp, fm, dgm, brackt, stmin, stmax, infoc);
+        cstep( stx, fxm, dgxm, sty, fym, dgym, stp, fm, dgm, brackt, stmin, stmax, infoc);
 
         fx = fxm + stx * dgtest;
         fy = fym + sty * dgtest;
@@ -154,7 +151,7 @@ class MoreThuente {
         dgy = dgym + dgtest;
       } else {
         // this is ugly and some variables should be moved to the class scope
-        int rsl = cstep(objFunc, stx, fx, dgx, sty, fy, dgy, stp, f, dg, brackt, stmin, stmax, infoc);
+        cstep( stx, fx, dgx, sty, fy, dgy, stp, f, dg, brackt, stmin, stmax, infoc);
       }
 
       if (brackt) {
@@ -168,7 +165,7 @@ class MoreThuente {
     return 0;
   }
 
-  static int cstep(P &objFunc, Dtype& stx, Dtype& fx, Dtype& dx, Dtype& sty, Dtype& fy, Dtype& dy, Dtype& stp,
+  static int cstep(Dtype& stx, Dtype& fx, Dtype& dx, Dtype& sty, Dtype& fy, Dtype& dy, Dtype& stp,
   Dtype& fp, Dtype& dp, bool& brackt, Dtype& stpmin, Dtype& stpmax, int& info) {
     info = 0;
     bool bound = false;

@@ -140,7 +140,6 @@ class Problem {
     // accuracy can be 0, 1, 2, 3
     const T eps = 2.2204e-8;
     const size_t D = x.rows();
-    const int idx = (accuracy-3)/2;
     const std::vector< std::vector <T>> coeff =
     { {1, -1}, {1, -8, 8, -1}, {-1, 9, -45, 45, -9, 1}, {3, -32, 168, -672, 672, -168, 32, -3} };
     const std::vector< std::vector <T>> coeff2 =

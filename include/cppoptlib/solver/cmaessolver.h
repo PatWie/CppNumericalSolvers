@@ -8,11 +8,14 @@
 
 namespace cppoptlib {
 
+/**
+ * @brief Covariance Matrix Adaptation
+ */
 template<typename T>
 class CMAesSolver : public ISolver<T, 1> {
-
-  std::mt19937 *gen;
-
+  // random number generator
+  std::mt19937 gen {std::random_device {}()};
+  // each sample from population
   struct individual {
     Vector<T> pos;
     Vector<T> step;
@@ -28,66 +31,41 @@ class CMAesSolver : public ISolver<T, 1> {
       pos = Vector<T>::Zero(n);
       step = Vector<T>::Zero(n);
     }
-
-    T costValue() {
-      return 20 * (1 - exp(-0.2 * sqrt(pos.dot(pos) / pos.rows()))) + exp(1.) - exp(cos((2 * 3.14159265358979 * pos).mean()));
-    }
-
-    T update() {
-      cost = 20 * (1 - exp(-0.2 * sqrt(pos.dot(pos) / pos.rows()))) + exp(1.) - exp(cos((2 * 3.14159265358979 * pos).mean()));
-    }
   };
 
-  Vector<T> sampleMvn(int n, T sig) {
-    Vector<T> ans = Vector<T>::Zero(n);
-    std::normal_distribution<> d(0, sig);
-    for (int i = 0; i < n; ++i) {
-      ans[i] = d(*gen);
-    }
-    return ans;
-  }
-
+  /**
+   * @brief sample from MVN with given mean and covmat
+   * @details [long description]
+   *
+   * @param mean mean of distribution
+   * @param covar covariance
+   * @return [description]
+   */
   Vector<T> sampleMvn(Vector<T> &mean, Matrix<T> &covar) {
 
     Matrix<T> normTransform;
     Eigen::LLT<Eigen::MatrixXd> cholSolver(covar);
 
     if (cholSolver.info() == Eigen::Success) {
-      // Use cholesky solver
       normTransform = cholSolver.matrixL();
     } else {
-      // Use eigen solver
       Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigenSolver(covar);
-      normTransform = eigenSolver.eigenvectors()
-                      * eigenSolver.eigenvalues().cwiseSqrt().asDiagonal();
+      normTransform = eigenSolver.eigenvectors() * eigenSolver.eigenvalues().cwiseSqrt().asDiagonal();
     }
 
-    Vector<T> ans = Vector<T>::Zero(mean.rows());
+    Vector<T> stdNormDistr = Vector<T>::Zero(mean.rows());
     std::normal_distribution<> d(0, 1);
     for (int i = 0; i < mean.rows(); ++i) {
-      ans[i] = d(*gen);
+      stdNormDistr[i] = d(gen);
     }
 
-    Eigen::MatrixXd samples = normTransform
-                              * ans
-                              + mean;
+    Eigen::MatrixXd samples = normTransform * stdNormDistr + mean;
 
     return samples;
   }
 
  public:
 
-  CMAesSolver() {
-
-    std::random_device rd;
-    gen = new std::mt19937(rd());
-  }
-
-  ~CMAesSolver() {
-    std::cout << "destruct" << std::endl;
-
-    // gen = nullptr;
-  }
   /**
    * @brief minimize
    * @details [long description]
@@ -95,23 +73,18 @@ class CMAesSolver : public ISolver<T, 1> {
    * @param objFunc [description]
    */
   void minimize(Problem<T> &objFunc, Vector<T> & x0) {
+
     const int DIM = x0.rows();
-    int nVar = DIM;
 
-    individual ii(nVar);
-    ii.pos[0] = 0;
-    ii.pos[1] = 1;
-    ii.pos[2] = 2;
-    ii.pos[3] = 3;
-    ii.pos[4] = 4;
+    // start from initial guess
+    individual ii(DIM);
+    ii.pos = x0;
 
-    T VarMin = -10;
-    T VarMax = 10;
+    T VarMin = -DIM;
+    T VarMax = DIM;
 
-    int maxIter = 300;
-
-    int lambda = (4 + round(3 * log(DIM))) * 10;
-    int mu = round(lambda / 2);
+    const int populationSize = (4 + round(3 * log(DIM))) * 10;
+    const int mu = round(populationSize / 2);
 
     Vector<T> w = Vector<T>::Zero(mu);
     for (int i = 1; i <= mu; ++i) {
@@ -120,126 +93,134 @@ class CMAesSolver : public ISolver<T, 1> {
 
     w /= w.sum();
 
-    T mu_eff = 1. / w.dot(w);
+    const T mu_eff   = 1. / w.dot(w);
 
-    T sigma0 = 0.3 * (VarMax - VarMin);
-    T cs = (mu_eff + 2.) / (nVar + mu_eff + 5.);
-    T ds = 1. + cs + 2.*std::max(sqrt((mu_eff - 1) / (nVar + 1)) - 1, (T)0.);
-    T ENN = sqrt(nVar) * (1 - 1. / (4.*nVar) + 1. / (21.*nVar * nVar));
+    const T sigma0   = 0.3 * (VarMax - VarMin);
+    const T cs       = (mu_eff + 2.) / (DIM + mu_eff + 5.);
+    const T ds       = 1. + cs + 2.*std::max(sqrt((mu_eff - 1) / (DIM + 1)) - 1, (T)0.);
+    const T ENN      = sqrt(DIM) * (1 - 1. / (4.*DIM) + 1. / (21.*DIM * DIM));
 
-    T cc = (4. + mu_eff / nVar) / (4. + nVar + 2.*mu_eff / nVar);
-    T c1 = 2. / ((nVar + 1.3) * (nVar + 1.3) + mu_eff);
-    T alpha_mu = 2.;
-    T cmu = std::min(1. - c1, alpha_mu * (mu_eff - 2. + 1. / mu_eff) / ((nVar + 2.) * (nVar + 2.) + alpha_mu * mu_eff / 2.));
-    T hth = (1.4 + 2 / (nVar + 1.)) * ENN;
+    const T cc       = (4. + mu_eff / DIM) / (4. + DIM + 2.*mu_eff / DIM);
+    const T c1       = 2. / ((DIM + 1.3) * (DIM + 1.3) + mu_eff);
+    const T alpha_mu = 2.;
+    const T cmu      = std::min(1. - c1, alpha_mu * (mu_eff - 2. + 1. / mu_eff) / ((DIM + 2.) * (DIM + 2.) + alpha_mu * mu_eff / 2.));
+    const T hth      = (1.4 + 2 / (DIM + 1.)) * ENN;
 
-    std::vector<Vector<T> >ps; ps.resize(maxIter);
-    std::vector<Vector<T> >pc; pc.resize(maxIter);
-    std::vector<Matrix<T> >C;  C.resize(maxIter);
-    std::vector<T >sigma; sigma.resize(lambda);
-    sigma[0] = sigma0;
-    std::vector<individual> M;
+    Vector<T> ps;
+    Vector<T> pc;
+    Matrix<T> C;
+    T sigma = sigma0;
 
-    Vector<T> t = Vector<T>::Zero(nVar);
-    ps[0] = t;
-    pc[0] = t;
-    Matrix<T> eye = Matrix<T>::Identity(nVar, nVar);
-    C[0] = eye;
+    individual M;
 
-    M.resize(maxIter);
+    Vector<T> t = Vector<T>::Zero(DIM);
+    ps = t;
+    pc = t;
+    Matrix<T> eye = Matrix<T>::Identity(DIM, DIM);
+    C = eye;
+
     std::uniform_real_distribution<> dis(VarMin, VarMax);
-    M[0].pos = Vector<T>::Zero(nVar);
-    for (int i = 0; i < nVar; ++i) {
-      M[0].pos[i] = dis(*gen);
+    M.pos = Vector<T>::Zero(DIM);
+    for (int i = 0; i < DIM; ++i) {
+      M.pos[i] = dis(gen);
     }
-    std::cout << M[0].pos.transpose() << std::endl;
 
-    M[0].step = Vector<T>::Zero(nVar);
-    M[0].update();
+    M.step = Vector<T>::Zero(DIM);
+    M.cost = objFunc(M.pos);
 
-    individual bestSol = M[0];
+    individual bestSol = M;
 
-    std::vector<T> bestCost;
-    bestCost.resize(maxIter);
+    T bestCostSoFar;
 
-    Vector<T> zero = Vector<T>::Zero(nVar);
+    Vector<T> zeroVectorTemplate = Vector<T>::Zero(DIM);
+
     // CMA-ES Main Loop
-    for (int g = 0; g < maxIter - 1; ++g) {
+    for (size_t curIter = 0; curIter < this->settings_.maxIter; ++curIter) {
       std::vector<individual> pop;
 
-      for (int i = 0; i < lambda; ++i) {
+      for (int i = 0; i < populationSize; ++i) {
         individual curInd;
-        curInd.step = sampleMvn(zero, C[g]).eval();
-
-        curInd.pos = M[g].pos + sigma[g] * curInd.step;
-        curInd.cost = curInd.costValue();
+        curInd.step = sampleMvn(zeroVectorTemplate, C).eval();
+        curInd.pos = M.pos + sigma * curInd.step;
+        curInd.cost = objFunc(curInd.pos);
 
         if (curInd.cost < bestSol.cost) {
           bestSol = curInd;
         }
-
         pop.push_back(curInd);
 
       }
 
+      // sort them according their fitness
       sort(pop.begin(), pop.end(), [&](const individual & a, const  individual & b) -> bool {
         return a.cost < b.cost;
       });
 
-      bestCost[g] = bestSol.cost;
-      printf("%i best cost %f\n", g, bestCost[g] );
+      bestCostSoFar = bestSol.cost;
+      // printf("%i best cost so far %f\n", curIter, bestCostSoFar );
 
-      if (g == maxIter - 2)
+      // any further update?
+      if (curIter == this->settings_.maxIter - 2)
         break;
 
-      // update mean
-      M[g + 1].step = Vector<T>::Zero(nVar);
+      // update mean (TODO: matrix-vec-multiplication with permutation matrix?)
+      M.step = Vector<T>::Zero(DIM);
       for (int j = 0; j < mu; ++j) {
-        M[g + 1].step += w[j] * pop[j].step;
+        M.step += w[j] * pop[j].step;
       }
 
-      M[g + 1].pos = M[g].pos + sigma[g] * M[g + 1].step;
-      M[g + 1].update();
-      if (M[g + 1].cost < bestSol.cost)
-        bestSol = M[g + 1];
+      // shift current position
+      M.pos = M.pos + sigma * M.step;
+      M.cost = objFunc(M.pos);
+      if (M.cost < bestSol.cost)
+        bestSol = M;
 
-      // Update Step Size
-
-      ps[g + 1] = (1. - cs) * ps[g] + sqrt(cs * (2. - cs) * mu_eff) * C[g].llt().matrixL().transpose().solve(M[g + 1].step);
-      sigma[g + 1] = sigma[g] * pow(  exp((cs / ds * ((ps[g + 1]).norm() / ENN - 1.))), 0.3);
+      // update step size
+      ps = (1. - cs) * ps + sqrt(cs * (2. - cs) * mu_eff) * C.llt().matrixL().transpose().solve(M.step);
+      sigma = sigma * pow(  exp((cs / ds * ((ps).norm() / ENN - 1.))), 0.3);
 
       T hs = 0;
-      if (ps[g + 1].norm() / sqrt(pow(1 - (1. - cs), (2 * (g + 1)))) < hth)
+      if (ps.norm() / sqrt(pow(1 - (1. - cs), (2 * (curIter + 1)))) < hth)
         hs = 1;
       else
         hs = 0;
 
-      T delta = (1 - hs) * cc * (2 - cc);
+      const T delta = (1 - hs) * cc * (2 - cc);
 
-      pc[g + 1] = (1 - cc) * pc[g] + hs * sqrt(cc * (2. - cc) * mu_eff) * M[g + 1].step;
-      C[g + 1] = (1 - c1 - cmu) * C[g] + c1 * (pc[g + 1] * pc[g + 1].transpose() + delta * C[g]);
+      pc = (1 - cc) * pc + hs * sqrt(cc * (2. - cc) * mu_eff) * M.step;
+      C = (1 - c1 - cmu) * C + c1 * (pc * pc.transpose() + delta * C);
 
       for (int j = 0; j < mu; ++j) {
-        C[g + 1] += cmu * w(j) * pop[j].step * pop[j].step.transpose();
+        C += cmu * w(j) * pop[j].step * pop[j].step.transpose();
       }
 
-      Eigen::EigenSolver<Matrix<T> > eig(C[g + 1]);
+      Eigen::EigenSolver<Matrix<T> > eig(C);
       Vector<T> E = eig.eigenvalues().real();
       Matrix<T> V = eig.eigenvectors().real();
 
+      // check positive definitness of covariance matrix (all eigenvalues must be > 0)
       bool pd = true;
-      for (int i = 0; i < nVar; ++i) {
+      for (int i = 0; i < DIM; ++i) {
         if (E(i) < 0) {
+          // Oops, Eigen value to small
           pd = false;
-          E = E.cwiseMax(zero);
-          C[g + 1] = V * E.asDiagonal() * V.inverse();
+          E = E.cwiseMax(zeroVectorTemplate);
+          C = V * E.asDiagonal() * V.inverse();
           break;
         }
       }
 
-    }
-    std::cout << "outloop" << std::endl;
+      // prepare new population
+      pop.clear();
 
+      if ((curIter > 150) && ((bestSol.pos-x0).norm() < 1e-8)) {
+        // successive function values too similar, but enought pre-iteration
+        break;
+      }
+
+      // update best solution
+      x0 = bestSol.pos;
+    }
   }
 
 };

@@ -196,7 +196,6 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
  public:
   void minimize(Problem<Dtype> &objFunc, Vector<Dtype> & x0) {
     objFunc_ = &objFunc;
-    const size_t m = 10;
     DIM = x0.rows();
     if (objFunc.hasLowerBound()) {
       lboundTemplate = objFunc_->lowerBound();
