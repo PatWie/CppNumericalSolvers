@@ -2,14 +2,12 @@ language: cpp
 sudo: false
 compiler:
   - clang++
-
+  - g++
 before_install:
   - chmod u+x get_dependencies.sh
   - ./get_dependencies.sh
 
 script:
-  - g++ --version
-  - g++-4.8 --version
   - cp CppNumericalSolvers.config.example CppNumericalSolvers.config
   - mkdir build
   - cd build

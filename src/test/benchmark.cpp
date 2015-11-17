@@ -149,10 +149,7 @@ class Levi   : public Problem<T> {
                                 x(0) = a;                                                                                \
                                 x(1) = b;                                                                                \
                                 func<double> f;                                                                          \
-                                bool correct = f.checkGradient(x);                                                       \
-                                if(!correct){                                                                            \
-                                  std::cout << "there might be sth. wrong with the gradient of Rosenbrock" << std::endl; \
-                                }                                                                                        \
+                                EXPECT_EQ(true,f.checkGradient(x));                                                      \
                               }
                                               
                                               

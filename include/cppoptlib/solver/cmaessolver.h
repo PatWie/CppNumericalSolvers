@@ -14,7 +14,10 @@ namespace cppoptlib {
 template<typename T>
 class CMAesSolver : public ISolver<T, 1> {
   // random number generator
-  std::mt19937 gen {std::random_device {}()};
+  // http://stackoverflow.com/questions/14732132/global-initialization-with-temporary-function-object
+  // we construct this in the constructor
+  // std::mt19937 gen {std::random_device {}()};
+  std::mt19937 gen;
   // each sample from population
   struct individual {
     Vector<T> pos;
@@ -65,6 +68,10 @@ class CMAesSolver : public ISolver<T, 1> {
   }
 
  public:
+
+  CMAesSolver() : gen((std::random_device())()){
+
+  }
 
   /**
    * @brief minimize
