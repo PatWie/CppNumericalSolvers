@@ -69,7 +69,7 @@ class CMAesSolver : public ISolver<T, 1> {
 
  public:
 
-  CMAesSolver() : gen((std::random_device())()){
+  CMAesSolver() : gen((std::random_device())()) {
 
   }
 

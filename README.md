@@ -44,6 +44,7 @@ The library currently contains the following solvers:
 - BFGS solver
 - L-BFGS solver
 - L-BFGS-B solver
+- CMAes solver
 
 You can use all these solvers directly from MATLAB.
 The benchmark-file contains the following test functions:
