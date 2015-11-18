@@ -13,6 +13,8 @@
 #include "../include/cppoptlib/solver/bfgssolver.h"
 #include "../include/cppoptlib/solver/lbfgssolver.h"
 #include "../include/cppoptlib/solver/lbfgsbsolver.h"
+#include "../include/cppoptlib/solver/cmaessolver.h"
+#include "../include/cppoptlib/solver/neldermeadsolver.h"
 
 using namespace cppoptlib;
 
@@ -86,7 +88,7 @@ class MATLABobjective : public Problem<T> {
 
 void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[]) {
 
-    MATLABobjective<double> f;
+  MATLABobjective<double> f;
 
   // check parameters
   if (inLen < 2) {
@@ -123,7 +125,7 @@ void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[
 
   // parse remaining arguments
   // ----------------------------------------------------------
-  enum solver_type {GRADIENTDESCENT, NEWTON, BFGS, LBFGS, LBFGSB, CONJUGATEDGRADIENTDESCENT};
+  enum solver_type {GRADIENTDESCENT, NEWTON, BFGS, LBFGS, LBFGSB, CONJUGATEDGRADIENTDESCENT, CMAES, NELDERMEAD};
   solver_type selected_solver = BFGS;
 
   if (inLen > 2) {
@@ -172,6 +174,10 @@ void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[
           selected_solver = LBFGSB;
         } else if (strcmp(solver_str, "newton") == 0) {
           selected_solver = NEWTON;
+        } else if (strcmp(solver_str, "cmaes") == 0) {
+          selected_solver = CMAES;
+        } else if (strcmp(solver_str, "neldermead") == 0) {
+          selected_solver = NELDERMEAD;
         } else {
           sprintf(error_msg, "unknown solver %s", solver_str);
           mexErrMsgIdAndTxt("MATLAB:cppoptlib", error_msg);
@@ -190,7 +196,7 @@ void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[
         }
 
         Eigen::Map<Eigen::VectorXd> tmp = Eigen::Map<Eigen::VectorXd>(mxGetPr(inArr[arg + 1]), mxGetM(inArr[arg + 1]) * mxGetN(inArr[arg + 1]));
-        Vector<double> t=tmp;
+        Vector<double> t = tmp;
         f.setLowerBound(t);
 
       }
@@ -207,7 +213,7 @@ void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[
         }
 
         Eigen::Map<Eigen::VectorXd> tmp = Eigen::Map<Eigen::VectorXd>(mxGetPr(inArr[arg + 1]), mxGetM(inArr[arg + 1]) * mxGetN(inArr[arg + 1]));
-        Vector<double> t=tmp;
+        Vector<double> t = tmp;
         f.setUpperBound(t);
 
       }
@@ -247,6 +253,16 @@ void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[
   break;
   case NEWTON: {
     NewtonDescentSolver<double> solver;
+    solver.minimize(f, x);
+  }
+  break;
+  case NELDERMEAD: {
+    NelderMeadSolver<double> solver;
+    solver.minimize(f, x);
+  }
+  break;
+  case CMAES: {
+    CMAesSolver<double> solver;
     solver.minimize(f, x);
   }
   break;

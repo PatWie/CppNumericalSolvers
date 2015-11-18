@@ -11,6 +11,7 @@
 #include "../../include/cppoptlib/solver/lbfgssolver.h"
 #include "../../include/cppoptlib/solver/lbfgsbsolver.h"
 #include "../../include/cppoptlib/solver/cmaessolver.h"
+#include "../../include/cppoptlib/solver/neldermeadsolver.h"
 #define PRECISION 1e-4
 #define PI 3.14159265358979323846
 using namespace cppoptlib;
@@ -191,6 +192,7 @@ BENCHSOVLER(BfgsSolver)
 BENCHSOVLER(LbfgsSolver)
 BENCHSOVLER(LbfgsbSolver)
 BENCHSOVLER(CMAesSolver)
+BENCHSOVLER(NelderMeadSolver)
 
 
 int main (int argc, char **argv) {

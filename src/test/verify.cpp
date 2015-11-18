@@ -11,6 +11,7 @@
 #include "../../include/cppoptlib/solver/lbfgssolver.h"
 #include "../../include/cppoptlib/solver/lbfgsbsolver.h"
 #include "../../include/cppoptlib/solver/cmaessolver.h"
+#include "../../include/cppoptlib/solver/neldermeadsolver.h"
 #define PRECISION 1e-4
 using namespace cppoptlib;
 
@@ -116,6 +117,13 @@ TEST(CMAesTest, RosenbrockMixValue)                          { SOLVE_PROBLEM(cpp
 TEST(CMAesTest, RosenbrockFarFull)                           { SOLVE_PROBLEM(cppoptlib::CMAesSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
 TEST(CMAesTest, RosenbrockNearFull)                          { SOLVE_PROBLEM(cppoptlib::CMAesSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
 TEST(CMAesTest, RosenbrockMixFull)                           { SOLVE_PROBLEM(cppoptlib::CMAesSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
+
+TEST(NelderMeadTest, RosenbrockFarValue)                     { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
+TEST(NelderMeadTest, RosenbrockNearValue)                    { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
+TEST(NelderMeadTest, RosenbrockMixValue)                     { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
+TEST(NelderMeadTest, RosenbrockFarFull)                      { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
+TEST(NelderMeadTest, RosenbrockNearFull)                     { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
+TEST(NelderMeadTest, RosenbrockMixFull)                      { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
 
 
 TEST(CentralDifference, Gradient){

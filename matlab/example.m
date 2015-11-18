@@ -1,12 +1,13 @@
-
+clear all
+clc
 x0 =[-1 2]';
 warning('off','optim:fminunc:SwitchingMethod')
 fprintf('x0              solver            f(x*)     x*              time    \n');
 fprintf('--------------------------------------------------------------------\n');
 
 %% --------------------------------------------------------------------------------
-fprintf('\n(finite gradient)\n')
-solver = {'gradientdescent','cg','bfgs','l-bfgs','newton'};
+fprintf('\n(objective value information only)\n')
+solver = {'gradientdescent','cg','bfgs','l-bfgs','newton','cmaes','neldermead'};
 for s=1:numel(solver)
   tic
   [fx,x] = cppoptlib(x0,@rosenbrock,'solver',solver{s});
@@ -26,7 +27,7 @@ fprintf('(%02.2f,%02.2f)    %-15s   %03.4f   (%06.4f,%06.4f)  %f \n', ...
     x0(1),x0(2), 'fminunc', rosenbrock(x),x(1),x(2),t);
 
 %% --------------------------------------------------------------------------------
-fprintf('\n(with gradient)\n')
+fprintf('\n(with gradient information)\n')
 solver = {'gradientdescent','cg','bfgs','l-bfgs','l-bfgs-b','newton'};
 for s=1:numel(solver)
   tic
@@ -37,7 +38,7 @@ for s=1:numel(solver)
 end
 
 %% --------------------------------------------------------------------------------
-fprintf('\n(finite hessian)\n')
+fprintf('\n(using finite hessian)\n')
 solver = {'newton'};
 for s=1:numel(solver)
   tic
@@ -48,7 +49,7 @@ for s=1:numel(solver)
 end
 
 %% --------------------------------------------------------------------------------
-fprintf('\n(with hessian)\n')
+fprintf('\n(with hessian information)\n')
 solver = {'newton'};
 for s=1:numel(solver)
   tic

@@ -2,15 +2,52 @@ CppOptimizationLibrary
 =================================================================
 
 [![Build Status](https://api.travis-ci.org/PatWie/CppNumericalSolvers.svg?branch=master)](http://travis-ci.org/PatWie/CppNumericalSolvers)
-[![Build Status](https://img.shields.io/github/release/PatWie/CppNumericalSolvers.svg)](https://github.com/PatWie/CppNumericalSolvers/releases)
-[![Build Status](https://img.shields.io/github/issues/PatWie/CppNumericalSolvers.svg)](https://github.com/PatWie/CppNumericalSolvers/issues)
 
+About
+-----------
+Have you ever googled for a c++ version of *fminsearch*, which is easy to use without adding tons of dependencies and without edit many setting-structs? This project exactly address this issue by providing a *header-only* library without dependencies. All solvers are written from scratch, which means they do not represent the current state-of-the-art implementation with all tricky optimizations (at least for now). But they are very easy to use. Want a full exampe?
+
+    class Rosenbrock : public Problem<double> {
+      public:
+        double value(const Vector<double> &x) {
+            const double t1 = (1 - x[0]);
+            const double t2 = (x[1] - x[0] * x[0]);
+            return   t1 * t1 + 100 * t2 * t2;
+        }
+    };
+    int main(int argc, char const *argv[]) {
+        Rosenbrock<double> f;
+        Vector<double> x(2); x << -1, 2;
+        BfgsSolver<double> solver;
+        solver.minimize(f, x);
+        std::cout << "argmin      " << x.transpose() << std::endl;
+        std::cout << "f in argmin " << f(x) << std::endl;
+        return 0;
+    }
+
+To use another solver, simply replace `BfgsSolver` by another name.
+Supported solvers are:
+
+- gradient descent solver (GradientDescentSolver)
+- conjugate gradient descent solver (ConjugatedGradientDescentSolver)
+- Newton descent solver (NewtonDescentSolver)
+- BFGS solver (BfgsSolver)
+- L-BFGS solver (LbfgsSolver)
+- L-BFGS-B solver (LbfgsbSolver)
+- CMAes solver (CMAesSolver)
+- Nelder-Mead solver (NelderMeadSolver)
+
+These solvers are tested on the Rosenbrock function from multiple difficult starting points by unit tests using the Google Testing Framework. And yes, you can use them directly in MATLAB.
+Additional benchmark functions are *Beale, GoldsteinPrice, Booth, Matyas, Levi*. Note, not all solver are equivialent good at all problems.
+
+For checking your gradient this library use high-order central difference. Study the examples for more information about including box-constraints and gradient-information.
 
 Install
 -----------
 
-Before compiling you need to adjust some paths. All dependencies (currently just [Eigen3][eigen3]) can by downloaded by a single bashscript.
+Before compiling you need to adjust one path to the [Eigen3][eigen3]-Library (header only), which can by downloaded by a single bashscript, if you haven't Eigen already.
 
+    # download Eigen
     ./get_dependencies.sh
 
 To compile the examples and the unit test just do
@@ -29,33 +66,11 @@ To compile the examples and the unit test just do
     # run an example
     ./bin/examples/linearregression    
 
-For using the MATLAB-binding run `make.m` inside the MATLAB folder once.
+For using the MATLAB-binding open Matlab and run `make.m` inside the MATLAB folder once.
 
 Extensive Introduction
 -----------
 
-This repository contains several solvers implemented in modern C++11 using the [Eigen3][eigen3] library for efficient matrix computations (SSE instructions, vectorization). All implementations are written from scratch. You can use this library in **C++ and [Matlab][matlab]** in an comfortable way.  All solvers are tested on challenging objective functions by unit tests using the Google Testing Framework.
-
-The library currently contains the following solvers:
-
-- gradient descent solver
-- conjugate gradient descent solver
-- Newton descent solver
-- BFGS solver
-- L-BFGS solver
-- L-BFGS-B solver
-- CMAes solver
-
-You can use all these solvers directly from MATLAB.
-The benchmark-file contains the following test functions:
-
-*Rosenbrock, Beale, GoldsteinPrice, Booth, Matyas, Levi*
-
-Further test-functions are planned.
-
-For checking your gradient this library use high-order central difference.
-
-# Usage 
 There are currently two ways to use this library: directly in your C++ code or in MATLAB by calling the provided mex-File.
 
 ## C++ 
@@ -98,6 +113,11 @@ For convenience there are some typedefs:
 
 ### full example
 
+    #include <iostream>
+    #include "../../include/cppoptlib/meta.h"
+    #include "../../include/cppoptlib/problem.h"
+    #include "../../include/cppoptlib/solver/bfgssolver.h"
+    using namespace cppoptlib;
     class Rosenbrock : public Problem<double> {
       public:
         double value(const Vector<double> &x) {
@@ -154,31 +174,6 @@ Currently, not all solvers are equally good at all objective functions. The file
 
 Make sure that `make lint` does not display any errors and check if travis is happy. Do not forget to `chmod +x lint.py`. It would be great, if some of the Forks-Owner are willing to make pull-request.
 
-# License
-
-    Copyright (c) 2014-2015 Patrick Wieschollek
-    Copyright (c) 2015+,    the respective contributors
-    Url: https://github.com/PatWie/CppNumericalSolvers
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-    
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
-    
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
-
-
 [eigen3]: http://eigen.tuxfamily.org/
 [matlab]: http://www.mathworks.de/products/matlab/
-[lastversion]: https://github.com/PatWie/CppNumericalSolvers/releases/tag/v1.0.0alpha2
+
