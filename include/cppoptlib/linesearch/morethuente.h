@@ -3,6 +3,7 @@
 #define MORETHUENTE_H_
 
 #include "../meta.h"
+#include <cmath>
 
 namespace cppoptlib {
 
@@ -224,7 +225,7 @@ class MoreThuente {
       bound = 1;
       Dtype theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
       Dtype s = std::max(theta, std::max( dx, dp));
-      Dtype gamma = s * sqrt(std::max(0., (theta / s) * (theta / s) - (dx / s) * (dp / s)));
+      Dtype gamma = s * sqrt(std::max(static_cast<Dtype>(0.), (theta / s) * (theta / s) - (dx / s) * (dp / s)));
       if (stp > stx)
         gamma = -gamma;
       Dtype p = (gamma - dp) + theta;
@@ -296,9 +297,9 @@ class MoreThuente {
 
     if (brackt & bound) {
       if (sty > stx) {
-        stp = std::min(stx + 0.66 * (sty - stx), stp);
+        stp = std::min(stx + static_cast<Dtype>(0.66) * (sty - stx), stp);
       } else {
-        stp = std::max(stx + 0.66 * (sty - stx), stp);
+        stp = std::max(stx + static_cast<Dtype>(0.66) * (sty - stx), stp);
       }
     }
 
