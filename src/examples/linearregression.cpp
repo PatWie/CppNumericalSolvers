@@ -42,7 +42,7 @@ int main(int argc, char const *argv[]) {
 
     cppoptlib::Vector<T> beta = cppoptlib::Vector<T>::Random(4);
     std::cout << "start in   " << beta.transpose() << std::endl;
-    cppoptlib::BfgsSolver<double> solver;
+    cppoptlib::BfgsSolver<T> solver;
     solver.minimize(f, beta);
 
     std::cout << "result     " << beta.transpose() << std::endl;
