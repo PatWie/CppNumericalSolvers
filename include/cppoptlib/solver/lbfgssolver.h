@@ -33,7 +33,7 @@ class LbfgsSolver : public ISolver<T, 1> {
 
         do {
 
-            const double relativeEpsilon = 0.0001 * std::max(1.0, x0.norm());
+            const T relativeEpsilon = static_cast<T>(0.0001) * std::max(static_cast<T>(1.0), x0.norm());
 
             if (grad.norm() < relativeEpsilon)
                 break;

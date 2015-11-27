@@ -3,6 +3,10 @@
 #include "../../include/cppoptlib/problem.h"
 #include "../../include/cppoptlib/solver/bfgssolver.h"
 #include "../../include/cppoptlib/solver/conjugatedgradientdescentsolver.h"
+#include "../../include/cppoptlib/solver/newtondescentsolver.h"
+#include "../../include/cppoptlib/solver/neldermeadsolver.h"
+#include "../../include/cppoptlib/solver/lbfgssolver.h"
+#include "../../include/cppoptlib/solver/cmaessolver.h"
 
 // to use this library just use the namespace "cppoptlib"
 namespace cppoptlib {
@@ -49,11 +53,15 @@ int main(int argc, char const *argv[]) {
 
     // first check the given derivative 
     // there is output, if they are NOT similar to finite differences
-    bool probably_correct = f.checkGradient(x, 1);
+    bool probably_correct = f.checkGradient(x);
 
     // choose a solver
-    cppoptlib::BfgsSolver<float> solver;
+    //cppoptlib::BfgsSolver<T> solver;
     //cppoptlib::ConjugatedGradientDescentSolver<T> solver;
+    //cppoptlib::NewtonDescentSolver<T> solver;
+    //cppoptlib::NelderMeadSolver<T> solver;
+    cppoptlib::LbfgsSolver<T> solver;
+    //cppoptlib::CMAesSolver<T> solver;
     // and minimize the function
     solver.minimize(f, x);
     // print argmin

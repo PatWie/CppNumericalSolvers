@@ -47,12 +47,12 @@ class CMAesSolver : public ISolver<T, 1> {
   Vector<T> sampleMvn(Vector<T> &mean, Matrix<T> &covar) {
 
     Matrix<T> normTransform;
-    Eigen::LLT<Eigen::MatrixXd> cholSolver(covar);
+    Eigen::LLT<Matrix<T>> cholSolver(covar);
 
     if (cholSolver.info() == Eigen::Success) {
       normTransform = cholSolver.matrixL();
     } else {
-      Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigenSolver(covar);
+      Eigen::SelfAdjointEigenSolver<Matrix<T>> eigenSolver(covar);
       normTransform = eigenSolver.eigenvectors() * eigenSolver.eigenvalues().cwiseSqrt().asDiagonal();
     }
 
@@ -62,7 +62,7 @@ class CMAesSolver : public ISolver<T, 1> {
       stdNormDistr[i] = d(gen);
     }
 
-    Eigen::MatrixXd samples = normTransform * stdNormDistr + mean;
+    Matrix<T> samples = normTransform * stdNormDistr + mean;
 
     return samples;
   }
@@ -104,7 +104,7 @@ class CMAesSolver : public ISolver<T, 1> {
 
     const T sigma0   = 0.3 * (VarMax - VarMin);
     const T cs       = (mu_eff + 2.) / (DIM + mu_eff + 5.);
-    const T ds       = 1. + cs + 2.*std::max(sqrt((mu_eff - 1) / (DIM + 1)) - 1, (T)0.);
+    const T ds       = 1. + cs + 2.*std::max(static_cast<T>(sqrt((mu_eff - 1) / (DIM + 1)) - 1), (T)0.);
     const T ENN      = sqrt(DIM) * (1 - 1. / (4.*DIM) + 1. / (21.*DIM * DIM));
 
     const T cc       = (4. + mu_eff / DIM) / (4. + DIM + 2.*mu_eff / DIM);

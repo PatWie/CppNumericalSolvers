@@ -67,8 +67,8 @@ class NelderMeadSolver : public ISolver<T, 0> {
         if (tmp2 > max2)
           max2 = tmp2;
       }
-      const T tt1 = std::max(1.e-04, 10 * std::nextafter<T>(f[index[0]], std::numeric_limits<T>::epsilon()) - f[index[0]]);
-      const T tt2 = std::max(1.e-04, 10 * (std::nextafter<T>(x0.col(index[0]).maxCoeff(), std::numeric_limits<T>::epsilon())
+      const T tt1 = std::max(static_cast<T>(1.e-04), 10 * std::nextafter<T>(f[index[0]], std::numeric_limits<T>::epsilon()) - f[index[0]]);
+      const T tt2 = std::max(static_cast<T>(1.e-04), 10 * (std::nextafter<T>(x0.col(index[0]).maxCoeff(), std::numeric_limits<T>::epsilon())
                     - x0.col(index[0]).maxCoeff()));
 
       // max(||x - shift(x) ||_inf ) <= tol,
