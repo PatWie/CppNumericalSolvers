@@ -15,6 +15,9 @@
 #define PRECISION 1e-4
 using namespace cppoptlib;
 
+typedef ::testing::Types <float, double> MyTypeList;
+
+
 // situation where only have to objective function
 template<typename T>
 class RosenbrockValue : public Problem<T> {
@@ -70,76 +73,92 @@ class RosenbrockFull : public Problem<T> {
     }
 };
 
+template <class T> class GradientDescentTest : public testing::Test{};
+template <class T> class ConjugatedGradientDescentTest : public testing::Test{};
+template <class T> class NewtonDescentTest : public testing::Test{};
+template <class T> class BfgsTest : public testing::Test{};
+template <class T> class LbfgsTest : public testing::Test{};
+template <class T> class LbfgsbTest : public testing::Test{};
+template <class T> class CMAesTest : public testing::Test{};
+template <class T> class NelderMeadTest : public testing::Test{};
+template <class T> class CentralDifference : public testing::Test{};
+
+#define SOLVE_PROBLEM(sol, func, a,b, fx )    Vector<TypeParam> x(2);x(0) = a;x(1) = b; func<TypeParam> f;    sol<TypeParam> solver; solver.minimize(f, x); EXPECT_NEAR(fx, f(x), PRECISION);
+#define SOLVE_PROBLEM_F(sol, func, a,b, fx )    Vector<float> x(2);x(0) = a;x(1) = b; func<float> f;    sol<float> solver; solver.minimize(f, x); EXPECT_NEAR(fx, f(x), PRECISION);
+#define SOLVE_PROBLEM_D(sol, func, a,b, fx )    Vector<double> x(2);x(0) = a;x(1) = b; func<double> f;    sol<double> solver; solver.minimize(f, x); EXPECT_NEAR(fx, f(x), PRECISION);
+
+TYPED_TEST_CASE(GradientDescentTest, MyTypeList);
+TYPED_TEST_CASE(ConjugatedGradientDescentTest, MyTypeList);
+TYPED_TEST_CASE(NewtonDescentTest, MyTypeList);
+TYPED_TEST_CASE(BfgsTest, MyTypeList);
+TYPED_TEST_CASE(LbfgsTest, MyTypeList);
+TYPED_TEST_CASE(LbfgsbTest, MyTypeList);
+TYPED_TEST_CASE(CMAesTest, MyTypeList);
+TYPED_TEST_CASE(NelderMeadTest, MyTypeList);
+TYPED_TEST_CASE(CentralDifference, MyTypeList);
+
+// only gradient information
+TEST(GradientDescentTest, RosenbrockFarValue)                      { SOLVE_PROBLEM_D(cppoptlib::GradientDescentSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
+TEST(GradientDescentTest, RosenbrockNearValue)                     { SOLVE_PROBLEM_D(cppoptlib::GradientDescentSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
+TEST(ConjugatedGradientDescentTest, RosenbrockFarValue)            { SOLVE_PROBLEM_D(cppoptlib::ConjugatedGradientDescentSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
+TEST(ConjugatedGradientDescentTest, RosenbrockNearValue)           { SOLVE_PROBLEM_D(cppoptlib::ConjugatedGradientDescentSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
+TEST(ConjugatedGradientDescentTest, RosenbrockMixValue)            { SOLVE_PROBLEM_D(cppoptlib::ConjugatedGradientDescentSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
+TEST(BfgsTest, RosenbrockFarValue)                                 { SOLVE_PROBLEM_D(cppoptlib::BfgsSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
+TEST(BfgsTest, RosenbrockNearValue)                                { SOLVE_PROBLEM_D(cppoptlib::BfgsSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
+TEST(BfgsTest, RosenbrockMixValue)                                 { SOLVE_PROBLEM_D(cppoptlib::BfgsSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
+TEST(LbfgsTest, RosenbrockFarValue)                                { SOLVE_PROBLEM_D(cppoptlib::LbfgsSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
+TEST(LbfgsTest, RosenbrockNearValue)                               { SOLVE_PROBLEM_D(cppoptlib::LbfgsSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
+TEST(LbfgsTest, RosenbrockMixValue)                                { SOLVE_PROBLEM_D(cppoptlib::LbfgsSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
+TEST(LbfgsbTest, RosenbrockFarValue)                               { SOLVE_PROBLEM_D(cppoptlib::LbfgsbSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
+TEST(LbfgsbTest, RosenbrockNearValue)                              { SOLVE_PROBLEM_D(cppoptlib::LbfgsbSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
+TEST(LbfgsbTest, RosenbrockMixValue)                               { SOLVE_PROBLEM_D(cppoptlib::LbfgsbSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
+TEST(CMAesTest, RosenbrockFarValue)                                { SOLVE_PROBLEM_D(cppoptlib::CMAesSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
+TEST(CMAesTest, RosenbrockNearValue)                               { SOLVE_PROBLEM_D(cppoptlib::CMAesSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
+TEST(CMAesTest, RosenbrockMixValue)                                { SOLVE_PROBLEM_D(cppoptlib::CMAesSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
+TYPED_TEST(NelderMeadTest, RosenbrockFarValue)                     { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
+TYPED_TEST(NelderMeadTest, RosenbrockNearValue)                    { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
+TYPED_TEST(NelderMeadTest, RosenbrockMixValue)                     { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
+
+// gradient information ( Hessian for newton descent)
+TYPED_TEST(GradientDescentTest, RosenbrockFarGradient)             { SOLVE_PROBLEM(cppoptlib::GradientDescentSolver,RosenbrockGradient, 15.0, 8.0, 0.0) }
+TYPED_TEST(GradientDescentTest, RosenbrockNearGradient)            { SOLVE_PROBLEM(cppoptlib::GradientDescentSolver,RosenbrockGradient, -1.0, 2.0, 0.0) }
+TYPED_TEST(ConjugatedGradientDescentTest, RosenbrockFarGradient)   { SOLVE_PROBLEM(cppoptlib::ConjugatedGradientDescentSolver,RosenbrockGradient, 15.0, 8.0, 0.0) }
+TYPED_TEST(ConjugatedGradientDescentTest, RosenbrockNearGradient)  { SOLVE_PROBLEM(cppoptlib::ConjugatedGradientDescentSolver,RosenbrockGradient, -1.0, 2.0, 0.0) }
+TYPED_TEST(ConjugatedGradientDescentTest, RosenbrockMixGradient)   { SOLVE_PROBLEM(cppoptlib::ConjugatedGradientDescentSolver,RosenbrockGradient, -1.2, 100.0, 0.0) }
+TYPED_TEST(NewtonDescentTest, RosenbrockFarFull)                   { SOLVE_PROBLEM(cppoptlib::NewtonDescentSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
+TYPED_TEST(NewtonDescentTest, RosenbrockNearFull)                  { SOLVE_PROBLEM(cppoptlib::NewtonDescentSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
+TYPED_TEST(NewtonDescentTest, RosenbrockMixFull)                   { SOLVE_PROBLEM(cppoptlib::NewtonDescentSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
+TYPED_TEST(BfgsTest, RosenbrockFarFull)                            { SOLVE_PROBLEM(cppoptlib::BfgsSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
+TYPED_TEST(BfgsTest, RosenbrockNearFull)                           { SOLVE_PROBLEM(cppoptlib::BfgsSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
+TYPED_TEST(BfgsTest, RosenbrockMixFull)                            { SOLVE_PROBLEM(cppoptlib::BfgsSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
+TYPED_TEST(LbfgsTest, RosenbrockFarFull)                           { SOLVE_PROBLEM(cppoptlib::LbfgsSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
+TYPED_TEST(LbfgsTest, RosenbrockNearFull)                          { SOLVE_PROBLEM(cppoptlib::LbfgsSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
+TYPED_TEST(LbfgsTest, RosenbrockMixFull)                           { SOLVE_PROBLEM(cppoptlib::LbfgsSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
+TYPED_TEST(LbfgsbTest, RosenbrockFarFull)                          { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
+TYPED_TEST(LbfgsbTest, RosenbrockNearFull)                         { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
 
 
-#define SOLVE_PROBLEM(sol, func, a,b, fx )    Vector<double> x(2);x(0) = a;x(1) = b; func<double> f;    sol<double> solver; solver.minimize(f, x); EXPECT_NEAR(fx, f(x), PRECISION);
-
-TEST(GradientDescentTest, RosenbrockFarValue)                { SOLVE_PROBLEM(cppoptlib::GradientDescentSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
-TEST(GradientDescentTest, RosenbrockNearValue)               { SOLVE_PROBLEM(cppoptlib::GradientDescentSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
-TEST(GradientDescentTest, RosenbrockFarGradient)             { SOLVE_PROBLEM(cppoptlib::GradientDescentSolver,RosenbrockGradient, 15.0, 8.0, 0.0) }
-TEST(GradientDescentTest, RosenbrockNearGradient)            { SOLVE_PROBLEM(cppoptlib::GradientDescentSolver,RosenbrockGradient, -1.0, 2.0, 0.0) }
-
-TEST(ConjugatedGradientDescentTest, RosenbrockFarValue)      { SOLVE_PROBLEM(cppoptlib::ConjugatedGradientDescentSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
-TEST(ConjugatedGradientDescentTest, RosenbrockNearValue)     { SOLVE_PROBLEM(cppoptlib::ConjugatedGradientDescentSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
-TEST(ConjugatedGradientDescentTest, RosenbrockMixValue)      { SOLVE_PROBLEM(cppoptlib::ConjugatedGradientDescentSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
-TEST(ConjugatedGradientDescentTest, RosenbrockFarGradient)   { SOLVE_PROBLEM(cppoptlib::ConjugatedGradientDescentSolver,RosenbrockGradient, 15.0, 8.0, 0.0) }
-TEST(ConjugatedGradientDescentTest, RosenbrockNearGradient)  { SOLVE_PROBLEM(cppoptlib::ConjugatedGradientDescentSolver,RosenbrockGradient, -1.0, 2.0, 0.0) }
-TEST(ConjugatedGradientDescentTest, RosenbrockMixGradient)   { SOLVE_PROBLEM(cppoptlib::ConjugatedGradientDescentSolver,RosenbrockGradient, -1.2, 100.0, 0.0) }
-
-TEST(NewtonDescentTest, RosenbrockFarFull)                   { SOLVE_PROBLEM(cppoptlib::NewtonDescentSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
-TEST(NewtonDescentTest, RosenbrockNearFull)                  { SOLVE_PROBLEM(cppoptlib::NewtonDescentSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
-TEST(NewtonDescentTest, RosenbrockMixFull)                   { SOLVE_PROBLEM(cppoptlib::NewtonDescentSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
-
-TEST(BfgsTest, RosenbrockFarValue)                           { SOLVE_PROBLEM(cppoptlib::BfgsSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
-TEST(BfgsTest, RosenbrockNearValue)                          { SOLVE_PROBLEM(cppoptlib::BfgsSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
-TEST(BfgsTest, RosenbrockMixValue)                           { SOLVE_PROBLEM(cppoptlib::BfgsSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
-TEST(BfgsTest, RosenbrockFarFull)                            { SOLVE_PROBLEM(cppoptlib::BfgsSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
-TEST(BfgsTest, RosenbrockNearFull)                           { SOLVE_PROBLEM(cppoptlib::BfgsSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
-TEST(BfgsTest, RosenbrockMixFull)                            { SOLVE_PROBLEM(cppoptlib::BfgsSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
-
-TEST(LbfgsTest, RosenbrockFarValue)                          { SOLVE_PROBLEM(cppoptlib::LbfgsSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
-TEST(LbfgsTest, RosenbrockNearValue)                         { SOLVE_PROBLEM(cppoptlib::LbfgsSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
-TEST(LbfgsTest, RosenbrockMixValue)                          { SOLVE_PROBLEM(cppoptlib::LbfgsSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
-TEST(LbfgsTest, RosenbrockFarFull)                           { SOLVE_PROBLEM(cppoptlib::LbfgsSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
-TEST(LbfgsTest, RosenbrockNearFull)                          { SOLVE_PROBLEM(cppoptlib::LbfgsSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
-TEST(LbfgsTest, RosenbrockMixFull)                           { SOLVE_PROBLEM(cppoptlib::LbfgsSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
-
-TEST(LbfgsbTest, RosenbrockFarValue)                         { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
-TEST(LbfgsbTest, RosenbrockNearValue)                        { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
-TEST(LbfgsbTest, RosenbrockMixValue)                         { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
-TEST(LbfgsbTest, RosenbrockFarFull)                          { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
-TEST(LbfgsbTest, RosenbrockNearFull)                         { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
-TEST(LbfgsbTest, RosenbrockMixFull)                          { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
-
-TEST(CMAesTest, RosenbrockFarValue)                          { SOLVE_PROBLEM(cppoptlib::CMAesSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
-TEST(CMAesTest, RosenbrockNearValue)                         { SOLVE_PROBLEM(cppoptlib::CMAesSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
-TEST(CMAesTest, RosenbrockMixValue)                          { SOLVE_PROBLEM(cppoptlib::CMAesSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
-TEST(CMAesTest, RosenbrockFarFull)                           { SOLVE_PROBLEM(cppoptlib::CMAesSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
-TEST(CMAesTest, RosenbrockNearFull)                          { SOLVE_PROBLEM(cppoptlib::CMAesSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
-TEST(CMAesTest, RosenbrockMixFull)                           { SOLVE_PROBLEM(cppoptlib::CMAesSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
-
-TEST(NelderMeadTest, RosenbrockFarValue)                     { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
-TEST(NelderMeadTest, RosenbrockNearValue)                    { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
-TEST(NelderMeadTest, RosenbrockMixValue)                     { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
-TEST(NelderMeadTest, RosenbrockFarFull)                      { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
-TEST(NelderMeadTest, RosenbrockNearFull)                     { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
-TEST(NelderMeadTest, RosenbrockMixFull)                      { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
+// TODO: CMAes fails due to an Eigen-Bug
+TEST(LbfgsbTest, RosenbrockMixFull)                          { SOLVE_PROBLEM_D(cppoptlib::LbfgsbSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
+TEST(CMAesTest, RosenbrockFarFull)                           { SOLVE_PROBLEM_D(cppoptlib::CMAesSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
+TEST(CMAesTest, RosenbrockNearFull)                          { SOLVE_PROBLEM_D(cppoptlib::CMAesSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
+TEST(CMAesTest, RosenbrockMixFull)                           { SOLVE_PROBLEM_D(cppoptlib::CMAesSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
 
 
-TEST(CentralDifference, Gradient){
+TYPED_TEST(CentralDifference, Gradient){
     // simple function y <- 3*a-b
-    class Func : public Problem<double> {
+    class Func : public Problem<TypeParam> {
       public:
-        double value(const Vector<double> &x) {
+        TypeParam value(const Vector<TypeParam> &x) {
             return 3*x[0]-x[1];
         }
     };
-    Vector<double> x0(2);
+    Vector<TypeParam> x0(2);
     x0(0) = 0;
     x0(1) = 0;
 
     Func f;
-    Vector<double> grad(2);
+    Vector<TypeParam> grad(2);
     // check from fast/bad to slower/better approximation of the gradient
     for (int accuracy = 0; accuracy < 4; ++accuracy)
     {
@@ -149,20 +168,20 @@ TEST(CentralDifference, Gradient){
     }
 }
 
-TEST(CentralDifference, Hessian){
+TYPED_TEST(CentralDifference, Hessian){
     // simple function y <- 3*a^2-a*b
-    class Func : public Problem<double> {
+    class Func : public Problem<TypeParam> {
       public:
-        double value(const Vector<double> &x) {
+        TypeParam value(const Vector<TypeParam> &x) {
             return 3*x[0]*x[0]-x[1]*x[0];
         }
     };
-    Vector<double> x0(2);
+    Vector<TypeParam> x0(2);
     x0(0) = 0;
     x0(1) = 0;
 
     Func f;
-    Matrix<double> hessian(2,2);
+    Matrix<TypeParam> hessian(2,2);
 
     // check using fast version
     f.finiteHessian(x0, hessian);

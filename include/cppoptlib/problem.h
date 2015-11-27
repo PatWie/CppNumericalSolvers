@@ -161,7 +161,7 @@ class Problem {
   }
 
   virtual void finiteHessian(const Vector<T> & x, Matrix<T> & hessian, int accuracy = 0) final {
-    const T eps = 2.2204e-08;
+    const T eps = std::numeric_limits<T>::epsilon()*10e7;
     const size_t DIM = x.rows();
 
     if(accuracy == 0) {
