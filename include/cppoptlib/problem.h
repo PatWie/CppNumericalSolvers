@@ -3,7 +3,11 @@
 
 #include <Eigen/Dense>
 #ifndef MATLAB
+#ifdef NDEBUG
 #include "../gtest/gtest.h"
+#else
+#define EXPECT_NEAR(x, y, z)
+#endif /* NDEBUG */
 #else
 #define EXPECT_NEAR(x, y, z)
 #endif /* MATLAB */

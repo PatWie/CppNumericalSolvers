@@ -3,6 +3,7 @@ project(CppNumericalSolvers)
 
 include(CppNumericalSolvers.config)
 
+set( CMAKE_BUILD_TYPE Release)
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin )
 set( CMAKE_TEST_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin )
 
@@ -36,4 +37,3 @@ add_subdirectory(src/test)
 
 
 add_custom_target(lint COMMAND ${CMAKE_COMMAND} -P ${PROJECT_SOURCE_DIR}/cmake/lint.cmake)
-add_custom_target(install COMMAND ${CMAKE_COMMAND} -P ${PROJECT_SOURCE_DIR}/cmake/install.cmake)
