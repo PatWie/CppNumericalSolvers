@@ -1,3 +1,5 @@
+#undef NDEBUG
+
 #include <iostream>
 #include <functional>
 #include <list>
@@ -14,6 +16,7 @@
 #include "../../include/cppoptlib/solver/neldermeadsolver.h"
 #define PRECISION 1e-4
 using namespace cppoptlib;
+
 
 typedef ::testing::Types <float, double> MyTypeList;
 
