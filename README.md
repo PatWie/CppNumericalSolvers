@@ -5,7 +5,7 @@ CppOptimizationLibrary
 
 About
 -----------
-Have you ever googled for a c++ version of *fminsearch*, which is easy to use without adding tons of dependencies and without edit many setting-structs? This project exactly address this issue by providing a *header-only* library without dependencies. All solvers are written from scratch, which means they do not represent the current state-of-the-art implementation with all tricky optimizations (at least for now). But they are very easy to use. Want a full exampe?
+Have you ever googled for a c++ version of *fminsearch*, which is easy to use without adding tons of dependencies and without edit many setting-structs? This project exactly address this issue by providing a *header-only* library without dependencies. All solvers are written from scratch, which means they do not represent the current state-of-the-art implementation with all tricky optimizations (at least for now). But they are very easy to use. Want a full example?
 
     class Rosenbrock : public Problem<double> {
       public:
@@ -38,7 +38,7 @@ Supported solvers are:
 - Nelder-Mead solver (NelderMeadSolver)
 
 These solvers are tested on the Rosenbrock function from multiple difficult starting points by unit tests using the Google Testing Framework. And yes, you can use them directly in MATLAB.
-Additional benchmark functions are *Beale, GoldsteinPrice, Booth, Matyas, Levi*. Note, not all solver are equivialent good at all problems.
+Additional benchmark functions are *Beale, GoldsteinPrice, Booth, Matyas, Levi*. Note, not all solver are equivalent good at all problems.
 
 For checking your gradient this library use high-order central difference. Study the examples for more information about including box-constraints and gradient-information.
 
@@ -75,15 +75,15 @@ There are currently two ways to use this library: directly in your C++ code or i
 
 ## C++ 
 
-There are several examples within the `src/examples` directory. These are build into `buil/bin/examples` during `make all`.
+There are several examples within the `src/examples` directory. These are build into `build/bin/examples` during `make all`.
 Checkout `rosenbrock.cpp`. Your objective and gradient computations should be stored into a tiny class. The most simple usage is
 
     class YourProblem : public Problem<double> {
       double value(const Vector<double> &x) {}
     }
 
-In contrast to previous versions of this library, I switched to classes instead of lambda function. If you poke the examples, you will notice that this much easier to write and understand. The only method a problem has to provide is the `value` memeber, which returns the value of the objective function.
-For most solvers it should be useful to implement the gradient computation, too. Otherwise the library internally will uses finite difference for gradient computations (which is definetely unstable and slow!).
+In contrast to previous versions of this library, I switched to classes instead of lambda function. If you poke the examples, you will notice that this much easier to write and understand. The only method a problem has to provide is the `value` member, which returns the value of the objective function.
+For most solvers it should be useful to implement the gradient computation, too. Otherwise the library internally will uses finite difference for gradient computations (which is definitely unstable and slow!).
 
     class YourProblem : public Problem<double> {
       double value(const Vector<double> &x) {}
@@ -91,7 +91,7 @@ For most solvers it should be useful to implement the gradient computation, too.
     }
 
 Notice, the gradient is passed by reference!
-After defining the problem it can be initialised in your code by:
+After defining the problem it can be initialized in your code by:
 
     // init problem
     YourProblem f;
