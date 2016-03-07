@@ -247,7 +247,7 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
       Dtype test = newS.dot(newY);
       test = (test < 0) ? -1.0 * test : test;
       if (test > 1e-7 * newY.squaredNorm()) {
-        if (k < this->settings_.m) {
+        if (yHistory.cols() < this->settings_.m) {
           yHistory.conservativeResize(DIM, k + 1);
           sHistory.conservativeResize(DIM, k + 1);
         } else {
