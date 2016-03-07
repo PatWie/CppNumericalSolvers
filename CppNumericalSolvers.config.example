@@ -1,3 +1,0 @@
-SET( EIGEN3_INCLUDE_DIR "eigen" )
-SET(CMAKE_CXX_COMPILER  "clang++")
-SET(Matlab_DIR  "/path/to/matlab")

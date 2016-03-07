@@ -96,9 +96,9 @@ class MoreThuente {
 
       // Oops, let us return the last reliable values
       if (
-      (brackt && (stp <= stmin | stp >= stmax))
-      | (nfev >= maxfev - 1 ) | (infoc == 0)
-      | (brackt & (stmax - stmin <= xtol * stmax))) {
+      (brackt && ((stp <= stmin) || (stp >= stmax)))
+      || (nfev >= maxfev - 1 ) || (infoc == 0)
+      || (brackt && ((stmax - stmin) <= (xtol * stmax)))) {
         stp = stx;
       }
 
