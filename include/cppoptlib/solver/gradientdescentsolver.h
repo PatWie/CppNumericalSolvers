@@ -29,7 +29,7 @@ class GradientDescentSolver : public ISolver<T, 1> {
       x0 = x0 - rate * direction;
       gradNorm = direction.template lpNorm<Eigen::Infinity>();
       // std::cout << "iter: "<<iter<< " f = " <<  objFunc.value(x0) << " ||g||_inf "<<gradNorm  << std::endl;
-      this->iterations_++;
+      ++this->iterations_;
     } while ((gradNorm > this->settings_.gradTol) && (this->iterations_ < this->settings_.maxIter));
 
   }

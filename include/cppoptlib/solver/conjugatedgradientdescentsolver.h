@@ -31,7 +31,7 @@ class ConjugatedGradientDescentSolver : public ISolver<T, 1> {
     do {
       objFunc.gradient(x0, grad);
 
-      if (iter == 0) {
+      if (this->iterations_ == 0) {
         Si = -grad;
       } else {
         const double beta = grad.dot(grad) / (grad_old.dot(grad_old));
@@ -47,7 +47,7 @@ class ConjugatedGradientDescentSolver : public ISolver<T, 1> {
 
       gradNorm = grad.template lpNorm<Eigen::Infinity>();
       // std::cout << "iter: "<<iter<< " f = " <<  objFunc.value(x0) << " ||g||_inf "<<gradNorm   << std::endl;
-      iter++;
+      ++this->iterations_;
 
     } while ((gradNorm > this->settings_.gradTol) && (this->iterations_ < this->settings_.maxIter));
 
