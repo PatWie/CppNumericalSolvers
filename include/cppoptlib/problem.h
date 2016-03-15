@@ -1,6 +1,8 @@
 #ifndef PROBLEM_H
 #define PROBLEM_H
 
+#include <vector>
+
 #include <Eigen/Dense>
 
 #if defined(MATLAB) || defined(NDEBUG)
