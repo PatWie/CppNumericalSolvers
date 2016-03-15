@@ -13,7 +13,9 @@ template<typename T, int Ord>
 class ISolver {
 protected:
   const int order_ = Ord;
- public:
+  size_t iterations_ = 0;
+    
+public:
   Options settings_;
 
   ISolver() {
@@ -30,6 +32,13 @@ protected:
    * @param funcHession hessian function
    */
   virtual void minimize(Problem<T> &objFunc, Vector<T> & x0) = 0;
+
+
+  /**
+   * @brief Return the number of iterations performed.
+   * 
+   */
+   size_t iterations() { return iterations_; }
 
 };
 
