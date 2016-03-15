@@ -31,6 +31,7 @@ class LbfgsSolver : public ISolver<T, 1> {
 
         T gradNorm = 0;
 
+        this->iterations_ = 0;
         do {
 
             const T relativeEpsilon = static_cast<T>(0.0001) * std::max(static_cast<T>(1.0), x0.norm());
@@ -105,9 +106,9 @@ class LbfgsSolver : public ISolver<T, 1> {
 
             iter++;
             globIter++;
-            j++;
+            this->iterations_++;
 
-        } while ((gradNorm > this->settings_.gradTol) && (j < this->settings_.maxIter));
+        } while ((gradNorm > this->settings_.gradTol) && (this->iterations_ < this->settings_.maxIter));
 
     }
 

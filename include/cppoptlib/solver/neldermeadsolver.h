@@ -51,9 +51,9 @@ class NelderMeadSolver : public ISolver<T, 0> {
 
     sort(index.begin(), index.end(), [&](int a, int b)-> bool { return f[a] < f[b]; });
 
-    int iter = 0;
+    this->iterations_ = 0;
     const int maxIter = this->settings_.maxIter*DIM;
-    while (iter < maxIter) {
+    while (this->iterations_ < maxIter) {
 
       // conv-check
       T max1 = fabs(f[index[1]] - f[index[0]]);
@@ -135,7 +135,7 @@ class NelderMeadSolver : public ISolver<T, 0> {
         }
       }
       sort(index.begin(), index.end(), [&](int a, int b)-> bool { return f[a] < f[b]; });
-      iter++;
+      this->iterations_++;
     }
     x = x0.col(index[0]);
   }

@@ -20,7 +20,6 @@ class ConjugatedGradientDescentSolver : public ISolver<T, 1> {
    */
   void minimize(Problem<T> &objFunc, Vector<T> & x0) {
 
-    size_t iter = 0;
     T gradNorm = 0;
 
     Vector<T> grad(x0.rows());
@@ -28,6 +27,7 @@ class ConjugatedGradientDescentSolver : public ISolver<T, 1> {
     Vector<T> Si(x0.rows());
     Vector<T> Si_old(x0.rows());
 
+    this->iterations_ = 0;
     do {
       objFunc.gradient(x0, grad);
 
@@ -49,7 +49,7 @@ class ConjugatedGradientDescentSolver : public ISolver<T, 1> {
       // std::cout << "iter: "<<iter<< " f = " <<  objFunc.value(x0) << " ||g||_inf "<<gradNorm   << std::endl;
       iter++;
 
-    } while ((gradNorm > this->settings_.gradTol) && (iter < this->settings_.maxIter));
+    } while ((gradNorm > this->settings_.gradTol) && (this->iterations_ < this->settings_.maxIter));
 
   }
 

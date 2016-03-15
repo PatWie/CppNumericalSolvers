@@ -142,7 +142,7 @@ class CMAesSolver : public ISolver<T, 1> {
     Vector<T> zeroVectorTemplate = Vector<T>::Zero(DIM);
 
     // CMA-ES Main Loop
-    for (size_t curIter = 0; curIter < this->settings_.maxIter; ++curIter) {
+    for (this->iterations_ = 0; this->iterations_ < this->settings_.maxIter; ++this->iterations_) {
       std::vector<individual> pop;
 
       for (int i = 0; i < populationSize; ++i) {
@@ -167,7 +167,7 @@ class CMAesSolver : public ISolver<T, 1> {
       // printf("%i best cost so far %f\n", curIter, bestCostSoFar );
 
       // any further update?
-      if (curIter == this->settings_.maxIter - 2)
+      if (this->iterations_ == this->settings_.maxIter - 2)
         break;
 
       // update mean (TODO: matrix-vec-multiplication with permutation matrix?)
@@ -220,7 +220,7 @@ class CMAesSolver : public ISolver<T, 1> {
       // prepare new population
       pop.clear();
 
-      if ((curIter > 150) && ((bestSol.pos-x0).norm() < 1e-8)) {
+      if ((this->iterations_ > 150) && ((bestSol.pos-x0).norm() < 1e-8)) {
         // successive function values too similar, but enought pre-iteration
         break;
       }

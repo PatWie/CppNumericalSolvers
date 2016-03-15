@@ -15,12 +15,12 @@ class BfgsSolver : public ISolver<T, 1> {
     void minimize(Problem<T> &objFunc, Vector<T> & x0) {
 
         const size_t DIM = x0.rows();
-        size_t iter = 0;
         Matrix<T> H = Matrix<T>::Identity(DIM, DIM);
         Vector<T> grad(DIM);
         T gradNorm = 0;
         Vector<T> x_old = x0;
-
+        
+        this->iterations_ = 0;
         do {
             objFunc.gradient(x0, grad);
             Vector<T> searchDir = -1 * H * grad;
@@ -53,7 +53,7 @@ class BfgsSolver : public ISolver<T, 1> {
             x_old = x0;
             iter++;
 
-        } while ((gradNorm > this->settings_.gradTol) && (iter < this->settings_.maxIter));
+        } while ((gradNorm > this->settings_.gradTol) && (this->iterations_ < this->settings_.maxIter));
 
     }
 
