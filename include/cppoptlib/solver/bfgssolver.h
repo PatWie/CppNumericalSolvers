@@ -19,7 +19,6 @@ class BfgsSolver : public ISolver<T, 1> {
         Vector<T> grad(DIM);
         T gradNorm = 0;
         Vector<T> x_old = x0;
-        
         this->iterations_ = 0;
         do {
             objFunc.gradient(x0, grad);
@@ -51,7 +50,7 @@ class BfgsSolver : public ISolver<T, 1> {
             if( (x_old-x0).template lpNorm<Eigen::Infinity>() < 1e-7  )
                 break;
             x_old = x0;
-            iter++;
+            ++this->iterations_;
 
         } while ((gradNorm > this->settings_.gradTol) && (this->iterations_ < this->settings_.maxIter));
 
