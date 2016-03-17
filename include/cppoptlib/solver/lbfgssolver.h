@@ -11,6 +11,7 @@ namespace cppoptlib {
 
 template<typename T>
 class LbfgsSolver : public ISolver<T, 1> {
+  using ISolver<T, 1>::ISolver; // Inherit the constructors from the interface
   public:
     void minimize(Problem<T> &objFunc, Vector<T> & x0) {
 
@@ -26,11 +27,10 @@ class LbfgsSolver : public ISolver<T, 1> {
         Vector<T> x_old = x0;
         Vector<T> x_old2 = x0;
 
-        size_t iter = 0, j = 0, globIter = 0;
+        size_t iter = 0, globIter = 0;
         double H0k = 1;
 
-        T gradNorm = 0;
-
+        this->m_info.iterations = 0;
         do {
 
             const T relativeEpsilon = static_cast<T>(0.0001) * std::max(static_cast<T>(1.0), x0.norm());
@@ -99,18 +99,15 @@ class LbfgsSolver : public ISolver<T, 1> {
             H0k = y.dot(s) / static_cast<double>(y.dot(y));
 
             x_old = x0;
-            gradNorm = grad.template lpNorm<Eigen::Infinity>();
+            this->m_info.gradNorm = grad.template lpNorm<Eigen::Infinity>();
             // std::cout << "iter: "<<globIter<< ", f = " <<  objFunc.value(x0) << ", ||g||_inf "
             // <<gradNorm  << std::endl;
 
             iter++;
             globIter++;
-            j++;
-
-        } while ((gradNorm > this->settings_.gradTol) && (j < this->settings_.maxIter));
-
+            ++this->m_info.iterations;
+        } while (this->shouldContinue());
     }
-
 };
 
 }

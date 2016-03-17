@@ -10,7 +10,7 @@ namespace cppoptlib {
 
 template<typename T>
 class ConjugatedGradientDescentSolver : public ISolver<T, 1> {
-
+  using ISolver<T, 1>::ISolver; // Inherit the constructors from the interface
  public:
   /**
    * @brief minimize
@@ -19,19 +19,16 @@ class ConjugatedGradientDescentSolver : public ISolver<T, 1> {
    * @param objFunc [description]
    */
   void minimize(Problem<T> &objFunc, Vector<T> & x0) {
-
-    size_t iter = 0;
-    T gradNorm = 0;
-
     Vector<T> grad(x0.rows());
     Vector<T> grad_old(x0.rows());
     Vector<T> Si(x0.rows());
     Vector<T> Si_old(x0.rows());
 
+    this->m_info = {0., 0., 0, 0}; // Zero out the info struct
     do {
       objFunc.gradient(x0, grad);
 
-      if (iter == 0) {
+      if (this->m_info.iterations == 0) {
         Si = -grad;
       } else {
         const double beta = grad.dot(grad) / (grad_old.dot(grad_old));
@@ -45,11 +42,10 @@ class ConjugatedGradientDescentSolver : public ISolver<T, 1> {
       grad_old = grad;
       Si_old = Si;
 
-      gradNorm = grad.template lpNorm<Eigen::Infinity>();
-      // std::cout << "iter: "<<iter<< " f = " <<  objFunc.value(x0) << " ||g||_inf "<<gradNorm   << std::endl;
-      iter++;
-
-    } while ((gradNorm > this->settings_.gradTol) && (iter < this->settings_.maxIter));
+      this->m_info.gradNorm = grad.template lpNorm<Eigen::Infinity>();
+      // std::cout << "Iteration: "<<this->iterations_<< " f = " <<  objFunc.value(x0) << " ||g||_inf "<<gradNorm   << std::endl;
+      ++this->m_info.iterations;
+    } while (this->shouldContinue());
 
   }
 

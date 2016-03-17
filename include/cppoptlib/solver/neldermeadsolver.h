@@ -9,7 +9,7 @@ namespace cppoptlib {
 
 template<typename T>
 class NelderMeadSolver : public ISolver<T, 0> {
-
+  using ISolver<T, 0>::ISolver; // Inherit the constructors from the interface
  public:
   /**
    * @brief minimize
@@ -51,9 +51,9 @@ class NelderMeadSolver : public ISolver<T, 0> {
 
     sort(index.begin(), index.end(), [&](int a, int b)-> bool { return f[a] < f[b]; });
 
-    int iter = 0;
-    const int maxIter = this->settings_.maxIter*DIM;
-    while (iter < maxIter) {
+    const int maxIter = this->m_ctrl.iterations*DIM;
+    this->m_info.iterations = 0;
+    while (this->m_info.iterations < maxIter) {
 
       // conv-check
       T max1 = fabs(f[index[1]] - f[index[0]]);
@@ -135,7 +135,7 @@ class NelderMeadSolver : public ISolver<T, 0> {
         }
       }
       sort(index.begin(), index.end(), [&](int a, int b)-> bool { return f[a] < f[b]; });
-      iter++;
+      ++this->m_info.iterations;
     }
     x = x0.col(index[0]);
   }
