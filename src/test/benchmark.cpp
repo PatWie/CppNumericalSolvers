@@ -1,7 +1,7 @@
 #include <iostream>
 #include <functional>
 #include <list>
-#include "../../include/gtest/gtest.h"
+#include "../../gtest/googletest/include/gtest/gtest.h"
 #include "../../include/cppoptlib/meta.h"
 #include "../../include/cppoptlib/problem.h"
 #include "../../include/cppoptlib/solver/gradientdescentsolver.h"
