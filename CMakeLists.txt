@@ -23,9 +23,8 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 set(LINKER_LIBS "")
 
 # Google Testing Framework
-add_subdirectory(include/gtest)
-enable_testing()
-include_directories(lib)
+add_subdirectory(gtest)
+include_directories(gtest)
 
 # Eigen3 Headerfiles
 find_package(Eigen3 REQUIRED)

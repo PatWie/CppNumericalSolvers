@@ -26,3 +26,7 @@ addons:
 
 notifications:
   email: false
+
+branches:
+  except:
+    -gtest
