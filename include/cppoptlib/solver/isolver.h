@@ -3,7 +3,6 @@
 #define ISOLVER_H_
 
 #include <functional>
-#include "isolver.h"
 #include "../meta.h"
 #include "../problem.h"
 
