@@ -5,7 +5,7 @@ CppOptimizationLibrary
 
 About
 -----------
-Have you ever googled for a c++ version of *fminsearch*, which is easy to use without adding tons of dependencies and without edit many setting-structs? This project exactly address this issue by providing a *header-only* library without dependencies. All solvers are written from scratch, which means they do not represent the current state-of-the-art implementation with all tricky optimizations (at least for now). But they are very easy to use. Want a full example?
+Have you ever googled for a c++ version of *fminsearch*, which is easy to use without adding tons of dependencies and without editing many setting-structs? This project exactly addresses this issue by providing a *header-only* library without dependencies. All solvers are written from scratch, which means they do not represent the current state-of-the-art implementation with all tricky optimizations (at least for now). But they are very easy to use. Want a full example?
 
     class Rosenbrock : public Problem<double> {
       public:
@@ -16,7 +16,7 @@ Have you ever googled for a c++ version of *fminsearch*, which is easy to use wi
         }
     };
     int main(int argc, char const *argv[]) {
-        Rosenbrock<double> f;
+        Rosenbrock f;
         Vector<double> x(2); x << -1, 2;
         BfgsSolver<double> solver;
         solver.minimize(f, x);
@@ -38,9 +38,9 @@ Supported solvers are:
 - Nelder-Mead solver (NelderMeadSolver)
 
 These solvers are tested on the Rosenbrock function from multiple difficult starting points by unit tests using the Google Testing Framework. And yes, you can use them directly in MATLAB.
-Additional benchmark functions are *Beale, GoldsteinPrice, Booth, Matyas, Levi*. Note, not all solver are equivalent good at all problems.
+Additional benchmark functions are *Beale, GoldsteinPrice, Booth, Matyas, Levi*. Note, not all solvers are equivalently good at all problems.
 
-For checking your gradient this library use high-order central difference. Study the examples for more information about including box-constraints and gradient-information.
+For checking your gradient this library uses high-order central difference. Study the examples for more information about including box-constraints and gradient-information.
 
 Install
 -----------
@@ -73,17 +73,17 @@ Extensive Introduction
 
 There are currently two ways to use this library: directly in your C++ code or in MATLAB by calling the provided mex-File.
 
-## C++ 
+## C++
 
-There are several examples within the `src/examples` directory. These are build into `build/bin/examples` during `make all`.
+There are several examples within the `src/examples` directory. These are built into `build/bin/examples` during `make all`.
 Checkout `rosenbrock.cpp`. Your objective and gradient computations should be stored into a tiny class. The most simple usage is
 
     class YourProblem : public Problem<double> {
       double value(const Vector<double> &x) {}
     }
 
-In contrast to previous versions of this library, I switched to classes instead of lambda function. If you poke the examples, you will notice that this much easier to write and understand. The only method a problem has to provide is the `value` member, which returns the value of the objective function.
-For most solvers it should be useful to implement the gradient computation, too. Otherwise the library internally will uses finite difference for gradient computations (which is definitely unstable and slow!).
+In contrast to previous versions of this library, I switched to classes instead of lambda function. If you poke the examples, you will notice that this is much easier to write and understand. The only method a problem has to provide is the `value` member, which returns the value of the objective function.
+For most solvers it should be useful to implement the gradient computation, too. Otherwise the library internally will use finite difference for gradient computations (which is definitely unstable and slow!).
 
     class YourProblem : public Problem<double> {
       double value(const Vector<double> &x) {}
@@ -131,7 +131,7 @@ For convenience there are some typedefs:
         }
     };
     int main(int argc, char const *argv[]) {
-        Rosenbrock<double> f;
+        Rosenbrock f;
         Vector<double> x(2); x << -1, 2;
         BfgsSolver<double> solver;
         solver.minimize(f, x);
@@ -176,4 +176,3 @@ Make sure that `make lint` does not display any errors and check if travis is ha
 
 [eigen3]: http://eigen.tuxfamily.org/
 [matlab]: http://www.mathworks.de/products/matlab/
-
