@@ -19,6 +19,7 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
   Vector<Dtype> uboundTemplate;
   Dtype theta;
   int DIM;
+
   /**
    * @brief sort pairs (k,v) according v ascending
    * @details [long description]
@@ -195,6 +196,7 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
   }
  public:
   void minimize(Problem<Dtype> &objFunc, Vector<Dtype> & x0) {
+    const int m = 5; // History size
     objFunc_ = &objFunc;
     DIM = x0.rows();
     if (objFunc.hasLowerBound()) {
@@ -214,7 +216,6 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
     Matrix<Dtype> yHistory = Matrix<Dtype>::Zero(DIM, 0);
     Matrix<Dtype> sHistory = Matrix<Dtype>::Zero(DIM, 0);
     Vector<Dtype> x = x0, g = x0;
-    size_t k = 0;
     Dtype f = objFunc.value(x);
     objFunc.gradient(x, g);
     // conv. crit.
@@ -222,7 +223,9 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
     [&](Vector<Dtype> & x, Vector<Dtype> & g)->bool {
       return (((x - g).cwiseMax(lboundTemplate).cwiseMin(uboundTemplate) - x).template lpNorm<Eigen::Infinity>() >= 1e-4);
     };
-    while (noConvergence(x, g) && (k < this->settings_.maxIter)) {
+    this->m_current.reset();
+    this->m_status = Status::Continue;
+    while (noConvergence(x, g) && (this->m_status == Status::Continue)) {
       Dtype f_old = f;
       Vector<Dtype> x_old = x;
       Vector<Dtype> g_old = g;
@@ -247,12 +250,12 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
       Dtype test = newS.dot(newY);
       test = (test < 0) ? -1.0 * test : test;
       if (test > 1e-7 * newY.squaredNorm()) {
-        if (yHistory.cols() < this->settings_.m) {
-          yHistory.conservativeResize(DIM, k + 1);
-          sHistory.conservativeResize(DIM, k + 1);
+        if (yHistory.cols() < m) {
+          yHistory.conservativeResize(DIM, this->m_current.iterations + 1);
+          sHistory.conservativeResize(DIM, this->m_current.iterations + 1);
         } else {
-          yHistory.leftCols(this->settings_.m - 1) = yHistory.rightCols(this->settings_.m - 1).eval();
-          sHistory.leftCols(this->settings_.m - 1) = sHistory.rightCols(this->settings_.m - 1).eval();
+          yHistory.leftCols(m - 1) = yHistory.rightCols(m - 1).eval();
+          sHistory.leftCols(m - 1) = sHistory.rightCols(m - 1).eval();
         }
         yHistory.rightCols(1) = newY;
         sHistory.rightCols(1) = newS;
@@ -273,9 +276,16 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
         // successive function values too similar
         break;
       }
-      k++;
+      ++this->m_current.iterations;
+      this->m_current.gradNorm = g.norm();
+      this->m_status = checkConvergence(this->m_stop, this->m_current);
     }
     x0 = x;
+    if (this->m_debug > DebugLevel::None) {
+        std::cout << "Stop status was: " << this->m_status << std::endl;
+        std::cout << "Stop criteria were: " << std::endl << this->m_stop << std::endl;
+        std::cout << "Current values are: " << std::endl << this->m_current << std::endl;
+    }
   }
 };
 }

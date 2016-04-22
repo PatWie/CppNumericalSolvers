@@ -21,7 +21,7 @@ class NewtonDescentSolver : public ISolver<T, 2> {
 
         T gradNorm = 0;
 
-        size_t iter = 0;
+        this->m_current.reset();
         do {
             objFunc.gradient(x0, grad);
             objFunc.hessian(x0, hessian);
@@ -30,11 +30,11 @@ class NewtonDescentSolver : public ISolver<T, 2> {
 
             const double rate = Armijo<T, decltype(objFunc), 1>::linesearch(x0, delta_x, objFunc) ;
             x0 = x0 + rate * delta_x;
-            gradNorm = grad.template lpNorm<Eigen::Infinity>();
             // std::cout << "iter: "<<iter<< ", f = " <<  objFunc.value(x0) << ", ||g||_inf "<<gradNorm  << std::endl;
-            iter++;
-
-        } while ((gradNorm > this->settings_.gradTol) && (iter < this->settings_.maxIter));
+            ++this->m_current.iterations;
+            this->m_current.gradNorm = grad.template lpNorm<Eigen::Infinity>();
+            this->m_status = checkConvergence(this->m_stop, this->m_current);
+        } while (this->m_status == Status::Continue);
     }
 };
 

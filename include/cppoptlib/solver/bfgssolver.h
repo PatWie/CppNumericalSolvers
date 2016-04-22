@@ -13,14 +13,11 @@ template<typename T>
 class BfgsSolver : public ISolver<T, 1> {
   public:
     void minimize(Problem<T> &objFunc, Vector<T> & x0) {
-
         const size_t DIM = x0.rows();
-        size_t iter = 0;
         Matrix<T> H = Matrix<T>::Identity(DIM, DIM);
         Vector<T> grad(DIM);
-        T gradNorm = 0;
         Vector<T> x_old = x0;
-
+        this->m_current.reset();
         do {
             objFunc.gradient(x0, grad);
             Vector<T> searchDir = -1 * H * grad;
@@ -45,15 +42,15 @@ class BfgsSolver : public ISolver<T, 1> {
             const double rho = 1.0 / y.dot(s);
             H = H - rho * (s * (y.transpose() * H) + (H * y) * s.transpose()) + rho * rho * (y.dot(H * y) + 1.0 / rho)
                 * (s * s.transpose());
-            gradNorm = grad.template lpNorm<Eigen::Infinity>();
             // std::cout << "iter: "<<iter<< " f = " <<  objFunc.value(x0) << " ||g||_inf "<<gradNorm   << std::endl;
 
             if( (x_old-x0).template lpNorm<Eigen::Infinity>() < 1e-7  )
                 break;
             x_old = x0;
-            iter++;
-
-        } while ((gradNorm > this->settings_.gradTol) && (iter < this->settings_.maxIter));
+            ++this->m_current.iterations;
+            this->m_current.gradNorm = grad.template lpNorm<Eigen::Infinity>();
+            this->m_status = checkConvergence(this->m_stop, this->m_current);
+        } while (this->m_status == Status::Continue);
 
     }
 

@@ -11,7 +11,7 @@ namespace cppoptlib {
 template<typename T>
 class GradientDescentSolver : public ISolver<T, 1> {
 
- public:
+public:
   /**
    * @brief minimize
    * @details [long description]
@@ -21,17 +21,21 @@ class GradientDescentSolver : public ISolver<T, 1> {
   void minimize(Problem<T> &objFunc, Vector<T> & x0) {
 
     Vector<T> direction(x0.rows());
-    size_t iter = 0;
-    T gradNorm = 0;
+    this->m_current.reset();
     do {
       objFunc.gradient(x0, direction);
       const T rate = MoreThuente<T, decltype(objFunc), 1>::linesearch(x0, -direction, objFunc) ;
       x0 = x0 - rate * direction;
-      gradNorm = direction.template lpNorm<Eigen::Infinity>();
+      this->m_current.gradNorm = direction.template lpNorm<Eigen::Infinity>();
       // std::cout << "iter: "<<iter<< " f = " <<  objFunc.value(x0) << " ||g||_inf "<<gradNorm  << std::endl;
-      iter++;
-    } while ((gradNorm > this->settings_.gradTol) && (iter < this->settings_.maxIter));
-
+      ++this->m_current.iterations;
+      this->m_status = checkConvergence(this->m_stop, this->m_current);
+    } while (this->m_status == Status::Continue);
+    if (this->m_debug > DebugLevel::None) {
+        std::cout << "Stop status was: " << this->m_status << std::endl;
+        std::cout << "Stop criteria were: " << std::endl << this->m_stop << std::endl;
+        std::cout << "Current values are: " << std::endl << this->m_current << std::endl;
+    }
   }
 
 };

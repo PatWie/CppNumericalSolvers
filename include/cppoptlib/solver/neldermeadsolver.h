@@ -52,7 +52,7 @@ class NelderMeadSolver : public ISolver<T, 0> {
     sort(index.begin(), index.end(), [&](int a, int b)-> bool { return f[a] < f[b]; });
 
     int iter = 0;
-    const int maxIter = this->settings_.maxIter*DIM;
+    const int maxIter = this->m_stop.iterations*DIM;
     while (iter < maxIter) {
 
       // conv-check
