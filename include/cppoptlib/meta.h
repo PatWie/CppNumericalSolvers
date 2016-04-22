@@ -13,32 +13,97 @@ using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 
+enum class DebugLevel { None = 0, Low, High };
+enum class Status {
+    NotStarted = -1,
+    Continue = 0,
+    IterationLimit,
+    XDeltaTolerance,
+    FDeltaTolerance,
+    GradNormTolerance,
+    Condition
+};
+
 template<typename T>
-bool checkConvergence(T val_new, T val_old, Vector<T> grad, Vector<T> x_new, Vector<T> x_old) {
+class Criteria {
+public:
+    size_t iterations; //!< Maximum number of iterations
+    T xDelta;          //!< Minimum change in parameter vector
+    T fDelta;          //!< Minimum change in cost function
+    T gradNorm;        //!< Minimum norm of gradient vector
+    T condition;       //!< Maximum condition number of Hessian
 
-    T ftol = 1e-10;
-    T gtol = 1e-8;
-    T xtol = 1e-32;
-
-    // value crit.
-    if((x_new-x_old).cwiseAbs().maxCoeff() < xtol)
-        return true;
-
-    // // absol. crit
-    if(abs(val_new - val_old) / (abs(val_new) + ftol) < ftol) {
-        std::cout << abs(val_new - val_old) / (abs(val_new) + ftol) << std::endl;
-        std::cout << val_new << std::endl;
-        std::cout << val_old << std::endl;
-        std::cout << abs(val_new - val_old) / (abs(val_new) + ftol) << std::endl;
-        return true;
+    Criteria() {
+        reset();
     }
 
-    // gradient crit
-    T g = grad.template lpNorm<Eigen::Infinity>();
-    if (g < gtol)
-        return true;
-    return false;
+    static Criteria defaults() {
+        Criteria d;
+        d.iterations = 10000;
+        d.xDelta = 0;
+        d.fDelta = 0;
+        d.gradNorm = 1e-4;
+        d.condition = 0;
+        return d;
+    }
+
+    void reset() {
+        iterations = 0;
+        xDelta = 0;
+        fDelta = 0;
+        gradNorm = 0;
+        condition = 0;
+    }
+
+    void print(std::ostream &os) const {
+        os << "Iterations: " << iterations << std::endl;
+        os << "xDelta:     " << xDelta << std::endl;
+        os << "fDelta:     " << fDelta << std::endl;
+        os << "GradNorm:   " << gradNorm << std::endl;
+        os << "Condition:  " << condition << std::endl;
+    }
+};
+
+template<typename T>
+Status checkConvergence(const Criteria<T> &stop, const Criteria<T> &current) {
+
+    if ((stop.iterations > 0) && (current.iterations > stop.iterations)) {
+        return Status::IterationLimit;
+    }
+    if ((stop.xDelta > 0) && (current.xDelta < stop.xDelta)) {
+        return Status::XDeltaTolerance;
+    }
+    if ((stop.fDelta > 0) && (current.fDelta < stop.fDelta)) {
+        return Status::FDeltaTolerance;
+    }
+    if ((stop.gradNorm > 0) && (current.gradNorm < stop.gradNorm)) {
+        return Status::GradNormTolerance;
+    }
+    if ((stop.condition > 0) && (current.condition > stop.condition)) {
+        return Status::Condition;
+    }
+    return Status::Continue;
 }
 
 }
+
+std::ostream &operator<<(std::ostream &os, const cppoptlib::Status &s) {
+    switch (s) {
+        case cppoptlib::Status::NotStarted: os << "Solver not started."; break;
+        case cppoptlib::Status::Continue:   os << "Convergence criteria not reached."; break;
+        case cppoptlib::Status::IterationLimit: os << "Iteration limit reached."; break;
+        case cppoptlib::Status::XDeltaTolerance: os << "Change in parameter vector too small."; break;
+        case cppoptlib::Status::FDeltaTolerance: os << "Change in cost function value too small."; break;
+        case cppoptlib::Status::GradNormTolerance: os << "Gradient vector norm too small."; break;
+        case cppoptlib::Status::Condition: os << "Condition of Hessian/Covariance matrix too large."; break;
+    }
+    return os;
+}
+
+template<typename T>
+std::ostream &operator<<(std::ostream &os, const cppoptlib::Criteria<T> &c) {
+    c.print(os);
+    return os;
+}
+
 #endif /* META_H */

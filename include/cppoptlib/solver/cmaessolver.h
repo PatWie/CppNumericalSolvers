@@ -13,7 +13,6 @@ namespace cppoptlib {
  */
 template<typename T>
 class CMAesSolver : public ISolver<T, 1> {
-  using ISolver<T, 1>::ISolver; // Inherit the constructors from the interface
   // random number generator
   // http://stackoverflow.com/questions/14732132/global-initialization-with-temporary-function-object
   // we construct this in the constructor
@@ -143,7 +142,7 @@ class CMAesSolver : public ISolver<T, 1> {
     Vector<T> zeroVectorTemplate = Vector<T>::Zero(DIM);
 
     // CMA-ES Main Loop
-    for (this->m_info.iterations = 0; this->m_info.iterations < this->m_ctrl.iterations; ++this->m_info.iterations) {
+    for (size_t curIter = 0; curIter < this->m_stop.iterations; ++curIter) {
       std::vector<individual> pop;
 
       for (int i = 0; i < populationSize; ++i) {
@@ -165,10 +164,10 @@ class CMAesSolver : public ISolver<T, 1> {
       });
 
       bestCostSoFar = bestSol.cost;
-      // printf("%i best cost so far %f\n", this->iterations_, bestCostSoFar );
+      // printf("%i best cost so far %f\n", curIter, bestCostSoFar );
 
       // any further update?
-      if (this->m_info.iterations == this->m_ctrl.iterations - 2)
+      if (curIter == this->m_stop.iterations - 2)
         break;
 
       // update mean (TODO: matrix-vec-multiplication with permutation matrix?)
@@ -188,7 +187,7 @@ class CMAesSolver : public ISolver<T, 1> {
       sigma = sigma * pow(  exp((cs / ds * ((ps).norm() / ENN - 1.))), 0.3);
 
       T hs = 0;
-      if (ps.norm() / sqrt(pow(1 - (1. - cs), (2 * (this->m_info.iterations + 1)))) < hth)
+      if (ps.norm() / sqrt(pow(1 - (1. - cs), (2 * (curIter + 1)))) < hth)
         hs = 1;
       else
         hs = 0;
@@ -221,7 +220,7 @@ class CMAesSolver : public ISolver<T, 1> {
       // prepare new population
       pop.clear();
 
-      if ((this->m_info.iterations > 150) && ((bestSol.pos-x0).norm() < 1e-8)) {
+      if ((curIter > 150) && ((bestSol.pos-x0).norm() < 1e-8)) {
         // successive function values too similar, but enought pre-iteration
         break;
       }
