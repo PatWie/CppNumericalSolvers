@@ -19,6 +19,7 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
   Vector<Dtype> uboundTemplate;
   Dtype theta;
   int DIM;
+  int m_historySize = 5;
 
   /**
    * @brief sort pairs (k,v) according v ascending
@@ -195,8 +196,9 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
     }
   }
  public:
+  void setHistorySize(const int hs) { m_historySize = hs; }
+
   void minimize(Problem<Dtype> &objFunc, Vector<Dtype> & x0) {
-    const int m = 5; // History size
     objFunc_ = &objFunc;
     DIM = x0.rows();
     if (objFunc.hasLowerBound()) {
@@ -250,12 +252,12 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
       Dtype test = newS.dot(newY);
       test = (test < 0) ? -1.0 * test : test;
       if (test > 1e-7 * newY.squaredNorm()) {
-        if (yHistory.cols() < m) {
+        if (yHistory.cols() < m_historySize) {
           yHistory.conservativeResize(DIM, this->m_current.iterations + 1);
           sHistory.conservativeResize(DIM, this->m_current.iterations + 1);
         } else {
-          yHistory.leftCols(m - 1) = yHistory.rightCols(m - 1).eval();
-          sHistory.leftCols(m - 1) = sHistory.rightCols(m - 1).eval();
+          yHistory.leftCols(m_historySize - 1) = yHistory.rightCols(m_historySize - 1).eval();
+          sHistory.leftCols(m_historySize - 1) = sHistory.rightCols(m_historySize - 1).eval();
         }
         yHistory.rightCols(1) = newY;
         sHistory.rightCols(1) = newS;
