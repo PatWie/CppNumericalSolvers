@@ -3,6 +3,11 @@ CppOptimizationLibrary
 
 [![Build Status](https://api.travis-ci.org/PatWie/CppNumericalSolvers.svg?branch=master)](http://travis-ci.org/PatWie/CppNumericalSolvers)
 
+Get this Library
+-----------
+
+    git clone --recursive https://github.com/PatWie/CppNumericalSolvers.git
+
 About
 -----------
 Have you ever googled for a c++ version of *fminsearch*, which is easy to use without adding tons of dependencies and without editing many setting-structs? This project exactly addresses this issue by providing a *header-only* library without dependencies. All solvers are written from scratch, which means they do not represent the current state-of-the-art implementation with all tricky optimizations (at least for now). But they are very easy to use. Want a full example?

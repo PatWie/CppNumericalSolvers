@@ -11,7 +11,6 @@ namespace cppoptlib {
 
 template<typename T>
 class NewtonDescentSolver : public ISolver<T, 2> {
-  using ISolver<T, 2>::ISolver; // Inherit the constructors from the interface
   public:
     void minimize(Problem<T> &objFunc, Vector<T> & x0) {
 
@@ -19,7 +18,10 @@ class NewtonDescentSolver : public ISolver<T, 2> {
 
         Vector<T> grad = Vector<T>::Zero(DIM);
         Matrix<T> hessian = Matrix<T>::Zero(DIM, DIM);
-        this->m_info.iterations = 0;
+
+        T gradNorm = 0;
+
+        this->m_current.reset();
         do {
             objFunc.gradient(x0, grad);
             objFunc.hessian(x0, hessian);
@@ -28,10 +30,11 @@ class NewtonDescentSolver : public ISolver<T, 2> {
 
             const double rate = Armijo<T, decltype(objFunc), 1>::linesearch(x0, delta_x, objFunc) ;
             x0 = x0 + rate * delta_x;
-            this->m_info.gradNorm = grad.template lpNorm<Eigen::Infinity>();
-            // std::cout << "Iteration: "<<this->iterations_<< ", f = " <<  objFunc.value(x0) << ", ||g||_inf "<<gradNorm  << std::endl;
-            ++this->m_info.iterations;
-        } while (this->shouldContinue());
+            // std::cout << "iter: "<<iter<< ", f = " <<  objFunc.value(x0) << ", ||g||_inf "<<gradNorm  << std::endl;
+            ++this->m_current.iterations;
+            this->m_current.gradNorm = grad.template lpNorm<Eigen::Infinity>();
+            this->m_status = checkConvergence(this->m_stop, this->m_current);
+        } while (this->m_status == Status::Continue);
     }
 };
 

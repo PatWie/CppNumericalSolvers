@@ -10,8 +10,8 @@ namespace cppoptlib {
 
 template<typename T>
 class GradientDescentSolver : public ISolver<T, 1> {
-  using ISolver<T, 1>::ISolver; // Inherit the constructors from the interface
- public:
+
+public:
   /**
    * @brief minimize
    * @details [long description]
@@ -21,16 +21,21 @@ class GradientDescentSolver : public ISolver<T, 1> {
   void minimize(Problem<T> &objFunc, Vector<T> & x0) {
 
     Vector<T> direction(x0.rows());
-    this->m_info = {0., 0., 0, 0}; // Zero out the information before starting
+    this->m_current.reset();
     do {
       objFunc.gradient(x0, direction);
       const T rate = MoreThuente<T, decltype(objFunc), 1>::linesearch(x0, -direction, objFunc) ;
       x0 = x0 - rate * direction;
-      this->m_info.gradNorm = direction.template lpNorm<Eigen::Infinity>();
-      // std::cout << "Iteration: "<<this->iterations_<< " f = " <<  objFunc.value(x0) << " ||g||_inf "<<gradNorm  << std::endl;
-      ++this->m_info.iterations;
-    } while (this->shouldContinue());
-
+      this->m_current.gradNorm = direction.template lpNorm<Eigen::Infinity>();
+      // std::cout << "iter: "<<iter<< " f = " <<  objFunc.value(x0) << " ||g||_inf "<<gradNorm  << std::endl;
+      ++this->m_current.iterations;
+      this->m_status = checkConvergence(this->m_stop, this->m_current);
+    } while (this->m_status == Status::Continue);
+    if (this->m_debug > DebugLevel::None) {
+        std::cout << "Stop status was: " << this->m_status << std::endl;
+        std::cout << "Stop criteria were: " << std::endl << this->m_stop << std::endl;
+        std::cout << "Current values are: " << std::endl << this->m_current << std::endl;
+    }
   }
 
 };
