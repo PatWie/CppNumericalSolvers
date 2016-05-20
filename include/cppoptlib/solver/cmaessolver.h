@@ -227,6 +227,9 @@ class CMAesSolver : public ISolver<T, 1> {
 
       // update best solution
       x0 = bestSol.pos;
+
+      if(!objFunc.callback(&this->m_current, x0))
+        break;
     }
   }
 

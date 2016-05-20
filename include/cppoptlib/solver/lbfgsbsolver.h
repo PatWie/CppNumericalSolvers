@@ -227,7 +227,7 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
     };
     this->m_current.reset();
     this->m_status = Status::Continue;
-    while (noConvergence(x, g) && (this->m_status == Status::Continue)) {
+    while (noConvergence(x, g) && (this->m_status == Status::Continue) && objFunc.callback(&this->m_current, x)) {
       Dtype f_old = f;
       Vector<Dtype> x_old = x;
       Vector<Dtype> g_old = g;

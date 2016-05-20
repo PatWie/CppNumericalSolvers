@@ -21,6 +21,7 @@ protected:
     DebugLevel m_debug = DebugLevel::None;
 
 public:
+    virtual ~ISolver() = default;
     ISolver() {
         m_stop = TCriteria::defaults();
         m_current.reset();
