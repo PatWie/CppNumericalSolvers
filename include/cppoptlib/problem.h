@@ -29,7 +29,7 @@ class Problem {
   Problem() {}
   virtual ~Problem()= default;
 
-  virtual bool callback(Criteria<T>* state, Vector<T> x) {
+  virtual bool callback(const Criteria<T> &state, const Vector<T> &x) {
     return true;
   }
 

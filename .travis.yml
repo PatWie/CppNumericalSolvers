@@ -62,7 +62,7 @@ install:
 script:
   - mkdir build
   - cd build
-  - EIGEN3_INCLUDE_DIR=eigen cmake -DCMAKE_CXX_COMPILER=$COMPILER ..
+  - cmake -DEIGEN3_INCLUDE_DIR=eigen -DCMAKE_CXX_COMPILER=$COMPILER ..
   - make all
   - make lint
   - ./bin/verify

@@ -34,7 +34,7 @@ class NewtonDescentSolver : public ISolver<T, 2> {
             ++this->m_current.iterations;
             this->m_current.gradNorm = grad.template lpNorm<Eigen::Infinity>();
             this->m_status = checkConvergence(this->m_stop, this->m_current);
-        } while ((this->m_status == Status::Continue) && (objFunc.callback(&this->m_current, x0)));
+        } while (objFunc.callback(this->m_current, x0) && (this->m_status == Status::Continue));
     }
 };
 

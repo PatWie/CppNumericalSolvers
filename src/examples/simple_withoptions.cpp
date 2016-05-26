@@ -24,8 +24,8 @@ class Simple : public Problem<T> {
         grad[1]  = 2*100*x[1];
     }
 
-    bool callback(Criteria<T>* state, Vector<T> x) {
-        printf("(%04d) ||dx||= %04.08f \t||x||= %02.08f \tf(x)= %04.010f \t", state->iterations, state->gradNorm, x.norm(), value(x));
+    bool callback(const Criteria<T> &state, const Vector<T> &x) {
+        printf("(%04d) ||dx||= %04.08f \t||x||= %02.08f \tf(x)= %04.010f \t", state.iterations, state.gradNorm, x.norm(), value(x));
         std::cout << " x = ["  <<  x.transpose() <<" ]" << std::endl;
         return true;
     }
