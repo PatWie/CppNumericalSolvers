@@ -87,7 +87,7 @@ Status checkConvergence(const Criteria<T> &stop, const Criteria<T> &current) {
 
 }
 
-std::ostream &operator<<(std::ostream &os, const cppoptlib::Status &s) {
+inline std::ostream &operator<<(std::ostream &os, const cppoptlib::Status &s) {
     switch (s) {
         case cppoptlib::Status::NotStarted: os << "Solver not started."; break;
         case cppoptlib::Status::Continue:   os << "Convergence criteria not reached."; break;

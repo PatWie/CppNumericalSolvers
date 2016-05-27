@@ -23,6 +23,7 @@ public:
     Vector<T> direction(x0.rows());
     this->m_current.reset();
     do {
+      ;
       objFunc.gradient(x0, direction);
       const T rate = MoreThuente<T, decltype(objFunc), 1>::linesearch(x0, -direction, objFunc) ;
       x0 = x0 - rate * direction;
@@ -30,7 +31,7 @@ public:
       // std::cout << "iter: "<<iter<< " f = " <<  objFunc.value(x0) << " ||g||_inf "<<gradNorm  << std::endl;
       ++this->m_current.iterations;
       this->m_status = checkConvergence(this->m_stop, this->m_current);
-    } while (this->m_status == Status::Continue);
+    } while (objFunc.callback(this->m_current, x0) && (this->m_status == Status::Continue));
     if (this->m_debug > DebugLevel::None) {
         std::cout << "Stop status was: " << this->m_status << std::endl;
         std::cout << "Stop criteria were: " << std::endl << this->m_stop << std::endl;

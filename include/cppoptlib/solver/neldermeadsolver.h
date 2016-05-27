@@ -53,7 +53,7 @@ class NelderMeadSolver : public ISolver<T, 0> {
 
     int iter = 0;
     const int maxIter = this->m_stop.iterations*DIM;
-    while (iter < maxIter) {
+    while (objFunc.callback(this->m_current, x0.col(index[0])) && (iter < maxIter)) {
 
       // conv-check
       T max1 = fabs(f[index[1]] - f[index[0]]);

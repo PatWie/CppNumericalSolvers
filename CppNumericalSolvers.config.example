@@ -1,3 +1,0 @@
-SET( EIGEN3_INCLUDE_DIR "eigen" )
-SET( GTEST_ROOT "${PROJECT_SOURCE_DIR}/gtest")
-SET(Matlab_DIR  "/path/to/matlab")

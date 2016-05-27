@@ -60,10 +60,9 @@ install:
     fi
 
 script:
-  - cp CppNumericalSolvers.config.example CppNumericalSolvers.config
   - mkdir build
   - cd build
-  - cmake -DCMAKE_CXX_COMPILER=$COMPILER ..
+  - cmake -DEIGEN3_INCLUDE_DIR=eigen -DCMAKE_CXX_COMPILER=$COMPILER ..
   - make all
   - make lint
   - ./bin/verify

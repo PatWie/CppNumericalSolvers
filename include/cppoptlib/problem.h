@@ -27,6 +27,11 @@ class Problem {
  public:
 
   Problem() {}
+  virtual ~Problem()= default;
+
+  virtual bool callback(const Criteria<T> &state, const Vector<T> &x) {
+    return true;
+  }
 
   void setBoxConstraint(Vector<T>  lb, Vector<T>  ub) {
     setLowerBound(lb);

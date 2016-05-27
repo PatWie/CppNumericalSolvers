@@ -8,6 +8,17 @@ Get this Library
 
     git clone --recursive https://github.com/PatWie/CppNumericalSolvers.git
 
+or a complete copy and paste version
+
+    git clone --recursive https://github.com/PatWie/CppNumericalSolvers.git
+    cd CppNumericalSolvers/
+    ./get_dependencies.sh
+    mkdir build
+    cd build
+    cmake ..
+    make all
+    ./bin/verify
+
 About
 -----------
 Have you ever googled for a c++ version of *fminsearch*, which is easy to use without adding tons of dependencies and without editing many setting-structs? This project exactly addresses this issue by providing a *header-only* library without dependencies. All solvers are written from scratch, which means they do not represent the current state-of-the-art implementation with all tricky optimizations (at least for now). But they are very easy to use. Want a full example?
@@ -57,10 +68,6 @@ Before compiling you need to adjust one path to the [Eigen3][eigen3]-Library (he
 
 To compile the examples and the unit test just do
 
-    # copy configuration file
-    cp CppNumericalSolvers.config.example CppNumericalSolvers.config
-    # adjust paths and compiler (supports g++, clang++)
-    edit CppNumericalSolvers.config
     # create a new directory
     mkdir build && cd build   
     cmake ..
