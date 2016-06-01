@@ -4,6 +4,7 @@
 #include "../../gtest/googletest/include/gtest/gtest.h"
 #include "../../include/cppoptlib/meta.h"
 #include "../../include/cppoptlib/problem.h"
+#include "../../include/cppoptlib/bounded_problem.h"
 #include "../../include/cppoptlib/solver/gradientdescentsolver.h"
 #include "../../include/cppoptlib/solver/conjugatedgradientdescentsolver.h"
 #include "../../include/cppoptlib/solver/newtondescentsolver.h"
@@ -20,8 +21,10 @@ using namespace cppoptlib;
 // collection of benchmark functions
 // ----------------------------------------------------------------------------------
 template<typename T>
-class Rosenbrock : public Problem<T> {
+class Rosenbrock : public BoundedProblem<T> {
  public:
+    using super = BoundedProblem<T>;
+    Rosenbrock() : super(-Vector<T>::Ones(2)*std::numeric_limits<T>::infinity(), Vector<T>::Ones(2)*std::numeric_limits<T>::infinity()) {}
 
   T value(const Vector<T> &x) {
     const size_t n = x.rows();
@@ -38,8 +41,11 @@ class Rosenbrock : public Problem<T> {
 };
 
 template<typename T>
-class Beale : public Problem<T> {
+class Beale : public BoundedProblem<T> {
  public:
+    using super = BoundedProblem<T>;
+    Beale() : super(-Vector<T>::Ones(2)*std::numeric_limits<T>::infinity(), Vector<T>::Ones(2)*std::numeric_limits<T>::infinity()) {}
+
   T value(const Vector<T> &xx) {
     const T x = xx[0];
     const T y = xx[1];
@@ -59,8 +65,11 @@ class Beale : public Problem<T> {
 };
 
 template<typename T>
-class GoldsteinPrice  : public Problem<T> {
+class GoldsteinPrice  : public BoundedProblem<T> {
  public:
+    using super = BoundedProblem<T>;
+    GoldsteinPrice() : super(-Vector<T>::Ones(2)*std::numeric_limits<T>::infinity(), Vector<T>::Ones(2)*std::numeric_limits<T>::infinity()) {}
+
   T value(const Vector<T> &xx) {
     const T x = xx[0];
     const T y = xx[1];
@@ -75,8 +84,11 @@ class GoldsteinPrice  : public Problem<T> {
 };
 
 template<typename T>
-class Booth  : public Problem<T> {
+class Booth  : public BoundedProblem<T> {
  public:
+    using super = BoundedProblem<T>;
+    Booth() : super(-Vector<T>::Ones(2)*std::numeric_limits<T>::infinity(), Vector<T>::Ones(2)*std::numeric_limits<T>::infinity()) {}
+
   T value(const Vector<T> &xx) {
     const T x = xx[0];
     const T y = xx[1];
@@ -98,8 +110,11 @@ class Booth  : public Problem<T> {
 };
 
 template<typename T>
-class Matyas   : public Problem<T> {
+class Matyas   : public BoundedProblem<T> {
  public:
+    using super = BoundedProblem<T>;
+    Matyas() : super(-Vector<T>::Ones(2)*std::numeric_limits<T>::infinity(), Vector<T>::Ones(2)*std::numeric_limits<T>::infinity()) {}
+
   T value(const Vector<T> &xx) {
     const T x = xx[0];
     const T y = xx[1];
@@ -118,8 +133,11 @@ class Matyas   : public Problem<T> {
 };
 
 template<typename T>
-class Levi   : public Problem<T> {
+class Levi   : public BoundedProblem<T> {
  public:
+    using super = BoundedProblem<T>;
+    Levi() : super(-Vector<T>::Ones(2)*std::numeric_limits<T>::infinity(), Vector<T>::Ones(2)*std::numeric_limits<T>::infinity()) {}
+
   T value(const Vector<T> &xx) {
     const T x = xx[0];
     const T y = xx[1];
