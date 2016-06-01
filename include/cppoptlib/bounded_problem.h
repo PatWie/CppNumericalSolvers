@@ -53,14 +53,4 @@ namespace cppoptlib {
 
 
 
-
-
-
-
-
-
-
-
-
-
-#endif
+#endif /* BOUNDED_PROBLEM_H */
