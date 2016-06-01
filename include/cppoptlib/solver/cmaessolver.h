@@ -12,7 +12,7 @@ namespace cppoptlib {
  * @brief Covariance Matrix Adaptation
  */
 template<typename T>
-class CMAesSolver : public ISolver<T, 1> {
+class CMAesSolver : public ISolverUnbounded<T, 1> {
   // random number generator
   // http://stackoverflow.com/questions/14732132/global-initialization-with-temporary-function-object
   // we construct this in the constructor

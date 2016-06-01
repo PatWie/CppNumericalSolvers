@@ -6,6 +6,7 @@
 #include "../../gtest/googletest/include/gtest/gtest.h"
 #include "../../include/cppoptlib/meta.h"
 #include "../../include/cppoptlib/problem.h"
+#include "../../include/cppoptlib/bounded_problem.h"
 #include "../../include/cppoptlib/solver/gradientdescentsolver.h"
 #include "../../include/cppoptlib/solver/conjugatedgradientdescentsolver.h"
 #include "../../include/cppoptlib/solver/newtondescentsolver.h"
@@ -26,6 +27,21 @@ template<typename T>
 class RosenbrockValue : public Problem<T> {
   public:
     
+    T value(const Vector<T> &x) {
+        const T t1 = (1 - x[0]);
+        const T t2 = (x[1] - x[0] * x[0]);
+        return   t1 * t1 + 100 * t2 * t2;
+    }
+
+};
+
+template<typename T>
+class RosenbrockValueExplicitlyUnbounded : public BoundedProblem<T> {
+public:
+    using super = BoundedProblem<T>;
+
+    RosenbrockValueExplicitlyUnbounded() : super(-Vector<T>::Ones(2)*std::numeric_limits<T>::infinity(), Vector<T>::Ones(2)*std::numeric_limits<T>::infinity()) {}
+
     T value(const Vector<T> &x) {
         const T t1 = (1 - x[0]);
         const T t2 = (x[1] - x[0] * x[0]);
@@ -76,6 +92,45 @@ class RosenbrockFull : public Problem<T> {
     }
 };
 
+
+template<typename T>
+class RosenbrockFullExplicitlyUnbounded : public BoundedProblem<T> {
+public:
+    using super = BoundedProblem<T>;
+
+    RosenbrockFullExplicitlyUnbounded() : super(-Vector<T>::Ones(2)*std::numeric_limits<T>::infinity(), Vector<T>::Ones(2)*std::numeric_limits<T>::infinity()) {}
+
+    T value(const Vector<T> &x) {
+        const T t1 = (1 - x[0]);
+        const T t2 = (x[1] - x[0] * x[0]);
+        return   t1 * t1 + 100 * t2 * t2;
+    }
+
+    void gradient(const Vector<T> &x, Vector<T> &grad) {
+        grad[0]  = -2 * (1 - x[0]) + 200 * (x[1] - x[0] * x[0]) * (-2 * x[0]);
+        grad[1]  = 200 * (x[1] - x[0] * x[0]);
+    }
+
+    void hessian(const Vector<T> &x, Matrix<T> & hessian) {
+        hessian(0, 0) = 1200 * x[0] * x[0] - 400 * x[1] + 1;
+        hessian(0, 1) = -400 * x[0];
+        hessian(1, 0) = -400 * x[0];
+        hessian(1, 1) = 200;
+    }
+};
+
+
+template <class T>
+struct LinearFunc : public BoundedProblem<T> {
+    using super = BoundedProblem<T>;
+
+    LinearFunc() : super(Vector<T>::Zero(2), Vector<T>::Ones(2)) {}
+
+    T value(const Vector<T>& x) {
+        return -x[0];
+    }
+};
+
 template <class T> class GradientDescentTest : public testing::Test{};
 template <class T> class ConjugatedGradientDescentTest : public testing::Test{};
 template <class T> class NewtonDescentTest : public testing::Test{};
@@ -112,9 +167,9 @@ TEST(BfgsTest, RosenbrockMixValue)                                 { SOLVE_PROBL
 TEST(LbfgsTest, RosenbrockFarValue)                                { SOLVE_PROBLEM_D(cppoptlib::LbfgsSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
 TEST(LbfgsTest, RosenbrockNearValue)                               { SOLVE_PROBLEM_D(cppoptlib::LbfgsSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
 TEST(LbfgsTest, RosenbrockMixValue)                                { SOLVE_PROBLEM_D(cppoptlib::LbfgsSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
-TEST(LbfgsbTest, RosenbrockFarValue)                               { SOLVE_PROBLEM_D(cppoptlib::LbfgsbSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
-TEST(LbfgsbTest, RosenbrockNearValue)                              { SOLVE_PROBLEM_D(cppoptlib::LbfgsbSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
-TEST(LbfgsbTest, RosenbrockMixValue)                               { SOLVE_PROBLEM_D(cppoptlib::LbfgsbSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
+TEST(LbfgsbTest, RosenbrockFarValue)                               { SOLVE_PROBLEM_D(cppoptlib::LbfgsbSolver,RosenbrockValueExplicitlyUnbounded, 15.0, 8.0, 0.0) }
+TEST(LbfgsbTest, RosenbrockNearValue)                              { SOLVE_PROBLEM_D(cppoptlib::LbfgsbSolver,RosenbrockValueExplicitlyUnbounded, -1.0, 2.0, 0.0) }
+TEST(LbfgsbTest, RosenbrockMixValue)                               { SOLVE_PROBLEM_D(cppoptlib::LbfgsbSolver,RosenbrockValueExplicitlyUnbounded, -1.2, 100.0, 0.0) }
 TEST(CMAesTest, RosenbrockFarValue)                                { SOLVE_PROBLEM_D(cppoptlib::CMAesSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
 TEST(CMAesTest, RosenbrockNearValue)                               { SOLVE_PROBLEM_D(cppoptlib::CMAesSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
 TEST(CMAesTest, RosenbrockMixValue)                                { SOLVE_PROBLEM_D(cppoptlib::CMAesSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
@@ -137,15 +192,17 @@ TYPED_TEST(BfgsTest, RosenbrockMixFull)                            { SOLVE_PROBL
 TYPED_TEST(LbfgsTest, RosenbrockFarFull)                           { SOLVE_PROBLEM(cppoptlib::LbfgsSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
 TYPED_TEST(LbfgsTest, RosenbrockNearFull)                          { SOLVE_PROBLEM(cppoptlib::LbfgsSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
 TYPED_TEST(LbfgsTest, RosenbrockMixFull)                           { SOLVE_PROBLEM(cppoptlib::LbfgsSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
-TYPED_TEST(LbfgsbTest, RosenbrockFarFull)                          { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
-TYPED_TEST(LbfgsbTest, RosenbrockNearFull)                         { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
+TYPED_TEST(LbfgsbTest, RosenbrockFarFull)                          { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockFullExplicitlyUnbounded, 15.0, 8.0, 0.0) }
+TYPED_TEST(LbfgsbTest, RosenbrockNearFull)                         { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,RosenbrockFullExplicitlyUnbounded, -1.0, 2.0, 0.0) }
 
 
 // TODO: CMAes fails due to an Eigen-Bug
-TEST(LbfgsbTest, RosenbrockMixFull)                          { SOLVE_PROBLEM_D(cppoptlib::LbfgsbSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
+TEST(LbfgsbTest, RosenbrockMixFull)                          { SOLVE_PROBLEM_D(cppoptlib::LbfgsbSolver,RosenbrockFullExplicitlyUnbounded, -1.2, 100.0, 0.0) }
 TEST(CMAesTest, RosenbrockFarFull)                           { SOLVE_PROBLEM_D(cppoptlib::CMAesSolver,RosenbrockFull, 15.0, 8.0, 0.0) }
 TEST(CMAesTest, RosenbrockNearFull)                          { SOLVE_PROBLEM_D(cppoptlib::CMAesSolver,RosenbrockFull, -1.0, 2.0, 0.0) }
 TEST(CMAesTest, RosenbrockMixFull)                           { SOLVE_PROBLEM_D(cppoptlib::CMAesSolver,RosenbrockFull, -1.2, 100.0, 0.0) }
+
+TEST(LbfgsbTest, LinearFuncBoxConstrained)                          { SOLVE_PROBLEM_D(cppoptlib::LbfgsbSolver,LinearFunc, 0.1, 0.1, -1) }
 
 
 TYPED_TEST(CentralDifference, Gradient){

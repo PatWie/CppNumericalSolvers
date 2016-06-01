@@ -8,7 +8,7 @@
 namespace cppoptlib {
 
 template<typename T>
-class NelderMeadSolver : public ISolver<T, 0> {
+class NelderMeadSolver : public ISolverUnbounded<T, 0> {
 
  public:
   /**

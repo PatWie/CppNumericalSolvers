@@ -10,7 +10,7 @@
 namespace cppoptlib {
 
 template<typename T>
-class BfgsSolver : public ISolver<T, 1> {
+class BfgsSolver : public ISolverUnbounded<T, 1> {
   public:
     void minimize(Problem<T> &objFunc, Vector<T> & x0) {
         const size_t DIM = x0.rows();

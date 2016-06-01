@@ -6,6 +6,7 @@
 #include "isolver.h"
 #include "../meta.h"
 #include "../problem.h"
+#include "../bounded_problem.h"
 
 namespace cppoptlib {
 
@@ -36,7 +37,14 @@ public:
     const TCriteria &criteria() { return m_current; }
     const Status &status() { return m_status; }
     void setDebug(const DebugLevel &d) { m_debug = d; }
+};
 
+
+
+
+template<typename T, int Ord>
+class ISolverUnbounded : public ISolver<T, Ord> {
+public:
     /**
      * @brief minimize an objective function given a gradient (and optinal a hessian)
      * @details this is just the abstract interface
@@ -47,7 +55,24 @@ public:
      * @param funcHession hessian function
      */
     virtual void minimize(Problem<T> &objFunc, Vector<T> & x0) = 0;
+};
 
+
+
+
+template<typename T, int Ord>
+class ISolverBounded : public ISolver<T, Ord> {
+public:
+    /**
+     * @brief minimize an objective function given a gradient (and optinal a hessian)
+     * @details this is just the abstract interface
+     *
+     * @param x0 starting point
+     * @param funObjective objective function
+     * @param funGradient gradient function
+     * @param funcHession hessian function
+     */
+    virtual void minimize(BoundedProblem<T> &objFunc, Vector<T> & x0) = 0;
 };
 
 } /* namespace cppoptlib */

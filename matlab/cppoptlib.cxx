@@ -6,6 +6,7 @@
 #include <Eigen/Dense>
 #include "mex.h"
 #include "../include/cppoptlib/problem.h"
+#include "../include/cppoptlib/bounded_problem.h"
 #include "../include/cppoptlib/meta.h"
 #include "../include/cppoptlib/solver/gradientdescentsolver.h"
 #include "../include/cppoptlib/solver/conjugatedgradientdescentsolver.h"
@@ -28,8 +29,11 @@ size_t in_cols;
 char error_msg[200];
 
 template<typename T>
-class MATLABobjective : public Problem<T> {
+class MATLABobjective : public BoundedProblem<T> {
+    using super = BoundedProblem<T>;
  public:
+    MATLABobjective() : super(-Vector<T>::Ones(in_cols)*std::numeric_limits<T>::infinity(), Vector<T>::Ones(in_cols)*std::numeric_limits<T>::infinity()) {} // TODO: (CHECK) is in_cols as the dimension correct?
+
   T value(const Vector<T> &x) {
     mxArray * objective_ans, *objective_param[1];
     objective_param[0] = mxCreateDoubleMatrix(x.rows(), x.cols(), mxREAL);

@@ -9,7 +9,7 @@
 namespace cppoptlib {
 
 template<typename T>
-class ConjugatedGradientDescentSolver : public ISolver<T, 1> {
+class ConjugatedGradientDescentSolver : public ISolverUnbounded<T, 1> {
 
  public:
   /**
