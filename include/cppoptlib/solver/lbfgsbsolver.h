@@ -125,7 +125,7 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
     }
     dt_min = std::max(dt_min, (Dtype)0.0);
     t_old += dt_min;
-    #pragma omp parallel for
+    #pragma omp parallel for if (x_cauchy.rows() > 1000)
     for (int ii = i; ii < x_cauchy.rows(); ii++) {
       x_cauchy(sortedIndices[ii]) = x(sortedIndices[ii]) + t_old * d(sortedIndices[ii]);
     }
