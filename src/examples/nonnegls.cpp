@@ -1,6 +1,6 @@
 #include <iostream>
 #include "../../include/cppoptlib/meta.h"
-#include "../../include/cppoptlib/problem.h"
+#include "../../include/cppoptlib/bounded_problem.h"
 #include "../../include/cppoptlib/solver/lbfgsbsolver.h"
 
 // to use CppNumericalSolvers just use the namespace "cppoptlib"
@@ -8,12 +8,14 @@ namespace cppoptlib {
 
 // we will solve ||Xb-y|| s.t. b>=0
 template<typename T>
-class NonNegativeLeastSquares : public Problem<T> {
+class NonNegativeLeastSquares : public BoundedProblem<T> {
     const Matrix<T> X;
     const Vector<T> y;
 
   public:
-    NonNegativeLeastSquares(const Matrix<T> &X_, const Vector<T> y_) : X(X_), y(y_) {}
+
+    using super = BoundedProblem<T>;
+    NonNegativeLeastSquares(const Matrix<T> &X_, const Vector<T> y_) : super(Vector<double>::Zero(4), Vector<double>::Ones(4)*std::numeric_limits<double>::infinity()), X(X_), y(y_) {}
 
     T value(const Vector<T> &beta) {
         return (X*beta-y).dot(X*beta-y);
@@ -38,7 +40,6 @@ int main(int argc, char const *argv[]) {
 
     // perform non-negative least squares
     cppoptlib::NonNegativeLeastSquares<T> f(X, y);
-    f.setLowerBound(cppoptlib::Vector<double>::Zero(DIM));
 
     // create initial guess (make sure it's valid >= 0)
     cppoptlib::Vector<T> beta = cppoptlib::Vector<T>::Random(DIM);

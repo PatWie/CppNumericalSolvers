@@ -2,6 +2,7 @@
 #define BOUNDED_PROBLEM_H
 
 #include "meta.h"
+#include "problem.h"
 
 namespace cppoptlib {
 
