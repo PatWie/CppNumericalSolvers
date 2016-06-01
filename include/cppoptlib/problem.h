@@ -5,7 +5,7 @@
 
 #include <Eigen/Dense>
 
-#if defined(MATLAB) || defined(NDEBUG)
+#if defined(MATLAB) || defined(NDEBUG) || defined(NO_GOOGLE_TEST)
 #define EXPECT_NEAR(x, y, z)
 #else
 #include "../gtest/googletest/include/gtest/gtest.h"
