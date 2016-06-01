@@ -7,14 +7,24 @@
 #ifndef LBFGSBSOLVER_H_
 #define LBFGSBSOLVER_H_
 namespace cppoptlib {
+
+/**
+ * The implementation of this algorithm is based on the publication
+ *
+ * 'A limited memory algorithm for bound constrained optimization'
+ * by Richard H. Byrd, Peihuang Lu, Jorge Nocedal and Ciyou Zhu
+ *
+ * see: http://users.iems.northwestern.edu/~nocedal/PDFfiles/limited.pdf
+ */
+
 template<typename Dtype>
-class LbfgsbSolver : public ISolver<Dtype, 1> {
+class LbfgsbSolver : public ISolverBounded<Dtype, 1> {
   // last updates
   std::list<Vector<Dtype>> xHistory;
   // workspace matrices
   Matrix<Dtype> W, M;
   // ref to problem statement
-  Problem<Dtype> *objFunc_;
+  BoundedProblem<Dtype> *objFunc_;
   Vector<Dtype> lboundTemplate;
   Vector<Dtype> uboundTemplate;
   Dtype theta;
@@ -22,7 +32,7 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
   int m_historySize = 5;
 
   /**
-   * @brief sort pairs (k,v) according v ascending
+   * @brief sort pairs (k,v) according v ascending and returns a vector containing only the sorted indices
    * @details [long description]
    *
    * @param v [description]
@@ -32,20 +42,26 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
     std::vector<int> idx(v.size());
     for (size_t i = 0; i != idx.size(); ++i)
       idx[i] = v[i].first;
+
     sort(idx.begin(), idx.end(), [&v](size_t i1, size_t i2) {
-      return v[i1].second < v[i2].second;
+        return v[i1].second < v[i2].second;
     });
+
     return idx;
   }
+
+
+
+
   /**
    * @brief Algorithm CP: Computation of the generalized Cauchy point
    * @details PAGE 8
    *
    * @param c [description]
    */
-  void GetGeneralizedCauchyPoint(Vector<Dtype> &x, Vector<Dtype> &g, Vector<Dtype> &x_cauchy,
-  Vector<Dtype> &c) {
+  void GetGeneralizedCauchyPoint(Vector<Dtype> &x, Vector<Dtype> &g, Vector<Dtype> &x_cauchy, Vector<Dtype> &c) {
     const int DIM = x.rows();
+
     // Given x,l,u,g, and B = \theta I-WMW
     // {all t_i} = { (idx,value), ... }
     // TODO: use "std::set" ?
@@ -66,22 +82,26 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
         SetOfT.push_back(std::make_pair(j, tmp));
       }
     }
+
     // sortedindices [1,0,2] means the minimal element is on the 1-st entry
     std::vector<int> sortedIndices = sort_indexes(SetOfT);
+
     x_cauchy = x;
+
     // Initialize
-    // p :=     W^Dtype*p
+    // p :=     W^T * p
     Vector<Dtype> p = (W.transpose() * d);                     // (2mn operations)
     // c :=     0
     c = Eigen::Matrix<Dtype, Eigen::Dynamic, Eigen::Dynamic>::Zero(M.rows(), 1);
-    // f' :=    g^Dtype*d = -d^Td
+    // f' :=    g^T*d = -d^Td
     Dtype f_prime = -d.dot(d);                         // (n operations)
-    // f'' :=   \theta*d^Dtype*d-d^Dtype*W*M*W^Dtype*d = -\theta*f' - p^Dtype*M*p
+    // f'' :=   \theta*d^T*d - d^T*W*M*W^T*d = -\theta*f' - p^T*M*p
     Dtype f_doubleprime = (Dtype)(-1.0 * theta) * f_prime - p.dot(M * p); // (O(m^2) operations)
     // \delta t_min :=  -f'/f''
     Dtype dt_min = -f_prime / f_doubleprime;
     // t_old :=     0
     Dtype t_old = 0;
+
     // b :=     argmin {t_i , t_i >0}
     int i = 0;
     for (int j = 0; j < DIM; j++) {
@@ -90,6 +110,7 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
         break;
     }
     int b = sortedIndices[i];
+
     // see below
     // t                    :=  min{t_i : i in F}
     Dtype t = SetOfT[b].second;
@@ -101,6 +122,7 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
         x_cauchy(b) = uboundTemplate(b);
       else if (d(b) < 0)
         x_cauchy(b) = lboundTemplate(b);
+
       // z_b = x_p^{cp} - x_b
       Dtype zb = x_cauchy(b) - x(b);
       // c   :=  c +\delta t*p
@@ -125,12 +147,18 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
     }
     dt_min = std::max(dt_min, (Dtype)0.0);
     t_old += dt_min;
+
     #pragma omp parallel for if (x_cauchy.rows() > 1000)
     for (int ii = i; ii < x_cauchy.rows(); ii++) {
       x_cauchy(sortedIndices[ii]) = x(sortedIndices[ii]) + t_old * d(sortedIndices[ii]);
     }
+
     c += dt_min * p;
   }
+
+
+
+
   /**
    * @brief find alpha* = max {a : a <= 1 and  l_i-xc_i <= a*d_i <= u_i-xc_i}
    * @details [long description]
@@ -150,15 +178,19 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
     }
     return alphastar;
   }
+
+
+
+
   /**
    * @brief solving unbounded probelm
    * @details [long description]
    *
    * @param SubspaceMin [description]
    */
-  void SubspaceMinimization(Vector<Dtype> &x_cauchy, Vector<Dtype> &x, Vector<Dtype> &c, Vector<Dtype> &g,
-  Vector<Dtype> &SubspaceMin) {
+  void SubspaceMinimization(Vector<Dtype> &x_cauchy, Vector<Dtype> &x, Vector<Dtype> &c, Vector<Dtype> &g, Vector<Dtype> &SubspaceMin) {
     Dtype theta_inverse = 1 / theta;
+
     std::vector<int> FreeVariablesIndex;
     for (int i = 0; i < x_cauchy.rows(); i++) {
       if ((x_cauchy(i) != uboundTemplate(i)) && (x_cauchy(i) != lboundTemplate(i))) {
@@ -166,9 +198,11 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
       }
     }
     const int FreeVarCount = FreeVariablesIndex.size();
+
     Matrix<Dtype> WZ = Matrix<Dtype>::Zero(W.cols(), FreeVarCount);
     for (int i = 0; i < FreeVarCount; i++)
       WZ.col(i) = W.row(FreeVariablesIndex[i]);
+
     Vector<Dtype> rr = (g + theta * (x_cauchy - x) - W * (M * c));
     // r=r(FreeVariables);
     Vector<Dtype> r = Matrix<Dtype>::Zero(FreeVarCount, 1);
@@ -195,22 +229,19 @@ class LbfgsbSolver : public ISolver<Dtype, 1> {
       SubspaceMin(FreeVariablesIndex[i]) = SubspaceMin(FreeVariablesIndex[i]) + dStar(i);
     }
   }
+
+
  public:
+
   void setHistorySize(const int hs) { m_historySize = hs; }
 
-  void minimize(Problem<Dtype> &objFunc, Vector<Dtype> & x0) {
+  void minimize(BoundedProblem<Dtype> &objFunc, Vector<Dtype> & x0) {
     objFunc_ = &objFunc;
     DIM = x0.rows();
-    if (objFunc.hasLowerBound()) {
-      lboundTemplate = objFunc_->lowerBound();
-    }else {
-      lboundTemplate = -Vector<Dtype>::Ones(DIM)* std::numeric_limits<Dtype>::infinity();
-    }
-    if (objFunc.hasUpperBound()) {
-      uboundTemplate = objFunc_->upperBound();
-    }else {
-      uboundTemplate = Vector<Dtype>::Ones(DIM)* std::numeric_limits<Dtype>::infinity();
-    }
+
+      lboundTemplate = objFunc.lowerBound();
+      uboundTemplate = objFunc.upperBound();
+
     theta = 1.0;
     W = Matrix<Dtype>::Zero(DIM, 0);
     M = Matrix<Dtype>::Zero(0, 0);

@@ -10,7 +10,7 @@
 namespace cppoptlib {
 
 template<typename T>
-class LbfgsSolver : public ISolver<T, 1> {
+class LbfgsSolver : public ISolverUnbounded<T, 1> {
   public:
     void minimize(Problem<T> &objFunc, Vector<T> & x0) {
 

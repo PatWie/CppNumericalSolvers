@@ -16,14 +16,6 @@
 namespace cppoptlib {
 template<typename T>
 class Problem {
- protected:
-
-  bool hasLowerBound_ = false;
-  bool hasUpperBound_ = false;
-
-  Vector<T> lowerBound_;
-  Vector<T> upperBound_;
-
  public:
 
   Problem() {}
@@ -33,36 +25,6 @@ class Problem {
     return true;
   }
 
-  void setBoxConstraint(Vector<T>  lb, Vector<T>  ub) {
-    setLowerBound(lb);
-    setUpperBound(ub);
-  }
-
-  void setLowerBound(Vector<T>  lb) {
-    lowerBound_    = lb;
-    hasLowerBound_ = true;
-  }
-
-  void setUpperBound(Vector<T>  ub) {
-    upperBound_ = ub;
-    hasUpperBound_ = true;
-  }
-
-  bool hasLowerBound() {
-    return hasLowerBound_;
-  }
-
-  bool hasUpperBound() {
-    return hasUpperBound_;
-  }
-
-  Vector<T> lowerBound() {
-    return lowerBound_;
-  }
-
-  Vector<T> upperBound() {
-    return upperBound_;
-  }
 
   /**
    * @brief returns objective value in x

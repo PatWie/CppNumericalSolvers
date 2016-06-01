@@ -10,7 +10,7 @@
 namespace cppoptlib {
 
 template<typename T>
-class NewtonDescentSolver : public ISolver<T, 2> {
+class NewtonDescentSolver : public ISolverUnbounded<T, 2> {
   public:
     void minimize(Problem<T> &objFunc, Vector<T> & x0) {
 
