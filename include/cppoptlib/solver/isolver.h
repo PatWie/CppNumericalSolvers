@@ -9,11 +9,13 @@
 
 namespace cppoptlib {
 
-template<typename T, int Ord>
+template<typename ProblemType, int Ord>
 class ISolver {
 public:
-    typedef Criteria<T> TCriteria;
-
+    using Scalar    = typename ProblemType::Scalar;
+    using TVector   = typename ProblemType::TVector;
+    using THessian  = typename ProblemType::THessian;
+    using TCriteria = typename ProblemType::TCriteria;
 protected:
     const int order_ = Ord;
     TCriteria m_stop, m_current;
@@ -46,7 +48,7 @@ public:
      * @param funGradient gradient function
      * @param funcHession hessian function
      */
-    virtual void minimize(Problem<T> &objFunc, Vector<T> & x0) = 0;
+    virtual void minimize(ProblemType &objFunc, TVector &x0) = 0;
 
 };
 

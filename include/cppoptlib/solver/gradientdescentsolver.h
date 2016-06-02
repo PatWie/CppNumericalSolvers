@@ -8,24 +8,28 @@
 
 namespace cppoptlib {
 
-template<typename T>
-class GradientDescentSolver : public ISolver<T, 1> {
+template<typename ProblemType>
+class GradientDescentSolver : public ISolver<ProblemType, 1> {
 
 public:
+  using Superclass = ISolver<ProblemType, 1>;
+  using typename Superclass::Scalar;
+  using typename Superclass::TVector;
+
   /**
    * @brief minimize
    * @details [long description]
    *
    * @param objFunc [description]
    */
-  void minimize(Problem<T> &objFunc, Vector<T> & x0) {
+  void minimize(ProblemType &objFunc, TVector &x0) {
 
-    Vector<T> direction(x0.rows());
+    TVector direction(x0.rows());
     this->m_current.reset();
     do {
       ;
       objFunc.gradient(x0, direction);
-      const T rate = MoreThuente<T, decltype(objFunc), 1>::linesearch(x0, -direction, objFunc) ;
+      const Scalar rate = MoreThuente<ProblemType, 1>::linesearch(x0, -direction, objFunc) ;
       x0 = x0 - rate * direction;
       this->m_current.gradNorm = direction.template lpNorm<Eigen::Infinity>();
       // std::cout << "iter: "<<iter<< " f = " <<  objFunc.value(x0) << " ||g||_inf "<<gradNorm  << std::endl;

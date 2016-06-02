@@ -7,11 +7,12 @@
 
 namespace cppoptlib {
 
-template <typename T>
+/*template <typename T>
 using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 
 template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+*/
 
 enum class DebugLevel { None = 0, Low, High };
 enum class Status {

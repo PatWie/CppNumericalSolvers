@@ -20,10 +20,11 @@ using namespace cppoptlib;
 // collection of benchmark functions
 // ----------------------------------------------------------------------------------
 template<typename T>
-class Rosenbrock : public Problem<T> {
+class Rosenbrock : public Problem<T, 2> {
  public:
+  using typename Problem<T, 2>::TVector;
 
-  T value(const Vector<T> &x) {
+  T value(const TVector &x) {
     const size_t n = x.rows();
     T sum = 0;
 
@@ -38,9 +39,11 @@ class Rosenbrock : public Problem<T> {
 };
 
 template<typename T>
-class Beale : public Problem<T> {
+class Beale : public Problem<T, 2> {
  public:
-  T value(const Vector<T> &xx) {
+  using typename Problem<T, 2>::TVector;
+  
+  T value(const TVector &xx) {
     const T x = xx[0];
     const T y = xx[1];
     const T t1 = (1.5 - x + x * y);
@@ -49,7 +52,7 @@ class Beale : public Problem<T> {
     return  t1 * t1 + t2 * t2 + t3 * t3;
   }
 
-  void gradient(const Vector<T> &xx, Vector<T> &grad) {
+  void gradient(const TVector &xx, TVector &grad) {
     const T x = xx[0];
     const T y = xx[1];
 
@@ -59,9 +62,11 @@ class Beale : public Problem<T> {
 };
 
 template<typename T>
-class GoldsteinPrice  : public Problem<T> {
+class GoldsteinPrice  : public Problem<T, 2> {
  public:
-  T value(const Vector<T> &xx) {
+  using typename Problem<T, 2>::TVector;
+  
+  T value(const TVector &xx) {
     const T x = xx[0];
     const T y = xx[1];
 
@@ -75,9 +80,11 @@ class GoldsteinPrice  : public Problem<T> {
 };
 
 template<typename T>
-class Booth  : public Problem<T> {
+class Booth  : public Problem<T, 2> {
  public:
-  T value(const Vector<T> &xx) {
+  using typename Problem<T,2>::TVector;
+  
+  T value(const TVector &xx) {
     const T x = xx[0];
     const T y = xx[1];
 
@@ -87,7 +94,7 @@ class Booth  : public Problem<T> {
     return  t1*t1+t2*t2;
   }
 
-  void gradient(const Vector<T> &xx, Vector<T> &grad) {
+  void gradient(const TVector &xx, TVector &grad) {
     const T x = xx[0];
     const T y = xx[1];
 
@@ -98,15 +105,17 @@ class Booth  : public Problem<T> {
 };
 
 template<typename T>
-class Matyas   : public Problem<T> {
+class Matyas   : public Problem<T, 2> {
  public:
-  T value(const Vector<T> &xx) {
+  using typename Problem<T, 2>::TVector;
+  
+  T value(const TVector &xx) {
     const T x = xx[0];
     const T y = xx[1];
     return  0.26*(x*x+y*y)-0.48*x*y;
   }
 
-  void gradient(const Vector<T> &xx, Vector<T> &grad) {
+  void gradient(const TVector &xx, TVector &grad) {
     const T x = xx[0];
     const T y = xx[1];
 
@@ -118,35 +127,29 @@ class Matyas   : public Problem<T> {
 };
 
 template<typename T>
-class Levi   : public Problem<T> {
+class Levi   : public Problem<T, 2> {
  public:
-  T value(const Vector<T> &xx) {
+  using typename Problem<T, 2>::TVector;
+  T value(const TVector &xx) {
     const T x = xx[0];
     const T y = xx[1];
     
     return sin(3*PI*x)*sin(3*PI*x)+(x-1)*(x-1)*(1+sin(3*PI*y)*sin(3*PI*y)) +(y-1)*(y-1)*(1+sin(2*PI*y)*sin(2*PI*y)); 
   }
 
-  void gradient(const Vector<T> &xx, Vector<T> &grad) {
+  void gradient(const TVector &xx, TVector &grad) {
     const T x = xx[0];
     const T y = xx[1];
 
     grad[0] = 0.6e1 * sin(3. * PI * x) * cos(3. * PI * x) * PI + 2. * (x - 1.) * (1. + pow(sin(3. * PI * y), 2.));
     grad[1] = 0.6e1 * (double) (int) pow((double) (x - 1), (double) 2) * sin(3. * PI * y) * cos(3. * PI * y) * PI + 2. * (y - 1.) * (1. + pow(sin(2. * PI * y), 2.)) + 0.4e1 * pow(y - 1., 2.) * sin(2. * PI * y) * cos(2. * PI * y) * PI;
-
-
   }
-
-
 };
-
-
-
 
 // define test body
 // ----------------------------------------------------------------------------------
 #define CHECKDIFF(func, a,b)  TEST(GradientTest, func) {                                                                 \
-                                Vector<double> x(2);                                                                     \
+                                Eigen::Vector2d x;                                                                    \
                                 x(0) = a;                                                                                \
                                 x(1) = b;                                                                                \
                                 func<double> f;                                                                          \
@@ -155,12 +158,12 @@ class Levi   : public Problem<T> {
                                               
                                               
 
-#define BENCH2(sol, func, a,b, fx, y0, y1 ,PREC)   TEST(D2Functions##sol, func) {            \
-                                                Vector<double> x(2);               \
+#define BENCH2(sol, func, a,b, fx, y0, y1 ,PREC)   TEST(D2Functions##sol, func) {  \
+                                                Eigen::Vector2d x;              \
                                                 x(0) = a;                          \
                                                 x(1) = b;                          \
                                                 func<double> f;                    \
-                                                sol<double> solver;                \
+                                                sol<func<double>> solver;          \
                                                 solver.minimize(f, x);             \
                                                 EXPECT_NEAR(fx, f(x), PREC);  \
                                                 EXPECT_NEAR(y0, x(0), PREC);  \
