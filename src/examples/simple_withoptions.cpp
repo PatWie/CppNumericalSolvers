@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include "../../include/cppoptlib/meta.h"
 #include "../../include/cppoptlib/problem.h"
 #include "../../include/cppoptlib/solver/gradientdescentsolver.h"
@@ -25,8 +26,11 @@ class Simple : public Problem<T> {
     }
 
     bool callback(const Criteria<T> &state, const Vector<T> &x) {
-        printf("(%04d) ||dx||= %04.08f \t||x||= %02.08f \tf(x)= %04.010f \t", state.iterations, state.gradNorm, x.norm(), value(x));
-        std::cout << " x = ["  <<  x.transpose() <<" ]" << std::endl;
+        std::cout << "(" << std::setw(2) << state.iterations << ")"
+                  << " ||dx|| = " << std::fixed << std::setw(8) << std::setprecision(4) << state.gradNorm
+                  << " ||x|| = "  << std::setw(6) << x.norm()
+                  << " f(x) = "   << std::setw(8) << value(x)
+                  << " x = [" << std::setprecision(8) << x.transpose() << "]" << std::endl;
         return true;
     }
 };
