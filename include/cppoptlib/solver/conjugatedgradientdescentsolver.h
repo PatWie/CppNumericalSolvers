@@ -2,7 +2,7 @@
 #ifndef CONJUGATEDGRADIENTDESCENTSOLVER_H_
 #define CONJUGATEDGRADIENTDESCENTSOLVER_H_
 
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include "isolver.h"
 #include "../linesearch/armijo.h"
 

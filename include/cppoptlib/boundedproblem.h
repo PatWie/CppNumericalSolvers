@@ -12,7 +12,7 @@
 #define BOUNDEDPROBLEM_H
 
 #include <vector>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 
 #include "problem.h"
 

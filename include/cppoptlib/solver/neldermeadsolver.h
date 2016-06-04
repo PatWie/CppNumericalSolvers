@@ -2,7 +2,7 @@
 #ifndef NELDERMEADSOLVER_H_
 #define NELDERMEADSOLVER_H_
 #include <cmath>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include "isolver.h"
 
 namespace cppoptlib {

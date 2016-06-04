@@ -2,7 +2,7 @@
 #ifndef GRADIENTDESCENTSOLVER_H_
 #define GRADIENTDESCENTSOLVER_H_
 
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include "isolver.h"
 #include "../linesearch/morethuente.h"
 
