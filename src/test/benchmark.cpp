@@ -20,7 +20,7 @@ using namespace cppoptlib;
 // collection of benchmark functions
 // ----------------------------------------------------------------------------------
 template<typename T>
-class Rosenbrock : public Problem<T, 2> {
+class Rosenbrock : public BoundedProblem<T, 2> {
  public:
   using typename Problem<T, 2>::TVector;
 
@@ -39,7 +39,7 @@ class Rosenbrock : public Problem<T, 2> {
 };
 
 template<typename T>
-class Beale : public Problem<T, 2> {
+class Beale : public BoundedProblem<T, 2> {
  public:
   using typename Problem<T, 2>::TVector;
   
@@ -62,7 +62,7 @@ class Beale : public Problem<T, 2> {
 };
 
 template<typename T>
-class GoldsteinPrice  : public Problem<T, 2> {
+class GoldsteinPrice : public BoundedProblem<T, 2> {
  public:
   using typename Problem<T, 2>::TVector;
   
@@ -80,7 +80,7 @@ class GoldsteinPrice  : public Problem<T, 2> {
 };
 
 template<typename T>
-class Booth  : public Problem<T, 2> {
+class Booth : public BoundedProblem<T, 2> {
  public:
   using typename Problem<T,2>::TVector;
   
@@ -105,7 +105,7 @@ class Booth  : public Problem<T, 2> {
 };
 
 template<typename T>
-class Matyas   : public Problem<T, 2> {
+class Matyas : public BoundedProblem<T, 2> {
  public:
   using typename Problem<T, 2>::TVector;
   
@@ -127,7 +127,7 @@ class Matyas   : public Problem<T, 2> {
 };
 
 template<typename T>
-class Levi   : public Problem<T, 2> {
+class Levi : public BoundedProblem<T, 2> {
  public:
   using typename Problem<T, 2>::TVector;
   T value(const TVector &xx) {

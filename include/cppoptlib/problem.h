@@ -7,6 +7,7 @@
 #include "meta.h"
 
 namespace cppoptlib {
+
 template<typename Scalar_, int Dim_ = Eigen::Dynamic>
 class Problem {
  public:
@@ -15,53 +16,13 @@ class Problem {
   using TVector   = Eigen::Matrix<Scalar, Dim, 1>;
   using THessian  = Eigen::Matrix<Scalar, Dim, Dim>;
   using TCriteria = Criteria<Scalar>;
-  
- protected:
-
-  bool hasLowerBound_ = false;
-  bool hasUpperBound_ = false;
-
-  TVector lowerBound_;
-  TVector upperBound_;
 
  public:
-
   Problem() {}
   virtual ~Problem()= default;
 
   virtual bool callback(const Criteria<Scalar> &state, const TVector &x) {
     return true;
-  }
-
-  void setBoxConstraint(TVector  lb, TVector  ub) {
-    setLowerBound(lb);
-    setUpperBound(ub);
-  }
-
-  void setLowerBound(TVector  lb) {
-    lowerBound_    = lb;
-    hasLowerBound_ = true;
-  }
-
-  void setUpperBound(TVector  ub) {
-    upperBound_ = ub;
-    hasUpperBound_ = true;
-  }
-
-  bool hasLowerBound() {
-    return hasLowerBound_;
-  }
-
-  bool hasUpperBound() {
-    return hasUpperBound_;
-  }
-
-  TVector lowerBound() {
-    return lowerBound_;
-  }
-
-  TVector upperBound() {
-    return upperBound_;
   }
 
   /**

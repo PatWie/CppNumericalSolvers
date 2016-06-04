@@ -3,14 +3,15 @@
 #include <list>
 #include <Eigen/LU>
 #include "isolver.h"
+#include "../boundedproblem.h"
 #include "../linesearch/morethuente.h"
-#ifndef LBFGSBSOLVER_H_
-#define LBFGSBSOLVER_H_
+#ifndef LBFGSBSOLVER_H
+#define LBFGSBSOLVER_H
 namespace cppoptlib {
-template<typename ProblemType>
-class LbfgsbSolver : public ISolver<ProblemType, 1> {
+template<typename TProblem>
+class LbfgsbSolver : public ISolver<TProblem, 1> {
   public:
-    using Superclass = ISolver<ProblemType, 1>;
+    using Superclass = ISolver<TProblem, 1>;
     using typename Superclass::Scalar;
     using typename Superclass::TVector;
     using MatrixType = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
@@ -20,10 +21,6 @@ class LbfgsbSolver : public ISolver<ProblemType, 1> {
   std::list<TVector> xHistory;
   // workspace matrices
   MatrixType W, M;
-  // ref to problem statement
-  ProblemType *objFunc_;
-  TVector lboundTemplate;
-  TVector uboundTemplate;
   Scalar theta;
   int DIM;
   int m_historySize = 5;
@@ -50,7 +47,7 @@ class LbfgsbSolver : public ISolver<ProblemType, 1> {
    *
    * @param c [description]
    */
-  void getGeneralizedCauchyPoint(TVector &x, TVector &g, TVector &x_cauchy, VariableTVector &c) {
+  void getGeneralizedCauchyPoint(const TProblem &problem, TVector &x, TVector &g, TVector &x_cauchy, VariableTVector &c) {
     const int DIM = x.rows();
     // Given x,l,u,g, and B = \theta I-WMW
     // {all t_i} = { (idx,value), ... }
@@ -65,9 +62,9 @@ class LbfgsbSolver : public ISolver<ProblemType, 1> {
       } else {
         Scalar tmp = 0;
         if (g(j) < 0) {
-          tmp = (x(j) - uboundTemplate(j)) / g(j);
+          tmp = (x(j) - problem.upperBound()(j)) / g(j);
         } else {
-          tmp = (x(j) - lboundTemplate(j)) / g(j);
+          tmp = (x(j) - problem.lowerBound()(j)) / g(j);
         }
         SetOfT.push_back(std::make_pair(j, tmp));
       }
@@ -104,9 +101,9 @@ class LbfgsbSolver : public ISolver<ProblemType, 1> {
     // examination of subsequent segments
     while ((dt_min >= dt) && (i < DIM)) {
       if (d(b) > 0)
-        x_cauchy(b) = uboundTemplate(b);
+        x_cauchy(b) = problem.upperBound()(b);
       else if (d(b) < 0)
-        x_cauchy(b) = lboundTemplate(b);
+        x_cauchy(b) = problem.lowerBound()(b);
       // z_b = x_p^{cp} - x_b
       Scalar zb = x_cauchy(b) - x(b);
       // c   :=  c +\delta t*p
@@ -144,15 +141,15 @@ class LbfgsbSolver : public ISolver<ProblemType, 1> {
    * @param FreeVariables [description]
    * @return [description]
    */
-  Scalar findAlpha(TVector &x_cp, VariableTVector &du, std::vector<int> &FreeVariables) {
+  Scalar findAlpha(const TProblem &problem, TVector &x_cp, VariableTVector &du, std::vector<int> &FreeVariables) {
     Scalar alphastar = 1;
     const unsigned int n = FreeVariables.size();
     assert(du.rows() == n);
     for (unsigned int i = 0; i < n; i++) {
       if (du(i) > 0) {
-        alphastar = std::min(alphastar, (uboundTemplate(FreeVariables[i]) - x_cp(FreeVariables[i])) / du(i));
+        alphastar = std::min(alphastar, (problem.upperBound()(FreeVariables[i]) - x_cp(FreeVariables[i])) / du(i));
       } else {
-        alphastar = std::min(alphastar, (lboundTemplate(FreeVariables[i]) - x_cp(FreeVariables[i])) / du(i));
+        alphastar = std::min(alphastar, (problem.lowerBound()(FreeVariables[i]) - x_cp(FreeVariables[i])) / du(i));
       }
     }
     return alphastar;
@@ -163,12 +160,12 @@ class LbfgsbSolver : public ISolver<ProblemType, 1> {
    *
    * @param SubspaceMin [description]
    */
-  void SubspaceMinimization(TVector &x_cauchy, TVector &x, VariableTVector &c, TVector &g,
+  void SubspaceMinimization(const TProblem &problem, TVector &x_cauchy, TVector &x, VariableTVector &c, TVector &g,
   TVector &SubspaceMin) {
     Scalar theta_inverse = 1 / theta;
     std::vector<int> FreeVariablesIndex;
     for (int i = 0; i < x_cauchy.rows(); i++) {
-      if ((x_cauchy(i) != uboundTemplate(i)) && (x_cauchy(i) != lboundTemplate(i))) {
+      if ((x_cauchy(i) != problem.upperBound()(i)) && (x_cauchy(i) != problem.lowerBound()(i))) {
         FreeVariablesIndex.push_back(i);
       }
     }
@@ -194,7 +191,7 @@ class LbfgsbSolver : public ISolver<ProblemType, 1> {
     // HERE IS A MISTAKE IN THE ORIGINAL PAPER!
     VariableTVector du = -theta_inverse * r - theta_inverse * theta_inverse * WZ.transpose() * v;
     // STEP: 7
-    Scalar alpha_star = findAlpha(x_cauchy, du, FreeVariablesIndex);
+    Scalar alpha_star = findAlpha(problem, x_cauchy, du, FreeVariablesIndex);
     // STEP: 8
     VariableTVector dStar = alpha_star * du;
     SubspaceMin = x_cauchy;
@@ -205,19 +202,8 @@ class LbfgsbSolver : public ISolver<ProblemType, 1> {
  public:
   void setHistorySize(const int hs) { m_historySize = hs; }
 
-  void minimize(ProblemType &objFunc, TVector &x0) {
-    objFunc_ = &objFunc;
+  void minimize(TProblem &problem, TVector &x0) {
     DIM = x0.rows();
-    if (objFunc.hasLowerBound()) {
-      lboundTemplate = objFunc_->lowerBound();
-    }else {
-      lboundTemplate = -TVector::Ones(DIM)* std::numeric_limits<Scalar>::infinity();
-    }
-    if (objFunc.hasUpperBound()) {
-      uboundTemplate = objFunc_->upperBound();
-    }else {
-      uboundTemplate = TVector::Ones(DIM)* std::numeric_limits<Scalar>::infinity();
-    }
     theta = 1.0;
     W = MatrixType::Zero(DIM, 0);
     M = MatrixType::Zero(0, 0);
@@ -225,33 +211,33 @@ class LbfgsbSolver : public ISolver<ProblemType, 1> {
     MatrixType yHistory = MatrixType::Zero(DIM, 0);
     MatrixType sHistory = MatrixType::Zero(DIM, 0);
     TVector x = x0, g = x0;
-    Scalar f = objFunc.value(x);
-    objFunc.gradient(x, g);
+    Scalar f = problem.value(x);
+    problem.gradient(x, g);
     // conv. crit.
     auto noConvergence =
     [&](TVector &x, TVector &g)->bool {
-      return (((x - g).cwiseMax(lboundTemplate).cwiseMin(uboundTemplate) - x).template lpNorm<Eigen::Infinity>() >= 1e-4);
+      return (((x - g).cwiseMax(problem.lowerBound()).cwiseMin(problem.upperBound()) - x).template lpNorm<Eigen::Infinity>() >= 1e-4);
     };
     this->m_current.reset();
     this->m_status = Status::Continue;
-    while (objFunc.callback(this->m_current, x) && noConvergence(x, g) && (this->m_status == Status::Continue)) {
+    while (problem.callback(this->m_current, x) && noConvergence(x, g) && (this->m_status == Status::Continue)) {
       Scalar f_old = f;
       TVector x_old = x;
       TVector g_old = g;
       // STEP 2: compute the cauchy point
       TVector CauchyPoint = TVector::Zero();
       VariableTVector c = VariableTVector::Zero(W.cols());
-      getGeneralizedCauchyPoint(x, g, CauchyPoint, c);
+      getGeneralizedCauchyPoint(problem, x, g, CauchyPoint, c);
       // STEP 3: compute a search direction d_k by the primal method for the sub-problem
       TVector SubspaceMin;
-      SubspaceMinimization(CauchyPoint, x, c, g, SubspaceMin);
+      SubspaceMinimization(problem, CauchyPoint, x, c, g, SubspaceMin);
       // STEP 4: perform linesearch and STEP 5: compute gradient
       Scalar alpha_init = 1.0;
-      const Scalar rate = MoreThuente<ProblemType, 1>::linesearch(x,  SubspaceMin-x ,  objFunc, alpha_init);
+      const Scalar rate = MoreThuente<TProblem, 1>::linesearch(x,  SubspaceMin-x ,  problem, alpha_init);
       // update current guess and function information
       x = x - rate*(x-SubspaceMin);
-      f = objFunc.value(x);
-      objFunc.gradient(x, g);
+      f = problem.value(x);
+      problem.gradient(x, g);
       xHistory.push_back(x);
       // prepare for next iteration
       TVector newY = g - g_old;

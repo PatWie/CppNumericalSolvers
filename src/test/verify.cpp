@@ -5,7 +5,7 @@
 #include <list>
 #include "../../gtest/googletest/include/gtest/gtest.h"
 #include "../../include/cppoptlib/meta.h"
-#include "../../include/cppoptlib/problem.h"
+#include "../../include/cppoptlib/boundedproblem.h"
 #include "../../include/cppoptlib/solver/gradientdescentsolver.h"
 #include "../../include/cppoptlib/solver/conjugatedgradientdescentsolver.h"
 #include "../../include/cppoptlib/solver/newtondescentsolver.h"
@@ -23,7 +23,7 @@ typedef ::testing::Types <float, double> MyTypeList;
 
 // situation where only have to objective function
 template<typename Scalar>
-class RosenbrockValue : public Problem<Scalar, 2> {
+class RosenbrockValue : public BoundedProblem<Scalar, 2> {
   public:
     using typename Problem<Scalar, 2>::TVector;
     

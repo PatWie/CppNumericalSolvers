@@ -1,6 +1,6 @@
 #include <iostream>
 #include "../../include/cppoptlib/meta.h"
-#include "../../include/cppoptlib/problem.h"
+#include "../../include/cppoptlib/boundedproblem.h"
 #include "../../include/cppoptlib/solver/lbfgsbsolver.h"
 
 // to use CppNumericalSolvers just use the namespace "cppoptlib"
@@ -8,7 +8,7 @@ namespace cppoptlib {
 
 // we will solve ||Xb-y|| s.t. b>=0
 template<typename T, int D>
-class NonNegativeLeastSquares : public Problem<T, D> {
+class NonNegativeLeastSquares : public BoundedProblem<T, D> {
   public:
     using typename Problem<T, D>::TVector;
     using MatrixType = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
