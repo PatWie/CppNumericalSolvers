@@ -11,234 +11,197 @@ namespace cppoptlib {
 /**
  * @brief Covariance Matrix Adaptation
  */
-template<typename ProblemType>
-class CMAesSolver : public ISolver<ProblemType, 1> {
-  public:
-    using Superclass = ISolver<ProblemType, 1>;
-    using typename Superclass::Scalar;
-    using typename Superclass::TVector;
-    using typename Superclass::THessian;
+template<typename TProblem>
+class CMAesSolver : public ISolver<TProblem, 1> {
+public:
+    using Super = ISolver<TProblem, 1>;
+    using typename Super::Scalar;
+    using typename Super::TVector;
+    using typename Super::THessian;
+    using typename Super::TCriteria;
+    using TMatrix = Eigen::Matrix<Scalar, TProblem::Dim, Eigen::Dynamic>;
+    using TVarVector = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
 
-  protected:
-  // random number generator
-  // http://stackoverflow.com/questions/14732132/global-initialization-with-temporary-function-object
-  // we construct this in the constructor
-  // std::mt19937 gen {std::random_device {}()};
-  std::mt19937 gen;
-  // each sample from population
-  struct individual {
-    TVector pos;
-    TVector step;
-    Scalar cost;
-
-    individual(int n) {
-      pos = TVector::Zero(n);
-      step = TVector::Zero(n);
-    }
-    individual() {}
-
-    void reset(int n) {
-      pos = TVector::Zero(n);
-      step = TVector::Zero(n);
-    }
-  };
-
-  /**
-   * @brief sample from MVN with given mean and covmat
-   * @details [long description]
-   *
-   * @param mean mean of distribution
-   * @param covar covariance
-   * @return [description]
-   */
-  TVector sampleMvn(TVector &mean, THessian &covar) {
-
-    THessian normTransform;
-    Eigen::LLT<THessian> cholSolver(covar);
-
-    if (cholSolver.info() == Eigen::Success) {
-      normTransform = cholSolver.matrixL();
-    } else {
-      Eigen::SelfAdjointEigenSolver<THessian> eigenSolver(covar);
-      normTransform = eigenSolver.eigenvectors() * eigenSolver.eigenvalues().cwiseSqrt().asDiagonal();
-    }
-
-    TVector stdNormDistr = TVector::Zero(mean.rows());
-    std::normal_distribution<> d(0, 1);
-    for (int i = 0; i < mean.rows(); ++i) {
-      stdNormDistr[i] = d(gen);
-    }
-
-    TVector samples = normTransform * stdNormDistr + mean;
-
-    return samples;
-  }
-
- public:
-
-  CMAesSolver() : gen((std::random_device())()) {
-
-  }
-
-  /**
-   * @brief minimize
-   * @details [long description]
-   *
-   * @param objFunc [description]
-   */
-  void minimize(ProblemType &objFunc, TVector &x0) {
-
-    const int DIM = x0.rows();
-
-    // start from initial guess
-    individual ii(DIM);
-    ii.pos = x0;
-
-    Scalar VarMin = -DIM;
-    Scalar VarMax = DIM;
-
-    const int populationSize = (4 + round(3 * log(DIM))) * 10;
-    const int mu = round(populationSize / 2);
-
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> w = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>::Zero(mu);
-    for (int i = 1; i <= mu; ++i) {
-      w(i - 1) = log(mu + 0.5) - log(i);
-    }
-
-    w /= w.sum();
-
-    const Scalar mu_eff   = 1. / w.dot(w);
-
-    const Scalar sigma0   = 0.3 * (VarMax - VarMin);
-    const Scalar cs       = (mu_eff + 2.) / (DIM + mu_eff + 5.);
-    const Scalar ds       = 1. + cs + 2.*std::max(sqrt((mu_eff - 1) / (DIM + 1)) - 1, Scalar(0.));
-    const Scalar ENN      = sqrt(DIM) * (1 - 1. / (4.*DIM) + 1. / (21.*DIM * DIM));
-
-    const Scalar cc       = (4. + mu_eff / DIM) / (4. + DIM + 2.*mu_eff / DIM);
-    const Scalar c1       = 2. / ((DIM + 1.3) * (DIM + 1.3) + mu_eff);
-    const Scalar alpha_mu = 2.;
-    const Scalar cmu      = std::min(1. - c1, alpha_mu * (mu_eff - 2. + 1. / mu_eff) / ((DIM + 2.) * (DIM + 2.) + alpha_mu * mu_eff / 2.));
-    const Scalar hth      = (1.4 + 2 / (DIM + 1.)) * ENN;
-
-    TVector ps;
-    TVector pc;
-    THessian C;
-    Scalar sigma = sigma0;
-
-    individual M;
-
-    TVector t = TVector::Zero(DIM);
-    ps = t;
-    pc = t;
-    THessian eye = THessian::Identity(DIM, DIM);
-    C = eye;
-
-    std::uniform_real_distribution<> dis(VarMin, VarMax);
-    M.pos = TVector::Zero(DIM);
-    for (int i = 0; i < DIM; ++i) {
-      M.pos[i] = dis(gen);
-    }
-
-    M.step = TVector::Zero(DIM);
-    M.cost = objFunc(M.pos);
-
-    individual bestSol = M;
-
-    Scalar bestCostSoFar;
-
-    TVector zeroVectorTemplate = TVector::Zero(DIM);
-
-    // CMA-ES Main Loop
-    for (size_t curIter = 0; curIter < this->m_stop.iterations; ++curIter) {
-      std::vector<individual> pop;
-
-      for (int i = 0; i < populationSize; ++i) {
-        individual curInd;
-        curInd.step = sampleMvn(zeroVectorTemplate, C).eval();
-        curInd.pos = M.pos + sigma * curInd.step;
-        curInd.cost = objFunc(curInd.pos);
-
-        if (curInd.cost < bestSol.cost) {
-          bestSol = curInd;
+protected:
+    std::mt19937 gen;
+    Scalar m_stepSize;
+    
+    /*
+     * @brief Create a vector sampled from a normal distribution
+     *
+     */
+    TVector normDist(const int n) {
+        TVector sample = TVector::Zero(n);
+        std::normal_distribution<Scalar> d(0, 1);
+        for (int i = 0; i < n; ++i) {
+          sample[i] = d(gen);
         }
-        pop.push_back(curInd);
-
-      }
-
-      // sort them according their fitness
-      sort(pop.begin(), pop.end(), [&](const individual & a, const  individual & b) -> bool {
-        return a.cost < b.cost;
-      });
-
-      bestCostSoFar = bestSol.cost;
-      // printf("%i best cost so far %f\n", curIter, bestCostSoFar );
-
-      // any further update?
-      if (curIter == this->m_stop.iterations - 2)
-        break;
-
-      // update mean (TODO: matrix-vec-multiplication with permutation matrix?)
-      M.step = TVector::Zero(DIM);
-      for (int j = 0; j < mu; ++j) {
-        M.step += w[j] * pop[j].step;
-      }
-
-      // shift current position
-      M.pos = M.pos + sigma * M.step;
-      M.cost = objFunc(M.pos);
-      if (M.cost < bestSol.cost)
-        bestSol = M;
-
-      // update step size
-      ps = (1. - cs) * ps + sqrt(cs * (2. - cs) * mu_eff) * C.llt().matrixL().transpose().solve(M.step);
-      sigma = sigma * pow(  exp((cs / ds * ((ps).norm() / ENN - 1.))), 0.3);
-
-      Scalar hs = 0;
-      if (ps.norm() / sqrt(pow(1 - (1. - cs), (2 * (curIter + 1)))) < hth)
-        hs = 1;
-      else
-        hs = 0;
-
-      const Scalar delta = (1 - hs) * cc * (2 - cc);
-
-      pc = (1 - cc) * pc + hs * sqrt(cc * (2. - cc) * mu_eff) * M.step;
-      C = (1 - c1 - cmu) * C + c1 * (pc * pc.transpose() + delta * C);
-
-      for (int j = 0; j < mu; ++j) {
-        C += cmu * w(j) * pop[j].step * pop[j].step.transpose();
-      }
-
-      Eigen::EigenSolver<THessian> eig(C);
-      TVector E = eig.eigenvalues().real();
-      THessian V = eig.eigenvectors().real();
-
-      // check positive definitness of covariance matrix (all eigenvalues must be > 0)
-      bool pd = true;
-      for (int i = 0; i < DIM; ++i) {
-        if (E(i) < 0) {
-          // Oops, Eigen value to small
-          pd = false;
-          E = E.cwiseMax(zeroVectorTemplate);
-          C = V * E.asDiagonal() * V.inverse();
-          break;
-        }
-      }
-
-      // prepare new population
-      pop.clear();
-
-      if ((curIter > 150) && ((bestSol.pos-x0).norm() < 1e-8)) {
-        // successive function values too similar, but enought pre-iteration
-        break;
-      }
-
-      // update best solution
-      x0 = bestSol.pos;
-
-      if(!objFunc.callback(this->m_current, x0))
-        break;
+        return sample;
     }
-  }
+
+    std::vector<size_t> index_partial_sort(const TVarVector &x, Eigen::ArrayXd::Index N)
+    {
+        eigen_assert(x.size() >= N);
+        std::vector<size_t> allIndices(x.size()), indices(N);
+        for(size_t i = 0; i < allIndices.size(); i++) {
+            allIndices[i] = i;
+        }
+        partial_sort(allIndices.begin(), allIndices.begin() + N, allIndices.end(), [&x](size_t i1, size_t i2) { return x[i1] < x[i2]; });
+        //std::cout << "SORTED: ";
+        for (Eigen::ArrayXd::Index i = 0; i < N; i++) {
+            indices[i] = allIndices[i];
+            //std::cout << indices[i] << ",";
+        }
+        //std::cout << std::endl;
+        return indices;
+    }
+
+public:
+    CMAesSolver() : gen((std::random_device())()) {
+        m_stepSize = 0.5;
+        
+        // Set some sensible defaults for the stop criteria
+        Super::m_stop.iterations = 1e5;
+        Super::m_stop.gradNorm = 0; // Switch this off
+        Super::m_stop.condition = 1e14;
+        Super::m_stop.xDelta = 1e-7;
+        Super::m_stop.fDelta = 1e-9;
+    }
+
+    void minimize(TProblem &objFunc, TVector &x0) {
+        TVector var0 = TVector::Ones(x0.rows());
+        this->minimize(objFunc, x0, var0);
+    }
+
+    /**
+    * @brief minimize
+    * @details [long description]
+    *
+    * @param objFunc [description]
+    */
+    void minimize(TProblem &objFunc, TVector &x0, const TVector &var0) {
+        const int n = x0.rows();
+        eigen_assert(x0.rows() == var0.rows());
+        const int la = ceil(4 + round(3 * log(n)));
+        const int mu = floor(la / 2);
+        TVarVector w = TVarVector::Zero(mu);
+        for (int i = 0; i < mu; ++i) {
+          w[i] = log(mu+1/2)-log(i+1);
+        }
+        w /= w.sum();
+        const Scalar mu_eff = (w.sum()*w.sum()) / w.dot(w);
+        
+        const Scalar cc     = (4. + mu_eff / n) / (n + 4. + 2.*mu_eff/n);
+        const Scalar cs     = (mu_eff + 2.) / (n + mu_eff + 5.);
+        const Scalar c1     = 2. / (pow(n + 1.3,2.) + mu_eff);
+        const Scalar cmu    = std::min(1. - c1, 2.*(mu_eff - 2. + 1./mu_eff) / (pow(n+2,2.) + mu_eff));
+        const Scalar ds     = 1. + cs + 2.*std::max(0., sqrt((mu_eff - 1.) / (n + 1.)) - 1.);
+        const Scalar chi    = sqrt(n) * (1. - 1./(4.*n) + 1./(21.*n*n));
+
+        const Scalar hsig_thr = (1.4 + 2 / (n + 1.)) * chi;
+
+        TVector pc = TVector::Zero(n);
+        TVector ps = TVector::Zero(n);
+        THessian B = THessian::Identity();
+        THessian D = THessian::Identity();
+        THessian C = B*D*(B*D).transpose();
+
+        Scalar sigma = m_stepSize;
+
+        TVector xmean = x0;
+        TVector zmean = TVector::Zero(n);
+        TMatrix arz(n, la);
+        TMatrix arx(n, la);
+        TVarVector costs(la);
+        Scalar prevCost = objFunc.value(x0);
+        
+        if (Super::m_debug >= DebugLevel::Low) {
+            std::cout << "CMA-ES Initial Config" << std::endl;
+            std::cout << "n " << n << " la " << la << " mu " << mu << " mu_eff " << mu_eff << std::endl;
+            std::cout << "stepSize " << sigma << std::endl;
+            std::cout << "cs " << cs << " ds " << ds << " chi " << chi << " cc " << cc << " c1 " << c1 << " cmu " << cmu << " hsig_thr " << hsig_thr << std::endl;
+            std::cout << "C" << std::endl << C << std::endl;
+        }
+        // CMA-ES Main Loop
+        this->m_current.reset();
+        do {
+            for (int k = 0; k < la; ++k) {
+              arz.col(k) = normDist(n);
+              arx.col(k) = xmean + sigma * B*D*arz.col(k);
+              costs[k] = objFunc(arx.col(k));
+            }
+            
+            if (Super::m_debug >= DebugLevel::High) {
+                std::cout << "arz" << std::endl << arz << std::endl;
+                std::cout << "arx" << std::endl << arx << std::endl;
+                std::cout << "costs " << costs.transpose() << std::endl;
+            }
+            
+            std::vector<size_t> indices = index_partial_sort(costs, mu);
+            xmean = TVector::Zero(n);
+            zmean = TVector::Zero(n);
+            for (int k = 0; k < mu; k++) {
+              zmean += w[k]*arz.col(indices[k]);
+              xmean += w[k]*arx.col(indices[k]);
+            }
+            
+            if (Super::m_debug >= DebugLevel::High) {
+                std::cout << "bestCost " << costs[indices[0]] << std::endl;
+                std::cout << "zmean " << zmean.transpose() << std::endl;
+                std::cout << "xmean " << xmean.transpose() << std::endl;
+            }
+            // Update evolution paths
+            ps = (1. - cs)*ps + sqrt(cs*(2. - cs)*mu_eff) * B*zmean;
+            Scalar hsig = (ps.norm()/sqrt(pow(1 - (1. - cs), (2 * (this->m_current.iterations + 1)))) < hsig_thr) ? 1.0 : 0.0;
+            pc = (1. - cc)*pc + hsig*sqrt(cc*(2. - cc)*mu_eff)*(B*D*zmean);
+            // Adapt covariance matrix
+            C = (1 - c1 - cmu)*C
+                + c1*(pc*pc.transpose() + (1 - hsig)*cc*(2 - cc)*C);
+            for (int k = 0; k < mu; ++k) {
+                TVector temp = B*D*arz.col(k);
+                C += cmu*w(k)*temp*temp.transpose();
+            }
+            sigma = sigma * exp((cs/ds) * ((ps).norm()/chi - 1.));
+
+            // Update B and D
+            Eigen::SelfAdjointEigenSolver<THessian> eigenSolver(C);
+            B = eigenSolver.eigenvectors();
+            D.diagonal() = eigenSolver.eigenvalues().array().sqrt();
+            
+            ++Super::m_current.iterations;
+            Super::m_current.condition = D.diagonal().maxCoeff() / D.diagonal().minCoeff();
+            Super::m_current.xDelta = (xmean - x0).norm();
+            x0 = xmean;
+            Super::m_current.fDelta = fabs(costs[indices[0]] - prevCost);
+            prevCost = costs[indices[0]];
+            if (Super::m_debug >= DebugLevel::Low) {
+                std::cout << "Iteration: " << this->m_current.iterations << " best cost " << costs[indices[0]] << " sigma " << sigma << " cond " << this->m_current.condition << " xmean " << xmean.transpose() << std::endl;
+            }
+            if (Super::m_debug >= DebugLevel::High) {
+                std::cout << "C" << std::endl << C << std::endl;
+                std::cout << "B" << std::endl << B << std::endl;
+                std::cout << "D" << std::endl << D << std::endl;
+            }
+            if (fabs(costs[indices[0]] - costs[indices[mu-1]]) < 1e-6) {
+                sigma = sigma * exp(0.2+cs/ds);
+                if (Super::m_debug >= DebugLevel::Low) {
+                    std::cout << "Flat fitness " << costs[indices[0]] << " " << costs[indices[mu-1]] << std::endl;
+                }
+            }
+            Super::m_status = checkConvergence(this->m_stop, this->m_current);
+        } while (objFunc.callback(this->m_current, x0) && (this->m_status == Status::Continue));
+        // Return the best evaluated solution
+        x0 = xmean;
+        m_stepSize = sigma;
+        
+        if (Super::m_debug >= DebugLevel::Low) {
+            std::cout << "Stop" << std::endl;
+            this->m_stop.print(std::cout);
+            std::cout << "Current" << std::endl;
+            this->m_current.print(std::cout);
+            std::cout << "Reason: " << Super::m_status << std::endl;
+        }
+    }
 
 };
 
