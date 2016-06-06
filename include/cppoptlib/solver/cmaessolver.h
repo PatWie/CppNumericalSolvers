@@ -82,7 +82,7 @@ public:
     void minimize(TProblem &objFunc, TVector &x0, const TVector &var0) {
         const int n = x0.rows();
         eigen_assert(x0.rows() == var0.rows());
-        const int la = ceil(4 + round(3 * log(n)));
+        int la = ceil(4 + round(3 * log(n)));
         const int mu = floor(la / 2);
         TVarVector w = TVarVector::Zero(mu);
         for (int i = 0; i < mu; ++i) {
@@ -90,6 +90,7 @@ public:
         }
         w /= w.sum();
         const Scalar mu_eff = (w.sum()*w.sum()) / w.dot(w);
+        la = std::max<int>(16, la); // Increase to 16 samples for very small populations, but AFTER calcaulting mu_eff
         
         const Scalar cc     = (4. + mu_eff / n) / (n + 4. + 2.*mu_eff/n);
         const Scalar cs     = (mu_eff + 2.) / (n + mu_eff + 5.);
@@ -115,15 +116,18 @@ public:
         TVarVector costs(la);
         Scalar prevCost = objFunc.value(x0);
         
+        // CMA-ES Main Loop
+        int eigen_last_eval = 0;
+        int eigen_next_eval = std::max<Scalar>(1, 1/(10*n*(c1+cmu)));
+        this->m_current.reset();
         if (Super::m_debug >= DebugLevel::Low) {
             std::cout << "CMA-ES Initial Config" << std::endl;
-            std::cout << "n " << n << " la " << la << " mu " << mu << " mu_eff " << mu_eff << std::endl;
-            std::cout << "stepSize " << sigma << std::endl;
+            std::cout << "n " << n << " la " << la << " mu " << mu << " mu_eff " << mu_eff << " sigma " << sigma << std::endl;
             std::cout << "cs " << cs << " ds " << ds << " chi " << chi << " cc " << cc << " c1 " << c1 << " cmu " << cmu << " hsig_thr " << hsig_thr << std::endl;
             std::cout << "C" << std::endl << C << std::endl;
+            std::cout << "Hessian will be updated every " << eigen_next_eval << " iterations." << std::endl;
+            std::cout << "Iteration: " << this->m_current.iterations << " best cost " << prevCost << " sigma " << sigma << " cond " << this->m_current.condition << " xmean " << x0.transpose() << std::endl;
         }
-        // CMA-ES Main Loop
-        this->m_current.reset();
         do {
             for (int k = 0; k < la; ++k) {
               arz.col(k) = normDist(n);
@@ -144,12 +148,6 @@ public:
               zmean += w[k]*arz.col(indices[k]);
               xmean += w[k]*arx.col(indices[k]);
             }
-            
-            if (Super::m_debug >= DebugLevel::High) {
-                std::cout << "bestCost " << costs[indices[0]] << std::endl;
-                std::cout << "zmean " << zmean.transpose() << std::endl;
-                std::cout << "xmean " << xmean.transpose() << std::endl;
-            }
             // Update evolution paths
             ps = (1. - cs)*ps + sqrt(cs*(2. - cs)*mu_eff) * B*zmean;
             Scalar hsig = (ps.norm()/sqrt(pow(1 - (1. - cs), (2 * (this->m_current.iterations + 1)))) < hsig_thr) ? 1.0 : 0.0;
@@ -163,12 +161,20 @@ public:
             }
             sigma = sigma * exp((cs/ds) * ((ps).norm()/chi - 1.));
 
-            // Update B and D
-            Eigen::SelfAdjointEigenSolver<THessian> eigenSolver(C);
-            B = eigenSolver.eigenvectors();
-            D.diagonal() = eigenSolver.eigenvalues().array().sqrt();
-            
             ++Super::m_current.iterations;
+            if ((Super::m_current.iterations - eigen_last_eval) == eigen_next_eval) {
+                // Update B and D
+                eigen_last_eval = Super::m_current.iterations;
+                Eigen::SelfAdjointEigenSolver<THessian> eigenSolver(C);
+                B = eigenSolver.eigenvectors();
+                D.diagonal() = eigenSolver.eigenvalues().array().sqrt();
+                if (Super::m_debug >= DebugLevel::High) {
+                    std::cout << "Updated hessian." << std::endl;
+                    std::cout << "C" << std::endl << C << std::endl;
+                    std::cout << "B" << std::endl << B << std::endl;
+                    std::cout << "D" << std::endl << D << std::endl;
+                }
+            }
             Super::m_current.condition = D.diagonal().maxCoeff() / D.diagonal().minCoeff();
             Super::m_current.xDelta = (xmean - x0).norm();
             x0 = xmean;
@@ -176,11 +182,6 @@ public:
             prevCost = costs[indices[0]];
             if (Super::m_debug >= DebugLevel::Low) {
                 std::cout << "Iteration: " << this->m_current.iterations << " best cost " << costs[indices[0]] << " sigma " << sigma << " cond " << this->m_current.condition << " xmean " << xmean.transpose() << std::endl;
-            }
-            if (Super::m_debug >= DebugLevel::High) {
-                std::cout << "C" << std::endl << C << std::endl;
-                std::cout << "B" << std::endl << B << std::endl;
-                std::cout << "D" << std::endl << D << std::endl;
             }
             if (fabs(costs[indices[0]] - costs[indices[mu-1]]) < 1e-6) {
                 sigma = sigma * exp(0.2+cs/ds);
