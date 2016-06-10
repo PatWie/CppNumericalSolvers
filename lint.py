@@ -79,7 +79,7 @@ def lineWidth(line):
   else:
     return len(line)
 
-def error(filename, linenum, category, message, level=0, line="", char=-1):
+def print_error(filename, linenum, category, message, level=0, line="", char=-1):
   global ERROR_COUNTER
   ERROR_COUNTER = ERROR_COUNTER + 1;
   # level 0: warning
@@ -97,7 +97,7 @@ def error(filename, linenum, category, message, level=0, line="", char=-1):
       sys.stderr.write('%s \033[96m%s%s\033[0m\n' % (' '*(10+3+3 + len(str(linenum))),'-'*char,'^') )
 
 
-def processBraces(filename,lines):
+def processBraces(filename, lines, error):
   ident = [];
   for line in range(len(lines)):
     for char in range(len(lines[line])):
@@ -216,7 +216,7 @@ def processFileContent(filename, file_extension, lines, ignore_lines, error):
     if line not in ignore_lines:
       processFileLine(filename, file_extension, lines, error, line)
 
-  processBraces(filename,lines)
+  processBraces(filename, lines, error)
 
 # http://stackoverflow.com/questions/241327/python-snippet-to-remove-c-and-c-comments
 def comment_remover(text):
@@ -243,7 +243,6 @@ def comment_remover(text):
 
 
 def processFile(filename):
-
   error_collection = [];
 
   def error_handler(filename, linenum, category, message, level=0, line="", char=-1):
@@ -304,15 +303,13 @@ def processFile(filename):
 
   if len(error_collection):
     sys.stderr.write('\033[1m\033[93m%10s\033[0m:\n' % ( filename))
-    for i in range(len(error_collection)):
-      c = error_collection[i]
-      error(c[0], c[1],c[2],c[3],c[4],c[5],c[6])
+    for e in error_collection:
+      print_error(*e)
     
 
 
 
 def main():
-  
   filenames = sys.argv[1:];
   for filename in filenames:
     processFile(filename)
