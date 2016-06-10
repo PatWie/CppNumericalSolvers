@@ -20,24 +20,6 @@ matrix:
           packages:
             - g++-5
       env: COMPILER=g++-5
-    - compiler: clang
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.6
-          packages:
-            - clang-3.6
-      env: COMPILER=clang++-3.6
-    - compiler: clang
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.7
-          packages:
-            - clang-3.7
-      env: COMPILER=clang++-3.7
 
 before_install:
   - sudo apt-get update -qq
@@ -62,7 +44,7 @@ install:
 script:
   - mkdir build
   - cd build
-  - cmake -DEIGEN3_INCLUDE_DIR=eigen -DCMAKE_CXX_COMPILER=$COMPILER ..
+  - cmake -DEIGEN3_INCLUDE_DIR=eigen -DCMAKE_CXX_COMPILER=$COMPILER -DCMAKE_BUILD_TYPE=Release ..
   - make all
   - make lint
   - ./bin/verify

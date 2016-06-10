@@ -3,15 +3,16 @@
 #define META_H
 
 #include <iostream>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 
 namespace cppoptlib {
 
-template <typename T>
+/*template <typename T>
 using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 
 template <typename T>
 using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+*/
 
 enum class DebugLevel { None = 0, Low, High };
 enum class Status {
@@ -85,25 +86,25 @@ Status checkConvergence(const Criteria<T> &stop, const Criteria<T> &current) {
     return Status::Continue;
 }
 
-}
-
-inline std::ostream &operator<<(std::ostream &os, const cppoptlib::Status &s) {
+inline std::ostream &operator<<(std::ostream &os, const Status &s) {
     switch (s) {
-        case cppoptlib::Status::NotStarted: os << "Solver not started."; break;
-        case cppoptlib::Status::Continue:   os << "Convergence criteria not reached."; break;
-        case cppoptlib::Status::IterationLimit: os << "Iteration limit reached."; break;
-        case cppoptlib::Status::XDeltaTolerance: os << "Change in parameter vector too small."; break;
-        case cppoptlib::Status::FDeltaTolerance: os << "Change in cost function value too small."; break;
-        case cppoptlib::Status::GradNormTolerance: os << "Gradient vector norm too small."; break;
-        case cppoptlib::Status::Condition: os << "Condition of Hessian/Covariance matrix too large."; break;
+        case Status::NotStarted: os << "Solver not started."; break;
+        case Status::Continue:   os << "Convergence criteria not reached."; break;
+        case Status::IterationLimit: os << "Iteration limit reached."; break;
+        case Status::XDeltaTolerance: os << "Change in parameter vector too small."; break;
+        case Status::FDeltaTolerance: os << "Change in cost function value too small."; break;
+        case Status::GradNormTolerance: os << "Gradient vector norm too small."; break;
+        case Status::Condition: os << "Condition of Hessian/Covariance matrix too large."; break;
     }
     return os;
 }
 
 template<typename T>
-std::ostream &operator<<(std::ostream &os, const cppoptlib::Criteria<T> &c) {
+std::ostream &operator<<(std::ostream &os, const Criteria<T> &c) {
     c.print(os);
     return os;
 }
+
+} // End namespace cppoptlib
 
 #endif /* META_H */

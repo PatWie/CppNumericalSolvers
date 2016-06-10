@@ -11,8 +11,15 @@ namespace cppoptlib {
 /**
  * @brief Covariance Matrix Adaptation
  */
-template<typename T>
-class CMAesSolver : public ISolver<T, 1> {
+template<typename ProblemType>
+class CMAesSolver : public ISolver<ProblemType, 1> {
+  public:
+    using Superclass = ISolver<ProblemType, 1>;
+    using typename Superclass::Scalar;
+    using typename Superclass::TVector;
+    using typename Superclass::THessian;
+
+  protected:
   // random number generator
   // http://stackoverflow.com/questions/14732132/global-initialization-with-temporary-function-object
   // we construct this in the constructor
@@ -20,19 +27,19 @@ class CMAesSolver : public ISolver<T, 1> {
   std::mt19937 gen;
   // each sample from population
   struct individual {
-    Vector<T> pos;
-    Vector<T> step;
-    T cost;
+    TVector pos;
+    TVector step;
+    Scalar cost;
 
     individual(int n) {
-      pos = Vector<T>::Zero(n);
-      step = Vector<T>::Zero(n);
+      pos = TVector::Zero(n);
+      step = TVector::Zero(n);
     }
     individual() {}
 
     void reset(int n) {
-      pos = Vector<T>::Zero(n);
-      step = Vector<T>::Zero(n);
+      pos = TVector::Zero(n);
+      step = TVector::Zero(n);
     }
   };
 
@@ -44,25 +51,25 @@ class CMAesSolver : public ISolver<T, 1> {
    * @param covar covariance
    * @return [description]
    */
-  Vector<T> sampleMvn(Vector<T> &mean, Matrix<T> &covar) {
+  TVector sampleMvn(TVector &mean, THessian &covar) {
 
-    Matrix<T> normTransform;
-    Eigen::LLT<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> > cholSolver(covar);
+    THessian normTransform;
+    Eigen::LLT<THessian> cholSolver(covar);
 
     if (cholSolver.info() == Eigen::Success) {
       normTransform = cholSolver.matrixL();
     } else {
-      Eigen::SelfAdjointEigenSolver<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> > eigenSolver(covar);
+      Eigen::SelfAdjointEigenSolver<THessian> eigenSolver(covar);
       normTransform = eigenSolver.eigenvectors() * eigenSolver.eigenvalues().cwiseSqrt().asDiagonal();
     }
 
-    Vector<T> stdNormDistr = Vector<T>::Zero(mean.rows());
+    TVector stdNormDistr = TVector::Zero(mean.rows());
     std::normal_distribution<> d(0, 1);
     for (int i = 0; i < mean.rows(); ++i) {
       stdNormDistr[i] = d(gen);
     }
 
-    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> samples = normTransform * stdNormDistr + mean;
+    TVector samples = normTransform * stdNormDistr + mean;
 
     return samples;
   }
@@ -79,7 +86,7 @@ class CMAesSolver : public ISolver<T, 1> {
    *
    * @param objFunc [description]
    */
-  void minimize(Problem<T> &objFunc, Vector<T> & x0) {
+  void minimize(ProblemType &objFunc, TVector &x0) {
 
     const int DIM = x0.rows();
 
@@ -87,59 +94,59 @@ class CMAesSolver : public ISolver<T, 1> {
     individual ii(DIM);
     ii.pos = x0;
 
-    T VarMin = -DIM;
-    T VarMax = DIM;
+    Scalar VarMin = -DIM;
+    Scalar VarMax = DIM;
 
     const int populationSize = (4 + round(3 * log(DIM))) * 10;
     const int mu = round(populationSize / 2);
 
-    Vector<T> w = Vector<T>::Zero(mu);
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> w = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>::Zero(mu);
     for (int i = 1; i <= mu; ++i) {
       w(i - 1) = log(mu + 0.5) - log(i);
     }
 
     w /= w.sum();
 
-    const T mu_eff   = 1. / w.dot(w);
+    const Scalar mu_eff   = 1. / w.dot(w);
 
-    const T sigma0   = 0.3 * (VarMax - VarMin);
-    const T cs       = (mu_eff + 2.) / (DIM + mu_eff + 5.);
-    const T ds       = 1. + cs + 2.*std::max((T)sqrt((mu_eff - 1) / (DIM + 1)) - 1, (T)0.);
-    const T ENN      = sqrt(DIM) * (1 - 1. / (4.*DIM) + 1. / (21.*DIM * DIM));
+    const Scalar sigma0   = 0.3 * (VarMax - VarMin);
+    const Scalar cs       = (mu_eff + 2.) / (DIM + mu_eff + 5.);
+    const Scalar ds       = 1. + cs + 2.*std::max(sqrt((mu_eff - 1) / (DIM + 1)) - 1, Scalar(0.));
+    const Scalar ENN      = sqrt(DIM) * (1 - 1. / (4.*DIM) + 1. / (21.*DIM * DIM));
 
-    const T cc       = (4. + mu_eff / DIM) / (4. + DIM + 2.*mu_eff / DIM);
-    const T c1       = 2. / ((DIM + 1.3) * (DIM + 1.3) + mu_eff);
-    const T alpha_mu = 2.;
-    const T cmu      = std::min(1. - c1, alpha_mu * (mu_eff - 2. + 1. / mu_eff) / ((DIM + 2.) * (DIM + 2.) + alpha_mu * mu_eff / 2.));
-    const T hth      = (1.4 + 2 / (DIM + 1.)) * ENN;
+    const Scalar cc       = (4. + mu_eff / DIM) / (4. + DIM + 2.*mu_eff / DIM);
+    const Scalar c1       = 2. / ((DIM + 1.3) * (DIM + 1.3) + mu_eff);
+    const Scalar alpha_mu = 2.;
+    const Scalar cmu      = std::min(1. - c1, alpha_mu * (mu_eff - 2. + 1. / mu_eff) / ((DIM + 2.) * (DIM + 2.) + alpha_mu * mu_eff / 2.));
+    const Scalar hth      = (1.4 + 2 / (DIM + 1.)) * ENN;
 
-    Vector<T> ps;
-    Vector<T> pc;
-    Matrix<T> C;
-    T sigma = sigma0;
+    TVector ps;
+    TVector pc;
+    THessian C;
+    Scalar sigma = sigma0;
 
     individual M;
 
-    Vector<T> t = Vector<T>::Zero(DIM);
+    TVector t = TVector::Zero(DIM);
     ps = t;
     pc = t;
-    Matrix<T> eye = Matrix<T>::Identity(DIM, DIM);
+    THessian eye = THessian::Identity(DIM, DIM);
     C = eye;
 
     std::uniform_real_distribution<> dis(VarMin, VarMax);
-    M.pos = Vector<T>::Zero(DIM);
+    M.pos = TVector::Zero(DIM);
     for (int i = 0; i < DIM; ++i) {
       M.pos[i] = dis(gen);
     }
 
-    M.step = Vector<T>::Zero(DIM);
+    M.step = TVector::Zero(DIM);
     M.cost = objFunc(M.pos);
 
     individual bestSol = M;
 
-    T bestCostSoFar;
+    Scalar bestCostSoFar;
 
-    Vector<T> zeroVectorTemplate = Vector<T>::Zero(DIM);
+    TVector zeroVectorTemplate = TVector::Zero(DIM);
 
     // CMA-ES Main Loop
     for (size_t curIter = 0; curIter < this->m_stop.iterations; ++curIter) {
@@ -171,7 +178,7 @@ class CMAesSolver : public ISolver<T, 1> {
         break;
 
       // update mean (TODO: matrix-vec-multiplication with permutation matrix?)
-      M.step = Vector<T>::Zero(DIM);
+      M.step = TVector::Zero(DIM);
       for (int j = 0; j < mu; ++j) {
         M.step += w[j] * pop[j].step;
       }
@@ -186,13 +193,13 @@ class CMAesSolver : public ISolver<T, 1> {
       ps = (1. - cs) * ps + sqrt(cs * (2. - cs) * mu_eff) * C.llt().matrixL().transpose().solve(M.step);
       sigma = sigma * pow(  exp((cs / ds * ((ps).norm() / ENN - 1.))), 0.3);
 
-      T hs = 0;
+      Scalar hs = 0;
       if (ps.norm() / sqrt(pow(1 - (1. - cs), (2 * (curIter + 1)))) < hth)
         hs = 1;
       else
         hs = 0;
 
-      const T delta = (1 - hs) * cc * (2 - cc);
+      const Scalar delta = (1 - hs) * cc * (2 - cc);
 
       pc = (1 - cc) * pc + hs * sqrt(cc * (2. - cc) * mu_eff) * M.step;
       C = (1 - c1 - cmu) * C + c1 * (pc * pc.transpose() + delta * C);
@@ -201,9 +208,9 @@ class CMAesSolver : public ISolver<T, 1> {
         C += cmu * w(j) * pop[j].step * pop[j].step.transpose();
       }
 
-      Eigen::EigenSolver<Matrix<T> > eig(C);
-      Vector<T> E = eig.eigenvalues().real();
-      Matrix<T> V = eig.eigenvectors().real();
+      Eigen::EigenSolver<THessian> eig(C);
+      TVector E = eig.eigenvalues().real();
+      THessian V = eig.eigenvectors().real();
 
       // check positive definitness of covariance matrix (all eigenvalues must be > 0)
       bool pd = true;
