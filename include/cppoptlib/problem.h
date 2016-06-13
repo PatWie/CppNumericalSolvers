@@ -101,33 +101,28 @@ class Problem {
   void finiteGradient(const  TVector &x, TVector &grad, int accuracy = 0) {
     // accuracy can be 0, 1, 2, 3
     const Scalar eps = 2.2204e-6;
-    const Scalar coeff[4][8] = {
-      {1, -1, 0, 0, 0, 0, 0, 0},
-      {1, -8, 8, -1, 0, 0, 0, 0},
-      {-1, 9, -45, 45, -9, 1, 0, 0},
-      {3, -32, 168, -672, 672, -168, 32, -3}
-    };
-    const Scalar coeff2[4][8] = {
-      {1, -1, 0, 0, 0, 0, 0, 0},
-      {-2, -1, 1, 2, 0, 0, 0, 0},
-      {-3, -2, -1, 1, 2, 3, 0, 0},
-      {-4, -3, -2, -1, 1, 2, 3, 4}
-    };
+    static const std::vector<std::vector<Scalar>> coeff =
+    { {1, -1}, {1, -8, 8, -1}, {-1, 9, -45, 45, -9, 1}, {3, -32, 168, -672, 672, -168, 32, -3} };
+    static const std::vector<std::vector<Scalar>> coeff2 =
+    { {1, -1}, {-2, -1, 1, 2}, {-3, -2, -1, 1, 2, 3}, {-4, -3, -2, -1, 1, 2, 3, 4} };
     const Scalar dd[4] = {2, 12, 60, 840};
 
     grad.resize(x.rows());
-    TVector xx(x.rows());
+    TVector& xx = const_cast<TVector&>(x);
+
     const int innerSteps = 2*(accuracy+1);
+    const Scalar ddVal = dd[accuracy]*eps;
 
     for (TIndex d = 0; d < x.rows(); d++) {
       grad[d] = 0;
       for (int s = 0; s < innerSteps; ++s)
       {
-        xx = x;
+        Scalar tmp = xx[d];
         xx[d] += coeff2[accuracy][s]*eps;
         grad[d] += coeff[accuracy][s]*value(xx);
+        xx[d] = tmp;
       }
-      grad[d] /= (dd[accuracy]* eps);
+      grad[d] /= ddVal;
     }
   }
 
@@ -135,11 +130,14 @@ class Problem {
     const Scalar eps = std::numeric_limits<Scalar>::epsilon()*10e7;
 
     hessian.resize(x.rows(), x.rows());
-    TVector xx(x.rows());
+    TVector& xx = const_cast<TVector&>(x);
+
     if(accuracy == 0) {
       for (TIndex i = 0; i < x.rows(); i++) {
         for (TIndex j = 0; j < x.rows(); j++) {
-          xx = x;
+          Scalar tmpi = xx[i];
+          Scalar tmpj = xx[j];
+
           Scalar f4 = value(xx);
           xx[i] += eps;
           xx[j] += eps;
@@ -150,6 +148,9 @@ class Problem {
           xx[i] -= eps;
           Scalar f3 = value(xx);
           hessian(i, j) = (f1 - f2 - f3 + f4) / (eps * eps);
+
+          xx[i] = tmpi;
+          xx[j] = tmpj;
         }
       }
     } else {
@@ -164,6 +165,8 @@ class Problem {
       */
       for (TIndex i = 0; i < x.rows(); i++) {
         for (TIndex j = 0; j < x.rows(); j++) {
+          Scalar tmpi = xx[i];
+          Scalar tmpj = xx[j];
 
           Scalar term_1 = 0;
           xx = x.eval(); xx[i] += 1*eps;  xx[j] += -2*eps;  term_1 += value(xx);
@@ -191,6 +194,8 @@ class Problem {
 
           hessian(i, j) = (-63 * term_1+63 * term_2+44 * term_3+74 * term_4)/(600.0 * eps * eps);
 
+          xx[i] = tmpi;
+          xx[j] = tmpj;
         }
       }
     }
