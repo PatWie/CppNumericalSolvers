@@ -169,33 +169,33 @@ class Problem {
           Scalar tmpj = xx[j];
 
           Scalar term_1 = 0;
-          xx = x.eval(); xx[i] += 1*eps;  xx[j] += -2*eps;  term_1 += value(xx);
-          xx = x.eval(); xx[i] += 2*eps;  xx[j] += -1*eps;  term_1 += value(xx);
-          xx = x.eval(); xx[i] += -2*eps; xx[j] += 1*eps;   term_1 += value(xx);
-          xx = x.eval(); xx[i] += -1*eps; xx[j] += 2*eps;   term_1 += value(xx);
+          xx[i] = tmpi; xx[j] = tmpj; xx[i] += 1*eps;  xx[j] += -2*eps;  term_1 += value(xx);
+          xx[i] = tmpi; xx[j] = tmpj; xx[i] += 2*eps;  xx[j] += -1*eps;  term_1 += value(xx);
+          xx[i] = tmpi; xx[j] = tmpj; xx[i] += -2*eps; xx[j] += 1*eps;   term_1 += value(xx);
+          xx[i] = tmpi; xx[j] = tmpj; xx[i] += -1*eps; xx[j] += 2*eps;   term_1 += value(xx);
 
           Scalar term_2 = 0;
-          xx = x.eval(); xx[i] += -1*eps; xx[j] += -2*eps;  term_2 += value(xx);
-          xx = x.eval(); xx[i] += -2*eps; xx[j] += -1*eps;  term_2 += value(xx);
-          xx = x.eval(); xx[i] += 1*eps;  xx[j] += 2*eps;   term_2 += value(xx);
-          xx = x.eval(); xx[i] += 2*eps;  xx[j] += 1*eps;   term_2 += value(xx);
+          xx[i] = tmpi; xx[j] = tmpj; xx[i] += -1*eps; xx[j] += -2*eps;  term_2 += value(xx);
+          xx[i] = tmpi; xx[j] = tmpj; xx[i] += -2*eps; xx[j] += -1*eps;  term_2 += value(xx);
+          xx[i] = tmpi; xx[j] = tmpj; xx[i] += 1*eps;  xx[j] += 2*eps;   term_2 += value(xx);
+          xx[i] = tmpi; xx[j] = tmpj; xx[i] += 2*eps;  xx[j] += 1*eps;   term_2 += value(xx);
 
           Scalar term_3 = 0;
-          xx = x.eval(); xx[i] += 2*eps;  xx[j] += -2*eps;  term_3 += value(xx);
-          xx = x.eval(); xx[i] += -2*eps; xx[j] += 2*eps;   term_3 += value(xx);
-          xx = x.eval(); xx[i] += -2*eps; xx[j] += -2*eps;  term_3 -= value(xx);
-          xx = x.eval(); xx[i] += 2*eps;  xx[j] += 2*eps;   term_3 -= value(xx);
+          xx[i] = tmpi; xx[j] = tmpj; xx[i] += 2*eps;  xx[j] += -2*eps;  term_3 += value(xx);
+          xx[i] = tmpi; xx[j] = tmpj; xx[i] += -2*eps; xx[j] += 2*eps;   term_3 += value(xx);
+          xx[i] = tmpi; xx[j] = tmpj; xx[i] += -2*eps; xx[j] += -2*eps;  term_3 -= value(xx);
+          xx[i] = tmpi; xx[j] = tmpj; xx[i] += 2*eps;  xx[j] += 2*eps;   term_3 -= value(xx);
 
           Scalar term_4 = 0;
-          xx = x.eval(); xx[i] += -1*eps; xx[j] += -1*eps;  term_4 += value(xx);
-          xx = x.eval(); xx[i] += 1*eps;  xx[j] += 1*eps;   term_4 += value(xx);
-          xx = x.eval(); xx[i] += 1*eps;  xx[j] += -1*eps;  term_4 -= value(xx);
-          xx = x.eval(); xx[i] += -1*eps; xx[j] += 1*eps;   term_4 -= value(xx);
-
-          hessian(i, j) = (-63 * term_1+63 * term_2+44 * term_3+74 * term_4)/(600.0 * eps * eps);
+          xx[i] = tmpi; xx[j] = tmpj; xx[i] += -1*eps; xx[j] += -1*eps;  term_4 += value(xx);
+          xx[i] = tmpi; xx[j] = tmpj; xx[i] += 1*eps;  xx[j] += 1*eps;   term_4 += value(xx);
+          xx[i] = tmpi; xx[j] = tmpj; xx[i] += 1*eps;  xx[j] += -1*eps;  term_4 -= value(xx);
+          xx[i] = tmpi; xx[j] = tmpj; xx[i] += -1*eps; xx[j] += 1*eps;   term_4 -= value(xx);
 
           xx[i] = tmpi;
           xx[j] = tmpj;
+
+          hessian(i, j) = (-63 * term_1+63 * term_2+44 * term_3+74 * term_4)/(600.0 * eps * eps);
         }
       }
     }
