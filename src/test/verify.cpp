@@ -77,6 +77,8 @@ class RosenbrockFull : public RosenbrockGradient<Scalar> {
         hessian(1, 0) = -400 * x[0];
         hessian(1, 1) = 200;
     }
+
+
 };
 
 template <class T> class GradientDescentTest : public testing::Test{};
@@ -223,6 +225,19 @@ TYPED_TEST(CentralDifference, Hessian){
     EXPECT_NEAR(hessian(0,1), -1, PRECISION);
     EXPECT_NEAR(hessian(1,1), 0, PRECISION);
 }
+
+template <class Scalar>
+struct LinearFunc : public BoundedProblem<Scalar, 2> {
+    using typename Problem<Scalar, 2>::TVector;
+    LinearFunc() {
+        this->setBoxConstraint(TVector::Zero(), TVector::Ones());
+    }
+
+    Scalar value(const TVector& x) {
+        return -x[0];
+    }
+};
+TYPED_TEST(LbfgsbTest, LinearFunc)    { SOLVE_PROBLEM(cppoptlib::LbfgsbSolver,LinearFunc, 0.5, 0.5, -1.0) }
 
 int main (int argc, char **argv)
 {

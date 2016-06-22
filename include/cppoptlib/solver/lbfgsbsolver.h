@@ -72,6 +72,7 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
     // sortedindices [1,0,2] means the minimal element is on the 1-st entry
     std::vector<int> sortedIndices = sort_indexes(SetOfT);
     x_cauchy = x;
+
     // Initialize
     // p :=     W^Scalar*p
     VariableTVector p = (W.transpose() * d);                     // (2mn operations)
@@ -126,8 +127,15 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
         dt = t - t_old;
       }
     }
+    // Bugfix: check NaN, for one testcase there is f_doubleprime=0
+    // and then dt_min = f_prime/f_doubleprime = NaN
+    // see "Algorithm CP: Computation of the generalized Cauchy point."" (page 9)
+    if(dt_min != dt_min) {
+      dt_min = 0;
+    }
     dt_min = std::max(dt_min, (Scalar)0.0);
     t_old += dt_min;
+
     #pragma omp parallel for
     for (int ii = i; ii < x_cauchy.rows(); ii++) {
       x_cauchy(sortedIndices[ii]) = x(sortedIndices[ii]) + t_old * d(sortedIndices[ii]);
@@ -165,6 +173,7 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
     Scalar theta_inverse = 1 / theta;
     std::vector<int> FreeVariablesIndex;
     for (int i = 0; i < x_cauchy.rows(); i++) {
+      SubspaceMin[i] = 0;
       if ((x_cauchy(i) != problem.upperBound()(i)) && (x_cauchy(i) != problem.lowerBound()(i))) {
         FreeVariablesIndex.push_back(i);
       }
@@ -233,9 +242,13 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
       SubspaceMinimization(problem, CauchyPoint, x, c, g, SubspaceMin);
       // STEP 4: perform linesearch and STEP 5: compute gradient
       Scalar alpha_init = 1.0;
-      const Scalar rate = MoreThuente<TProblem, 1>::linesearch(x,  SubspaceMin-x ,  problem, alpha_init);
+      Scalar rate = MoreThuente<TProblem, 1>::linesearch(x,  SubspaceMin-x ,  problem, alpha_init);
+      // BugFix probably from dt_min (f_prime/f_doubleprime)
+      if(rate > alpha_init)
+        rate = alpha_init;
       // update current guess and function information
       x = x - rate*(x-SubspaceMin);
+
       f = problem.value(x);
       problem.gradient(x, g);
       xHistory.push_back(x);
@@ -276,9 +289,6 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
     }
     x0 = x;
     if (this->m_debug > DebugLevel::None) {
-        std::cout << "Stop status was: " << this->m_status << std::endl;
-        std::cout << "Stop criteria were: " << std::endl << this->m_stop << std::endl;
-        std::cout << "Current values are: " << std::endl << this->m_current << std::endl;
     }
   }
 };
