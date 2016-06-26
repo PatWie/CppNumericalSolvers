@@ -32,28 +32,36 @@ endif()
 
 include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 
-
 add_library(cppoptlib INTERFACE)
 target_include_directories(cppoptlib INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
-target_link_libraries(cppoptlib INTERFACE Eigen3)
-
+if(TARGET ::Eigen3)
+    target_link_libraries(cppoptlib INTERFACE ::Eigen3)
+endif()
 
 install(TARGETS cppoptlib EXPORT cppoptlib-targets)
-install(EXPORT cppoptlib-targets DESTINATION lib/cmake/cppoptlib
-    NAMESPACE ::) # export name will be '::cppoptlib'
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hide/cppoptlib-config.cmake
-    DESTINATION lib/cmake/cppoptlib)
 
-# write and install config module
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/hide/cppoptlib-config.cmake "
-    include(CMakeFindDependencyMacro)
-    find_dependency(Eigen3)
-    if(Eigen3_FOUND)
-        include(\"\${CMAKE_CURRENT_LIST_DIR}/cppoptlib-targets.cmake\")
-    endif()
-")
+if(TARGET ::Eigen3)
+    install(EXPORT cppoptlib-targets DESTINATION lib/cmake/cppoptlib
+        NAMESPACE ::) # export name will be '::cppoptlib'
+    # write and install config module
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/hide/cppoptlib-config.cmake "
+        include(CMakeFindDependencyMacro)
+        find_dependency(Eigen3)
+        if(Eigen3_FOUND)
+            include(\"\${CMAKE_CURRENT_LIST_DIR}/cppoptlib-targets.cmake\")
+        endif()
+    ")
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hide/cppoptlib-config.cmake
+        DESTINATION lib/cmake/cppoptlib)
+else()
+    # config-module without referencing Eigen
+    install(EXPORT cppoptlib-targets DESTINATION lib/cmake/cppoptlib
+        NAMESPACE :: # export name will be '::cppoptlib'
+        FILE cppoptlib-config.cmake)
+endif()
+
 install(DIRECTORY include/cppoptlib DESTINATION include)
 
 if(BUILD_EXAMPLES)
