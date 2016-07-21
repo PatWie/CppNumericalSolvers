@@ -7,17 +7,20 @@
 namespace cppoptlib {
 
 // we will solve ||Xb-y|| s.t. b>=0
-template<typename T, int D>
-class NonNegativeLeastSquares : public BoundedProblem<T, D> {
+template<typename T>
+class NonNegativeLeastSquares : public BoundedProblem<T> {
   public:
-    using typename Problem<T, D>::TVector;
-    using MatrixType = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+    using Superclass = BoundedProblem<T>;
+    using typename Superclass::TVector;
+    using TMatrix = typename Superclass::THessian;
 
-    const MatrixType X;
+    const TMatrix X;
     const TVector y;
 
   public:
-    NonNegativeLeastSquares(const MatrixType &X_, const TVector y_) : X(X_), y(y_) {}
+    NonNegativeLeastSquares(const TMatrix &X_, const TVector y_) :
+        Superclass(X_.rows()),
+        X(X_), y(y_) {}
 
     T value(const TVector &beta) {
         return (X*beta-y).dot(X*beta-y);
@@ -32,35 +35,29 @@ class NonNegativeLeastSquares : public BoundedProblem<T, D> {
 int main(int argc, char const *argv[]) {
 
     const size_t DIM = 4;
-    const size_t NUM = 5;
+    const size_t NUM = 10;
     typedef double T;
-    typedef cppoptlib::NonNegativeLeastSquares<T, DIM> TNNLS;
+    typedef cppoptlib::NonNegativeLeastSquares<T> TNNLS;
     typedef typename TNNLS::TVector TVector;
-    typedef typename TNNLS::MatrixType MatrixType;
+    typedef typename TNNLS::TMatrix TMatrix;
 
     // create model X*b for arbitrary b
-    MatrixType X         = MatrixType::Random(NUM, DIM);
-    TVector true_beta = TVector::Random();
-    MatrixType y         = X*true_beta;
+    TMatrix X         = TMatrix::Random(NUM, DIM);
+    TVector true_beta = TVector::Random(DIM);
+    TMatrix y         = X*true_beta;
 
     // perform non-negative least squares
     TNNLS f(X, y);
-    f.setLowerBound(TVector::Zero());
-
+    f.setLowerBound(TVector::Zero(DIM));
     // create initial guess (make sure it's valid >= 0)
-    TVector beta = TVector::Random();
+    TVector beta = TVector::Random(DIM);
     beta = (beta.array() < 0).select(-beta, beta);
-    std::cout << "start with b =          " << beta.transpose() << std::endl;
-
+    std::cout << "true b  = " << true_beta.transpose() << "\tloss:" << f(true_beta) << std::endl;
+    std::cout << "start b = " << beta.transpose() << "\tloss:" << f(beta) << std::endl;
     // init L-BFGS-B for box-constrained solving
     cppoptlib::LbfgsbSolver<TNNLS> solver;
     solver.minimize(f, beta);
-
-    // display results
-    std::cout << "model s.t. b >= 0  loss:" << f(beta) << std::endl;
-    std::cout << "for b =                 " << beta.transpose() << std::endl;
-    std::cout << "true model         loss:" << f(true_beta) << std::endl;
-    std::cout << "for b =                 " << true_beta.transpose() << std::endl;
+    std::cout << "final b = " << beta.transpose() << "\tloss:" << f(beta) << std::endl;
 
     return 0;
 }

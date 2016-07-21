@@ -225,7 +225,7 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
       TVector x_old = x;
       TVector g_old = g;
       // STEP 2: compute the cauchy point
-      TVector CauchyPoint = TVector::Zero();
+      TVector CauchyPoint = TVector::Zero(DIM);
       VariableTVector c = VariableTVector::Zero(W.cols());
       getGeneralizedCauchyPoint(problem, x, g, CauchyPoint, c);
       // STEP 3: compute a search direction d_k by the primal method for the sub-problem
