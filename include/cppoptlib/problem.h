@@ -1,6 +1,7 @@
 #ifndef PROBLEM_H
 #define PROBLEM_H
 
+#include <array>
 #include <vector>
 #include <Eigen/Core>
 
@@ -105,7 +106,7 @@ class Problem {
     { { {1, -1}, {1, -8, 8, -1}, {-1, 9, -45, 45, -9, 1}, {3, -32, 168, -672, 672, -168, 32, -3} } };
     static const std::array<std::vector<Scalar>, 4> coeff2 =
     { { {1, -1}, {-2, -1, 1, 2}, {-3, -2, -1, 1, 2, 3}, {-4, -3, -2, -1, 1, 2, 3, 4} } };
-    const std::array<Scalar, 4> dd = {2, 12, 60, 840};
+    static const std::array<Scalar, 4> dd = {2, 12, 60, 840};
 
     grad.resize(x.rows());
     TVector& xx = const_cast<TVector&>(x);
