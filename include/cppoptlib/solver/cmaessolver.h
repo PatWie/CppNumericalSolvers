@@ -25,7 +25,6 @@ public:
 protected:
     std::mt19937 gen;
     Scalar m_stepSize;
-    
     /*
      * @brief Create a vector sampled from a normal distribution
      *
@@ -59,7 +58,6 @@ protected:
 public:
     CMAesSolver() : gen((std::random_device())()) {
         m_stepSize = 0.5;
-        
         // Set some sensible defaults for the stop criteria
         Super::m_stop.iterations = 1e5;
         Super::m_stop.gradNorm = 0; // Switch this off
@@ -91,14 +89,12 @@ public:
         w /= w.sum();
         const Scalar mu_eff = (w.sum()*w.sum()) / w.dot(w);
         la = std::max<int>(16, la); // Increase to 16 samples for very small populations, but AFTER calcaulting mu_eff
-        
         const Scalar cc     = (4. + mu_eff / n) / (n + 4. + 2.*mu_eff/n);
         const Scalar cs     = (mu_eff + 2.) / (n + mu_eff + 5.);
-        const Scalar c1     = 2. / (pow(n + 1.3,2.) + mu_eff);
-        const Scalar cmu    = std::min(1. - c1, 2.*(mu_eff - 2. + 1./mu_eff) / (pow(n+2,2.) + mu_eff));
+        const Scalar c1     = 2. / (pow(n + 1.3, 2.) + mu_eff);
+        const Scalar cmu    = std::min(1. - c1, 2.*(mu_eff - 2. + 1./mu_eff) / (pow(n+2, 2.) + mu_eff));
         const Scalar ds     = 1. + cs + 2.*std::max(0., sqrt((mu_eff - 1.) / (n + 1.)) - 1.);
         const Scalar chi    = sqrt(n) * (1. - 1./(4.*n) + 1./(21.*n*n));
-
         const Scalar hsig_thr = (1.4 + 2 / (n + 1.)) * chi;
 
         TVector pc = TVector::Zero(n);
@@ -115,7 +111,6 @@ public:
         TMatrix arx(n, la);
         TVarVector costs(la);
         Scalar prevCost = objFunc.value(x0);
-        
         // CMA-ES Main Loop
         int eigen_last_eval = 0;
         int eigen_next_eval = std::max<Scalar>(1, 1/(10*n*(c1+cmu)));
@@ -123,10 +118,12 @@ public:
         if (Super::m_debug >= DebugLevel::Low) {
             std::cout << "CMA-ES Initial Config" << std::endl;
             std::cout << "n " << n << " la " << la << " mu " << mu << " mu_eff " << mu_eff << " sigma " << sigma << std::endl;
-            std::cout << "cs " << cs << " ds " << ds << " chi " << chi << " cc " << cc << " c1 " << c1 << " cmu " << cmu << " hsig_thr " << hsig_thr << std::endl;
+            std::cout << "cs " << cs << " ds " << ds << " chi " << chi << " cc " << cc << " c1 " << c1 << " cmu " << cmu
+                      << " hsig_thr " << hsig_thr << std::endl;
             std::cout << "C" << std::endl << C << std::endl;
             std::cout << "Hessian will be updated every " << eigen_next_eval << " iterations." << std::endl;
-            std::cout << "Iteration: " << this->m_current.iterations << " best cost " << prevCost << " sigma " << sigma << " cond " << this->m_current.condition << " xmean " << x0.transpose() << std::endl;
+            std::cout << "Iteration: " << this->m_current.iterations << " best cost " << prevCost << " sigma " << sigma
+                      << " cond " << this->m_current.condition << " xmean " << x0.transpose() << std::endl;
         }
         do {
             for (int k = 0; k < la; ++k) {
@@ -134,13 +131,11 @@ public:
               arx.col(k) = xmean + sigma * B*D*arz.col(k);
               costs[k] = objFunc(arx.col(k));
             }
-            
             if (Super::m_debug >= DebugLevel::High) {
                 std::cout << "arz" << std::endl << arz << std::endl;
                 std::cout << "arx" << std::endl << arx << std::endl;
                 std::cout << "costs " << costs.transpose() << std::endl;
             }
-            
             std::vector<size_t> indices = index_partial_sort(costs, mu);
             xmean = TVector::Zero(n);
             zmean = TVector::Zero(n);
@@ -181,7 +176,8 @@ public:
             Super::m_current.fDelta = fabs(costs[indices[0]] - prevCost);
             prevCost = costs[indices[0]];
             if (Super::m_debug >= DebugLevel::Low) {
-                std::cout << "Iteration: " << this->m_current.iterations << " best cost " << costs[indices[0]] << " sigma " << sigma << " cond " << this->m_current.condition << " xmean " << xmean.transpose() << std::endl;
+                std::cout << "Iteration: " << this->m_current.iterations << " best cost " << costs[indices[0]] << " sigma " << sigma
+                          << " cond " << this->m_current.condition << " xmean " << xmean.transpose() << std::endl;
             }
             if (fabs(costs[indices[0]] - costs[indices[mu-1]]) < 1e-6) {
                 sigma = sigma * exp(0.2+cs/ds);
@@ -194,7 +190,6 @@ public:
         // Return the best evaluated solution
         x0 = xmean;
         m_stepSize = sigma;
-        
         if (Super::m_debug >= DebugLevel::Low) {
             std::cout << "Stop" << std::endl;
             this->m_stop.print(std::cout);
@@ -203,7 +198,6 @@ public:
             std::cout << "Reason: " << Super::m_status << std::endl;
         }
     }
-
 };
 
 } /* namespace cppoptlib */

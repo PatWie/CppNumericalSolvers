@@ -25,7 +25,7 @@ public:
 protected:
     std::mt19937 gen;
     Scalar m_stepSize;
-    
+
     /*
      * @brief Create a vector sampled from a normal distribution
      *
@@ -59,7 +59,7 @@ protected:
 public:
     CMAesBSolver() : gen((std::random_device())()) {
         m_stepSize = 0.5;
-        
+
         // Set some sensible defaults for the stop criteria
         Super::m_stop.iterations = 1e5;
         Super::m_stop.gradNorm = 0; // Switch this off
@@ -85,14 +85,13 @@ public:
         w /= w.sum();
         const Scalar mu_eff = (w.sum()*w.sum()) / w.dot(w);
         la = std::max<int>(16, la); // Increase to 16 samples for very small populations, but AFTER calcaulting mu_eff
-        
+
         const Scalar cc     = (4. + mu_eff / n) / (n + 4. + 2.*mu_eff/n);
         const Scalar cs     = (mu_eff + 2.) / (n + mu_eff + 5.);
-        const Scalar c1     = 2. / (pow(n + 1.3,2.) + mu_eff);
-        const Scalar cmu    = std::min(1. - c1, 2.*(mu_eff - 2. + 1./mu_eff) / (pow(n+2,2.) + mu_eff));
+        const Scalar c1     = 2. / (pow(n + 1.3, 2.) + mu_eff);
+        const Scalar cmu    = std::min(1. - c1, 2.*(mu_eff - 2. + 1./mu_eff) / (pow(n+2, 2.) + mu_eff));
         const Scalar ds     = 1. + cs + 2.*std::max(0., sqrt((mu_eff - 1.) / (n + 1.)) - 1.);
         const Scalar chi    = sqrt(n) * (1. - 1./(4.*n) + 1./(21.*n*n));
-
         const Scalar hsig_thr = (1.4 + 2 / (n + 1.)) * chi;
 
         TVector pc = TVector::Zero(n);
@@ -104,7 +103,6 @@ public:
         Eigen::SelfAdjointEigenSolver<THessian> eigenSolver(C);
         B = eigenSolver.eigenvectors();
         D.diagonal() = eigenSolver.eigenvalues().array().sqrt();
-        
         Scalar sigma = m_stepSize;
 
         TVector xmean = x0;
@@ -113,7 +111,6 @@ public:
         TMatrix arx(n, la);
         TVarVector costs(la);
         Scalar prevCost = objFunc.value(x0);
-
         // Constraint handling
         TVector gamma = TVector::Ones();
 
@@ -124,10 +121,12 @@ public:
         if (Super::m_debug >= DebugLevel::Low) {
             std::cout << "CMA-ES Initial Config" << std::endl;
             std::cout << "n " << n << " la " << la << " mu " << mu << " mu_eff " << mu_eff << " sigma " << sigma << std::endl;
-            std::cout << "cs " << cs << " ds " << ds << " chi " << chi << " cc " << cc << " c1 " << c1 << " cmu " << cmu << " hsig_thr " << hsig_thr << std::endl;
+            std::cout << "cs " << cs << " ds " << ds << " chi " << chi << " cc " << cc
+                      << " c1 " << c1 << " cmu " << cmu << " hsig_thr " << hsig_thr << std::endl;
             std::cout << "C" << std::endl << C << std::endl;
             std::cout << "Hessian will be updated every " << eigen_next_eval << " iterations." << std::endl;
-            std::cout << "Iteration: " << this->m_current.iterations << " best cost " << prevCost << " sigma " << sigma << " cond " << this->m_current.condition << " xmean " << x0.transpose() << std::endl;
+            std::cout << "Iteration: " << this->m_current.iterations << " best cost " << prevCost << " sigma " << sigma
+                      << " cond " << this->m_current.condition << " xmean " << x0.transpose() << std::endl;
         }
         do {
             for (int k = 0; k < la; ++k) {
@@ -138,7 +137,7 @@ public:
               const Scalar eta_sum = C.diagonal().array().log().sum()/n;
               for (int d = 0; d < n; d++) {
                   Scalar dist = 0;
-                  const Scalar eta = exp(0.9 * (log(C.coeffRef(d,d) - eta_sum)));
+                  const Scalar eta = exp(0.9 * (log(C.coeffRef(d, d) - eta_sum)));
                   if (xk.coeffRef(d) < objFunc.lowerBound().coeffRef(d)) {
                       dist = xk.coeffRef(d) - objFunc.lowerBound().coeffRef(d);
                       xk.coeffRef(d) = objFunc.lowerBound().coeffRef(d);
@@ -164,15 +163,12 @@ public:
               zmean += w[k]*arz.col(indices[k]);
               xmean += w[k]*arx.col(indices[k]);
             }
-            
             // Update constraint weights
             for (int d = 0; d < n; d++) {
-                if (xmean.coeffRef(d) < objFunc.lowerBound().coeffRef(d) ||
-                    xmean.coeffRef(d) > objFunc.upperBound().coeffRef(d)) {
+                if (xmean.coeffRef(d) < objFunc.lowerBound().coeffRef(d) || xmean.coeffRef(d) > objFunc.upperBound().coeffRef(d)) {
                     gamma.coeffRef(d) *= pow(1.1, std::max<Scalar>(1, mu_eff / (10*n)));
                 }
             }
-            
             // Update evolution paths
             ps = (1. - cs)*ps + sqrt(cs*(2. - cs)*mu_eff) * B*zmean;
             Scalar hsig = (ps.norm()/sqrt(pow(1 - (1. - cs), (2 * (this->m_current.iterations + 1)))) < hsig_thr) ? 1.0 : 0.0;
@@ -206,7 +202,8 @@ public:
             Super::m_current.fDelta = fabs(costs[indices[0]] - prevCost);
             prevCost = costs[indices[0]];
             if (Super::m_debug >= DebugLevel::Low) {
-                std::cout << "Iteration: " << this->m_current.iterations << " best cost " << costs[indices[0]] << " sigma " << sigma << " cond " << this->m_current.condition << " xmean " << xmean.transpose() << std::endl;
+                std::cout << "Iteration: " << this->m_current.iterations << " best cost " << costs[indices[0]]
+                          << " sigma " << sigma << " cond " << this->m_current.condition << " xmean " << xmean.transpose() << std::endl;
             }
             if (fabs(costs[indices[0]] - costs[indices[mu-1]]) < 1e-6) {
                 sigma = sigma * exp(0.2+cs/ds);
@@ -219,7 +216,6 @@ public:
         // Return the best evaluated solution
         x0 = xmean;
         m_stepSize = sigma;
-        
         if (Super::m_debug >= DebugLevel::Low) {
             std::cout << "Stop" << std::endl;
             this->m_stop.print(std::cout);
@@ -228,7 +224,6 @@ public:
             std::cout << "Reason: " << Super::m_status << std::endl;
         }
     }
-
 };
 
 } /* namespace cppoptlib */
