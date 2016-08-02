@@ -66,7 +66,6 @@ std::string op_to_string(SimplexOp op) {
   return "unknown";
 }
 
-
 template<typename T>
 class Criteria {
 public:

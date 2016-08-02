@@ -6,10 +6,8 @@
 #include "../../include/cppoptlib/problem.h"
 #include "../../include/cppoptlib/solver/neldermeadsolver.h"
 
-
-static ofstream trace_stream;
+static std::ofstream trace_stream;
 static bool first_iteration = true; // to help generate trace JSON
-
 
 // to use this library just use the namespace "cppoptlib"
 namespace cppoptlib {
@@ -34,14 +32,14 @@ namespace cppoptlib {
 
       //   // Be mindful of calls to value() in the callback if the function is
       //   // computationally intensive.expensive. Consider using detailed_callback().
-      //   std::cout << setw(6) << state.iterations << setw(12) << a[0] << setw(12) << a[1] << setw(12) << value(x) << std::endl;
+      //   std::cout << std::setw(6) << state.iterations << std::setw(12) << a[0] << std::setw(12) << a[1] << std::setw(12) << value(x) << std::endl;
       //   return true;
       // }
 
-      bool detailed_callback(const cppoptlib::Criteria<T> &state, SimplexOp op, int index, const MatrixType &x, vector<Scalar> f) {
+      bool detailed_callback(const cppoptlib::Criteria<T> &state, SimplexOp op, int index, const MatrixType &x, std::vector<Scalar> f) {
         TVector xp = x.col(index).transpose();
 
-        std::cout << setw(6) << state.iterations << setw(12) << xp[0] << setw(12) << xp[1] << setw(12) << f[index] << std::endl;
+        std::cout << std::setw(6) << state.iterations << std::setw(12) << xp[0] << std::setw(12) << xp[1] << std::setw(12) << f[index] << std::endl;
 
         // Write simplex trace
         TVector x0 = x.col(0).transpose();
@@ -75,13 +73,13 @@ namespace cppoptlib {
       using typename Superclass::TVector;
       using MatrixType = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
 
-      MatrixType makeInitialSimplex (TVector &x) {
+      MatrixType makeInitialSimplex(TVector &x) {
         size_t dim = x.rows();
 
         // create initial simplex
         MatrixType s = MatrixType::Zero(dim, dim + 1);
-        for (int c = 0; c < (int)dim + 1; ++c) {
-          for (int r = 0; r < (int)dim; ++r) {
+        for (int c = 0; c < int(dim) + 1; ++c) {
+          for (int r = 0; r < int(dim); ++r) {
             s(r, c) = x(r);
             if (r == c - 1) {
               s(r, c) = x(r) + 0.5;
@@ -95,10 +93,6 @@ namespace cppoptlib {
   };
 }
 
-
-/**
- * @function main
- */
 int main( int argc, char** argv ) {
   typedef double T;
   typedef cppoptlib::Rosenbrock<T> Rosenbrock;
@@ -122,7 +116,7 @@ int main( int argc, char** argv ) {
   solver.x0 = solver.makeInitialSimplex(x);
 
   // Write simplex trace (most of it will be written by the callback)
-  trace_stream.open("simplex-trace.json", ofstream::out);
+  trace_stream.open("simplex-trace.json", std::ofstream::out);
   trace_stream <<
     "{\n"
     "  \"simplex\": [\n";
@@ -139,11 +133,11 @@ int main( int argc, char** argv ) {
   trace_stream.close();
 
   // Print results
-  std::cout << string(42, '-') << std::endl;
+  std::cout << std::string(42, '-') << std::endl;
   std::cout << "   stop:" << "  " << solver.stop_condition << std::endl;
   std::cout << "   argmin: " << x.transpose() << std::endl;
   std::cout << "   f in argmin: " << f(x) << std::endl;
-  std::cout << "   trace written to simplex-trace.json" << endl;
+  std::cout << "   trace written to simplex-trace.json" << std::endl;
 
   return 0;
 }
