@@ -18,14 +18,22 @@ class Problem {
   using THessian  = Eigen::Matrix<Scalar, Dim, Dim>;
   using TCriteria = Criteria<Scalar>;
   using TIndex = typename TVector::Index;
+  using MatrixType = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
 
  public:
   Problem() {}
   virtual ~Problem()= default;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
   virtual bool callback(const Criteria<Scalar> &state, const TVector &x) {
     return true;
   }
+
+  virtual bool detailed_callback(const Criteria<Scalar> &state, SimplexOp op, int index, const MatrixType &x, std::vector<Scalar> f) {
+    return true;
+  }
+#pragma GCC diagnostic pop
 
   /**
    * @brief returns objective value in x
