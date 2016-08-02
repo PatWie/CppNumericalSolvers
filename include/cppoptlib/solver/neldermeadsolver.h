@@ -5,7 +5,6 @@
 #include <Eigen/Core>
 #include "isolver.h"
 #include "../meta.h"
-using namespace std;
 
 namespace cppoptlib {
 
@@ -21,12 +20,12 @@ class NelderMeadSolver : public ISolver<ProblemType, 0> {
   Status stop_condition;
   bool initialSimplexCreated = false;
 
-  MatrixType makeInitialSimplex (TVector &x) {
+  MatrixType makeInitialSimplex(TVector &x) {
     size_t DIM = x.rows();
 
     MatrixType s = MatrixType::Zero(DIM, DIM + 1);
-    for (int c = 0; c < (int)DIM + 1; ++c) {
-      for (int r = 0; r < (int)DIM; ++r) {
+    for (int c = 0; c < int(DIM) + 1; ++c) {
+      for (int r = 0; r < int(DIM); ++r) {
         s(r, c) = x(r);
         if (r == c - 1) {
           if (x(r) == 0) {
@@ -62,7 +61,7 @@ class NelderMeadSolver : public ISolver<ProblemType, 0> {
     // compute function values
     std::vector<Scalar> f; f.resize(DIM + 1);
     std::vector<int> index; index.resize(DIM + 1);
-    for (int i = 0; i < (int)DIM + 1; ++i) {
+    for (int i = 0; i < int(DIM) + 1; ++i) {
       f[i] = objFunc(static_cast<TVector >(x0.col(i)));
       index[i] = i;
     }
@@ -78,7 +77,7 @@ class NelderMeadSolver : public ISolver<ProblemType, 0> {
       // conv-check
       Scalar max1 = fabs(f[index[1]] - f[index[0]]);
       Scalar max2 = (x0.col(index[1]) - x0.col(index[0]) ).array().abs().maxCoeff();
-      for (int i = 2; i < (int)DIM + 1; ++i) {
+      for (int i = 2; i < int(DIM) + 1; ++i) {
         Scalar tmp1 = fabs(f[index[i]] - f[index[0]]);
         if (tmp1 > max1)
           max1 = tmp1;
@@ -120,7 +119,7 @@ class NelderMeadSolver : public ISolver<ProblemType, 0> {
 
       // midpoint of the simplex opposite the worst point
       TVector x_bar = TVector::Zero(DIM);
-      for (int i = 0; i < (int)DIM; ++i) {
+      for (int i = 0; i < int(DIM); ++i) {
         x_bar += x0.col(index[i]);
       }
       x_bar /= Scalar(DIM);
