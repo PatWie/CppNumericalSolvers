@@ -10,7 +10,7 @@ _settings_extensions = set(['cc', 'h', 'cpp', 'cu', 'cuh','hpp', 'cxx'])
 _settings_lineWidth  = 150
 _settings_extraInfo  = True
 
-_settings_checks = {"studentname":False, 
+_settings_checks = {"studentname":False,
                     "space indentation":True,
                     "line width":True,
                     "space before {":True,
@@ -61,7 +61,7 @@ class RegExMatcher(object):
 
     def all(self):
       return self.ans
-    
+
 
     def span(self):
       return self.ans.span()
@@ -113,7 +113,7 @@ def processBraces(filename, lines, error):
         if len(ident) == 0:
           error(filename, line, 'ident', 'bracket in line %i at pos %i has no related opening' % (line,char ) ,1, lines[line], char)
           break;
-        
+
         if(ident[len(ident)-1][1] != line):
           if(ident[len(ident)-1][0] != startwhites):
             error(filename, line, 'ident', 'indentation of bracket in line %i does not match indentation of bracket in line %i' % (line,ident[len(ident)-1][1]) )
@@ -129,28 +129,29 @@ def processCleanFileLine(filename, file_extension, lines, error, linenum, raw):
   m = RegExMatcher(line)
   if m.match(r'\s*//'):
     return
-  
+
   if _settings_checks["space before {"]:
     m = RegExMatcher(line)
     if m.search(r'\S\{'):
-      error(filename, linenum, 'braces', 'found no space before {',1 , rline, m.span()[1]-1)
-  
+      if not line[m.span()[1]-2] == '"':
+        error(filename, linenum, 'braces', 'found no space before {',1 , rline, m.span()[1]-1)
+
   if _settings_checks["symbol whitespace"]:
     m = RegExMatcher(line)
-    if m.search(r'[,=]\S'):
-      # exclude cases == 
-      if not line[m.span()[0]:m.span()[1]] == "==":
+    if m.search(r'^([^"]|"[^"]*")*?([,=])\S'): # do not look inside quoted strings
+      # exclude cases ==
+      if not line[m.span()[1]-2:m.span()[1]] == "==":
         error(filename, linenum, 'whitespace', 'no whitespace after symbol',1 , rline, m.span()[1]-2)
-  
+
   if _settings_checks["function definition whitespace"]:
     m = RegExMatcher(line)
     if m.search(r'[^(for)(while)(if)(else)\n&\*/\+\-\|=\,]+\s+\('):
       # exclude special case with only whitespaces
       mm = RegExMatcher(line[0:m.span()[1]])
       if not mm.search(r'^\s+\('):
-        if not mm.search(r'return\s\('):
+        if not mm.search(r'return\s\(') and not mm.search(r'<\s\('):
           error(filename, linenum, 'whitespace', 'found whitespace before (',1 , rline, m.span()[1]-1)
-  
+
   if _settings_checks["camelCase"]:
     m = RegExMatcher(line)
     if m.search(r'\w+\s*\s[A-Z]+\w*\(.*\{'):
@@ -172,16 +173,16 @@ def processFileLine(filename, file_extension, lines, error, linenum):
     m = RegExMatcher(line)
     if m.search('\t'):
       error(filename, linenum, 'tab', 'use spaces instead of tabs',1 , line, m.span()[1]-1)
-  
+
   if _settings_checks["line width"]:
     if lineWidth(line) > _settings_lineWidth:
       error(filename, linenum, 'line_length', 'lines should be <= %i characters long' % _settings_lineWidth)
-  
+
   if _settings_checks["trailing whitespace"]:
     m = RegExMatcher(line)
     if m.search(r'\s+$'):
       error(filename, linenum, 'whitespace', 'found trailing whitespace',1 , line, m.span()[1]-1)
-  
+
   if _settings_checks["endif comment"]:
     m = RegExMatcher(line)
     if m.search(r'#endif\s*$'):
@@ -220,7 +221,7 @@ def processFileContent(filename, file_extension, lines, ignore_lines, error):
 
 # http://stackoverflow.com/questions/241327/python-snippet-to-remove-c-and-c-comments
 def comment_remover(text):
-    
+
     def blotOutNonNewlines( strIn ) :  # Return a string containing only the newline chars contained in strIn
         return "" + ("\n" * strIn.count('\n'))
 
@@ -281,7 +282,7 @@ def processFile(filename):
     if m.findall(r'(\n[ ]*){3,}'):
       for mm in m.all():
         error_handler(filename, len(raw_source[:mm.span()[1]].split('\n'))-1, 'empty', 'too many empty new lines (count %i)' % (-2+len(raw_source[mm.span()[0]:mm.span()[1]].split('\n'))),1)
-      
+
 
   # get lines to ignore
   ignore_lines = [];
@@ -305,7 +306,7 @@ def processFile(filename):
     sys.stderr.write('\033[1m\033[93m%10s\033[0m:\n' % ( filename))
     for e in error_collection:
       print_error(*e)
-    
+
 
 
 
