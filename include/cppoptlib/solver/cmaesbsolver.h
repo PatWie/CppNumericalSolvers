@@ -1,6 +1,6 @@
 // CppNumericalSolver
-#ifndef CMAES_H_
-#define CMAES_H_
+#ifndef CMAESB_H
+#define CMAESB_H
 
 #include <random>
 #include <Eigen/Dense>
@@ -12,7 +12,7 @@ namespace cppoptlib {
  * @brief Covariance Matrix Adaptation
  */
 template<typename TProblem>
-class CMAesSolver : public ISolver<TProblem, 1> {
+class CMAesBSolver : public ISolver<TProblem, 1> {
 public:
     using Super = ISolver<TProblem, 1>;
     using typename Super::Scalar;
@@ -25,6 +25,7 @@ public:
 protected:
     std::mt19937 gen;
     Scalar m_stepSize;
+
     /*
      * @brief Create a vector sampled from a normal distribution
      *
@@ -56,8 +57,9 @@ protected:
     }
 
 public:
-    CMAesSolver() : gen((std::random_device())()) {
+    CMAesBSolver() : gen((std::random_device())()) {
         m_stepSize = 0.5;
+
         // Set some sensible defaults for the stop criteria
         Super::m_stop.iterations = 1e5;
         Super::m_stop.gradNorm = 0; // Switch this off
@@ -66,20 +68,14 @@ public:
         Super::m_stop.fDelta = 1e-9;
     }
 
-    void minimize(TProblem &objFunc, TVector &x0) {
-        TVector var0 = TVector::Ones(x0.rows());
-        this->minimize(objFunc, x0, var0);
-    }
-
     /**
     * @brief minimize
     * @details [long description]
     *
     * @param objFunc [description]
     */
-    void minimize(TProblem &objFunc, TVector &x0, const TVector &var0) {
+    void minimize(TProblem &objFunc, TVector &x0) {
         const int n = x0.rows();
-        eigen_assert(x0.rows() == var0.rows());
         int la = ceil(4 + round(3 * log(n)));
         const int mu = floor(la / 2);
         TVarVector w = TVarVector::Zero(mu);
@@ -89,6 +85,7 @@ public:
         w /= w.sum();
         const Scalar mu_eff = (w.sum()*w.sum()) / w.dot(w);
         la = std::max<int>(16, la); // Increase to 16 samples for very small populations, but AFTER calcaulting mu_eff
+
         const Scalar cc     = (4. + mu_eff / n) / (n + 4. + 2.*mu_eff/n);
         const Scalar cs     = (mu_eff + 2.) / (n + mu_eff + 5.);
         const Scalar c1     = 2. / (pow(n + 1.3, 2.) + mu_eff);
@@ -101,8 +98,11 @@ public:
         TVector ps = TVector::Zero(n);
         THessian B = THessian::Identity();
         THessian D = THessian::Identity();
-        THessian C = B*D*(B*D).transpose();
-
+        THessian C = THessian::Zero();
+        C.diagonal() = (objFunc.upperBound() - objFunc.lowerBound()) / 2;
+        Eigen::SelfAdjointEigenSolver<THessian> eigenSolver(C);
+        B = eigenSolver.eigenvectors();
+        D.diagonal() = eigenSolver.eigenvalues().array().sqrt();
         Scalar sigma = m_stepSize;
 
         TVector xmean = x0;
@@ -111,6 +111,9 @@ public:
         TMatrix arx(n, la);
         TVarVector costs(la);
         Scalar prevCost = objFunc.value(x0);
+        // Constraint handling
+        TVector gamma = TVector::Ones();
+
         // CMA-ES Main Loop
         int eigen_last_eval = 0;
         int eigen_next_eval = std::max<Scalar>(1, 1/(10*n*(c1+cmu)));
@@ -118,8 +121,8 @@ public:
         if (Super::m_debug >= DebugLevel::Low) {
             std::cout << "CMA-ES Initial Config" << std::endl;
             std::cout << "n " << n << " la " << la << " mu " << mu << " mu_eff " << mu_eff << " sigma " << sigma << std::endl;
-            std::cout << "cs " << cs << " ds " << ds << " chi " << chi << " cc " << cc << " c1 " << c1 << " cmu " << cmu
-                      << " hsig_thr " << hsig_thr << std::endl;
+            std::cout << "cs " << cs << " ds " << ds << " chi " << chi << " cc " << cc
+                      << " c1 " << c1 << " cmu " << cmu << " hsig_thr " << hsig_thr << std::endl;
             std::cout << "C" << std::endl << C << std::endl;
             std::cout << "Hessian will be updated every " << eigen_next_eval << " iterations." << std::endl;
             std::cout << "Iteration: " << this->m_current.iterations << " best cost " << prevCost << " sigma " << sigma
@@ -128,20 +131,43 @@ public:
         do {
             for (int k = 0; k < la; ++k) {
               arz.col(k) = normDist(n);
-              arx.col(k) = xmean + sigma * B*D*arz.col(k);
-              costs[k] = objFunc(arx.col(k));
+              TVector xk = xmean + sigma * B*D*arz.col(k);
+              arx.col(k) = xk;
+              Scalar penalty = 0;
+              const Scalar eta_sum = C.diagonal().array().log().sum()/n;
+              for (int d = 0; d < n; d++) {
+                  Scalar dist = 0;
+                  const Scalar eta = exp(0.9 * (log(C.coeffRef(d, d) - eta_sum)));
+                  if (xk.coeffRef(d) < objFunc.lowerBound().coeffRef(d)) {
+                      dist = xk.coeffRef(d) - objFunc.lowerBound().coeffRef(d);
+                      xk.coeffRef(d) = objFunc.lowerBound().coeffRef(d);
+                  } else if (xk.coeffRef(d) > objFunc.upperBound().coeffRef(d)) {
+                      dist = objFunc.upperBound().coeffRef(d) - xk.coeffRef(d);
+                      xk.coeffRef(d) = objFunc.upperBound().coeffRef(d);
+                  }
+                  penalty += (dist*dist) / eta;
+              }
+              costs[k] = objFunc(xk) + penalty/n;
             }
+
             if (Super::m_debug >= DebugLevel::High) {
                 std::cout << "arz" << std::endl << arz << std::endl;
                 std::cout << "arx" << std::endl << arx << std::endl;
                 std::cout << "costs " << costs.transpose() << std::endl;
             }
+
             std::vector<size_t> indices = index_partial_sort(costs, mu);
             xmean = TVector::Zero(n);
             zmean = TVector::Zero(n);
             for (int k = 0; k < mu; k++) {
               zmean += w[k]*arz.col(indices[k]);
               xmean += w[k]*arx.col(indices[k]);
+            }
+            // Update constraint weights
+            for (int d = 0; d < n; d++) {
+                if (xmean.coeffRef(d) < objFunc.lowerBound().coeffRef(d) || xmean.coeffRef(d) > objFunc.upperBound().coeffRef(d)) {
+                    gamma.coeffRef(d) *= pow(1.1, std::max<Scalar>(1, mu_eff / (10*n)));
+                }
             }
             // Update evolution paths
             ps = (1. - cs)*ps + sqrt(cs*(2. - cs)*mu_eff) * B*zmean;
@@ -176,8 +202,8 @@ public:
             Super::m_current.fDelta = fabs(costs[indices[0]] - prevCost);
             prevCost = costs[indices[0]];
             if (Super::m_debug >= DebugLevel::Low) {
-                std::cout << "Iteration: " << this->m_current.iterations << " best cost " << costs[indices[0]] << " sigma " << sigma
-                          << " cond " << this->m_current.condition << " xmean " << xmean.transpose() << std::endl;
+                std::cout << "Iteration: " << this->m_current.iterations << " best cost " << costs[indices[0]]
+                          << " sigma " << sigma << " cond " << this->m_current.condition << " xmean " << xmean.transpose() << std::endl;
             }
             if (fabs(costs[indices[0]] - costs[indices[mu-1]]) < 1e-6) {
                 sigma = sigma * exp(0.2+cs/ds);
