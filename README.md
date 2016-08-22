@@ -9,7 +9,7 @@ Get this Library
     git clone --recursive https://github.com/PatWie/CppNumericalSolvers.git
 
 or a complete copy and paste version
-
+````bash
     git clone --recursive https://github.com/PatWie/CppNumericalSolvers.git
     cd CppNumericalSolvers/
     ./get_dependencies.sh
@@ -18,11 +18,12 @@ or a complete copy and paste version
     cmake ..
     make all
     ./bin/verify
-
+````
 About
 -----------
 Have you ever googled for a c++ version of *fminsearch*, which is easy to use without adding tons of dependencies and without editing many setting-structs? This project exactly addresses this issue by providing a *header-only* library without dependencies. All solvers are written from scratch, which means they do not represent the current state-of-the-art implementation with all tricky optimizations (at least for now). But they are very easy to use. Want a full example?
 
+````cpp
     class Rosenbrock : public Problem<double> {
       public:
         double value(const Vector<double> &x) {
@@ -40,7 +41,7 @@ Have you ever googled for a c++ version of *fminsearch*, which is easy to use wi
         std::cout << "f in argmin " << f(x) << std::endl;
         return 0;
     }
-
+````
 To use another solver, simply replace `BfgsSolver` by another name.
 Supported solvers are:
 
@@ -62,12 +63,12 @@ Install
 -----------
 
 Before compiling you need to adjust one path to the [Eigen3][eigen3]-Library (header only), which can by downloaded by a single bashscript, if you haven't Eigen already.
-
+````bash
     # download Eigen
     ./get_dependencies.sh
-
+````
 To compile the examples and the unit test just do
-
+````bash
     # create a new directory
     mkdir build && cd build   
     cmake ..
@@ -77,7 +78,7 @@ To compile the examples and the unit test just do
     ./bin/verify  
     # run an example
     ./bin/examples/linearregression    
-
+````
 For using the MATLAB-binding open Matlab and run `make.m` inside the MATLAB folder once.
 
 Extensive Introduction
@@ -89,42 +90,42 @@ There are currently two ways to use this library: directly in your C++ code or i
 
 There are several examples within the `src/examples` directory. These are built into `build/bin/examples` during `make all`.
 Checkout `rosenbrock.cpp`. Your objective and gradient computations should be stored into a tiny class. The most simple usage is
-
+````cpp
     class YourProblem : public Problem<double> {
       double value(const Vector<double> &x) {}
     }
-
+````
 In contrast to previous versions of this library, I switched to classes instead of lambda function. If you poke the examples, you will notice that this is much easier to write and understand. The only method a problem has to provide is the `value` member, which returns the value of the objective function.
 For most solvers it should be useful to implement the gradient computation, too. Otherwise the library internally will use finite difference for gradient computations (which is definitely unstable and slow!).
-
+````cpp
     class YourProblem : public Problem<double> {
       double value(const Vector<double> &x) {}
       void gradient(const Vector<double> &x, Vector<double> &grad) {}
     }
-
+````
 Notice, the gradient is passed by reference!
 After defining the problem it can be initialized in your code by:
-
+````cpp
     // init problem
     YourProblem f;
     // test your gradient ONCE
     bool probably_correct = f.checkGradient(x);
-
+````
 By convention, a solver minimizes a given objective function starting in `x`
-
+````cpp
     // choose a solver
     BfgsSolver<double> solver;
     // and minimize the function
     solver.minimize(f, x);
     double minValue = f(x);
-
+````
 For convenience there are some typedefs:
-
+````cpp
     cppoptlib::Vector<T> is a column vector Eigen::Matrix<T, Eigen::Dynamic, 1>;
     cppoptlib::Matrix<T> is a matrix        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
-
+````
 ### full example
-
+````cpp
     #include <iostream>
     #include "../../include/cppoptlib/meta.h"
     #include "../../include/cppoptlib/problem.h"
@@ -151,31 +152,31 @@ For convenience there are some typedefs:
         std::cout << "f in argmin " << f(x) << std::endl;
         return 0;
     }
-
+````
 ### using box-constraints
 
 The `L-BFGS-B` algorithm allows to optimize functions with box-constraints, i.e., `min_x f(x) s.t. a <= x <= b` for some `a, b`. Given a `problem`-class you can enter these constraints by
-
+````cpp
     cppoptlib::YourProblem<T> f;
     f.setLowerBound(Vector<double>::Zero(DIM));
     f.setUpperBound(Vector<double>::Ones(DIM)*5);
-
+````
 If you do not specify a bound, the algorithm will assume the unbounded case, eg.
-
+````cpp
     cppoptlib::YourProblem<T> f;
     f.setLowerBound(Vector<double>::Zero(DIM));
-
+````
 will optimize in x s.t. `0 <= x`.
 
 ## within MATLAB
 
 Simply create a function file for the objective and replace `fminsearch` or `fminunc` with `cppoptlib`. If you want to use symbolic gradient or hessian information see file `example.m` for details. A basic example would be:
-
+````matlab
     x0 = [-1,2]';
     [fx,x] = cppoptlib(x0, @rosenbrock,'gradient',@rosenbrock_grad,'solver','bfgs');
     fx     = cppoptlib(x0, @rosenbrock);
     fx     = fminsearch(x0, @rosenbrock);
-
+````
 Even optimizing without any gradient information this library outperforms optimization routines from MATLAB on some problems.
 
 # Benchmarks
