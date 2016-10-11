@@ -54,11 +54,7 @@ public:
     }
     
     bool check_x(const TVector &x){
-        for (int i = 0; i < x.rows(); i++) {
-            if (x[i] < m_lowerBound[i] || x[i] > m_upperBound[i])
-                return false;
-        }
-        return true;
+        return ((x - m_lowerBound).array() >= 0.0).all() && ((x - m_upperBound).array() <= 0.0).all();
     }
 };
 
