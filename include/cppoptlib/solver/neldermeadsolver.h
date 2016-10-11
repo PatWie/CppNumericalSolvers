@@ -146,7 +146,7 @@ class NelderMeadSolver : public ISolver<ProblemType, 0> {
     }
     x = x0.col(index[0]);
   }
-  
+
   TVector clamp_x(ProblemType &objFunc, const TVector &x) {
       TVector xx = TVector::Zero(x.rows());
       for (int i = 0; i < x.rows(); i++) {

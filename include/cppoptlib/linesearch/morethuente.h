@@ -145,10 +145,10 @@ class MoreThuente {
 
       // terminate when convergence reached
       if (info != 0) {
-          for (int iter = 0; iter < 200; iter++) {
+        for (int iter = 0; iter < 200; iter++) {
           if (not objFunc.check_x(x)) {
-              stp = stp * 0.9;
-              x = wa + stp * s;
+            stp = stp * 0.9;
+            x = wa + stp * s;
           }
           else
           {

@@ -201,7 +201,7 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
   }
  public:
   void setHistorySize(const int hs) { m_historySize = hs; }
-  
+
   void clamp_x(TProblem &problem, TVector &x) {
       for (int i = 0; i < x.rows(); i++) {
           if (x[i] < problem.lowerBound()[i])

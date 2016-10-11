@@ -22,7 +22,7 @@ class Problem {
  public:
   Problem() {}
   virtual ~Problem()= default;
-  virtual bool check_x(const TVector &x){return true;}
+  virtual bool check_x(const TVector &x) {return true;}
 
   virtual bool callback(const Criteria<Scalar> &state, const TVector &x) {
     return true;

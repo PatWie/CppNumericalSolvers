@@ -52,8 +52,8 @@ public:
         setLowerBound(lb);
         setUpperBound(ub);
     }
-    
-    bool check_x(const TVector &x){
+
+    bool check_x(const TVector &x) {
         return ((x - m_lowerBound).array() >= 0.0).all() && ((x - m_upperBound).array() <= 0.0).all();
     }
 };
