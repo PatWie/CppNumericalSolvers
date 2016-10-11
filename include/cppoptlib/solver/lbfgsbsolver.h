@@ -201,6 +201,15 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
   }
  public:
   void setHistorySize(const int hs) { m_historySize = hs; }
+  
+  void clamp_x(TProblem &problem, TVector &x) {
+      for (int i = 0; i < x.rows(); i++) {
+          if (x[i] < problem.lowerBound()[i])
+              x[i] = problem.lowerBound()[i];
+          else if (x[i] > problem.upperBound()[i])
+              x[i] = problem.upperBound()[i];
+      }
+  }
 
   void minimize(TProblem &problem, TVector &x0) {
     DIM = x0.rows();
@@ -236,6 +245,7 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
       const Scalar rate = MoreThuente<TProblem, 1>::linesearch(x,  SubspaceMin-x ,  problem, alpha_init);
       // update current guess and function information
       x = x - rate*(x-SubspaceMin);
+      clamp_x(problem, x);
       f = problem.value(x);
       problem.gradient(x, g);
       xHistory.push_back(x);

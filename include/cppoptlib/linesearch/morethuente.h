@@ -104,6 +104,20 @@ class MoreThuente {
 
       // test new point
       x = wa + stp * s;
+      int iter;
+      for (iter = 0; iter < 200; iter++) {
+        if (not objFunc.check_x(x)) {
+            stp = stp * 0.9;
+            x = wa + stp * s;
+        }
+        else {
+          break;
+        }
+      }
+      if (iter == 200) {
+        x = wa;
+        stp = 0.0;
+      }
       f = objFunc.value(x);
       objFunc.gradient(x, g);
       nfev++;
@@ -130,8 +144,21 @@ class MoreThuente {
         info = 1;
 
       // terminate when convergence reached
-      if (info != 0)
+      if (info != 0) {
+          for (int iter = 0; iter < 200; iter++) {
+          if (not objFunc.check_x(x)) {
+              stp = stp * 0.9;
+              x = wa + stp * s;
+          }
+          else
+          {
+            return -1;
+          }
+        }
+        x = wa;
+        stp = 0.0;
         return -1;
+      }
 
       if (stage1 & (f <= ftest1) & (dg >= std::min(ftol, gtol)*dginit))
         stage1 = false;

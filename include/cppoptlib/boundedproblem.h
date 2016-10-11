@@ -52,6 +52,14 @@ public:
         setLowerBound(lb);
         setUpperBound(ub);
     }
+    
+    bool check_x(const TVector &x){
+        for (int i = 0; i < x.rows(); i++) {
+            if (x[i] < m_lowerBound[i] || x[i] > m_upperBound[i])
+                return false;
+        }
+        return true;
+    }
 };
 
 } // end namespace cppoptlib
