@@ -1,6 +1,7 @@
+# Build project in release version
 mkdir build
 cd build
-CMAKE_CXX_COMPILER=clang++ CMAKE_BUILD_TYPE=Release cmake ..
+cmake -DEIGEN3_INCLUDE_DIR=eigen -DCMAKE_BUILD_TYPE=Release ..
 make clean
 make all
 ./bin/verify
