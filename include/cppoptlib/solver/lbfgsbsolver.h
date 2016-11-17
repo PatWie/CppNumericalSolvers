@@ -17,8 +17,6 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
     using MatrixType = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
     using VariableTVector = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
   protected:
-  // last updates
-  std::list<TVector> xHistory;
   // workspace matrices
   MatrixType W, M;
   Scalar theta;
@@ -47,7 +45,7 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
    *
    * @param c [description]
    */
-  void getGeneralizedCauchyPoint(const TProblem &problem, TVector &x, TVector &g, TVector &x_cauchy, VariableTVector &c) {
+  void getGeneralizedCauchyPoint(const TProblem &problem, const TVector &x, const TVector &g, TVector &x_cauchy, VariableTVector &c) {
     const int DIM = x.rows();
     // Given x,l,u,g, and B = \theta I-WMW
     // {all t_i} = { (idx,value), ... }
@@ -67,6 +65,7 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
           tmp = (x(j) - problem.lowerBound()(j)) / g(j);
         }
         SetOfT.push_back(std::make_pair(j, tmp));
+      if (tmp == 0) d(j) = 0;
       }
     }
     // sortedindices [1,0,2] means the minimal element is on the 1-st entry
@@ -81,6 +80,8 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
     Scalar f_prime = -d.dot(d);                         // (n operations)
     // f'' :=   \theta*d^Scalar*d-d^Scalar*W*M*W^Scalar*d = -\theta*f' - p^Scalar*M*p
     Scalar f_doubleprime = (Scalar)(-1.0 * theta) * f_prime - p.dot(M * p); // (O(m^2) operations)
+    f_doubleprime = std::max(std::numeric_limits<Scalar>::epsilon(), f_doubleprime);
+    Scalar f_dp_orig = f_doubleprime;
     // \delta t_min :=  -f'/f''
     Scalar dt_min = -f_prime / f_doubleprime;
     // t_old :=     0
@@ -115,6 +116,7 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
       f_doubleprime += (Scalar) - 1.0 * theta * g(b) * g(b)
                        - (Scalar) 2.0 * (g(b) * (wbt.dot(M * p)))
                        - (Scalar) g(b) * g(b) * wbt.transpose() * (M * wbt);
+      f_doubleprime = std::max(std::numeric_limits<Scalar>::epsilon() * f_dp_orig, f_doubleprime);
       p += g(b) * wbt.transpose();
       d(b) = 0;
       dt_min = -f_prime / f_doubleprime;
@@ -207,12 +209,11 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
     theta = 1.0;
     W = MatrixType::Zero(DIM, 0);
     M = MatrixType::Zero(0, 0);
-    xHistory.push_back(x0);
     MatrixType yHistory = MatrixType::Zero(DIM, 0);
     MatrixType sHistory = MatrixType::Zero(DIM, 0);
     TVector x = x0, g = x0;
     Scalar f = problem.value(x);
-    problem.gradient(x, g);
+  problem.gradient(x, g);
     // conv. crit.
     auto noConvergence =
     [&](TVector &x, TVector &g)->bool {
@@ -223,14 +224,14 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
     while (problem.callback(this->m_current, x) && noConvergence(x, g) && (this->m_status == Status::Continue)) {
       Scalar f_old = f;
       TVector x_old = x;
-      TVector g_old = g;
+    TVector g_old = g;
       // STEP 2: compute the cauchy point
       TVector CauchyPoint = TVector::Zero(DIM);
       VariableTVector c = VariableTVector::Zero(W.cols());
-      getGeneralizedCauchyPoint(problem, x, g, CauchyPoint, c);
+    getGeneralizedCauchyPoint(problem, x, g, CauchyPoint, c);
       // STEP 3: compute a search direction d_k by the primal method for the sub-problem
       TVector SubspaceMin;
-      SubspaceMinimization(problem, CauchyPoint, x, c, g, SubspaceMin);
+    SubspaceMinimization(problem, CauchyPoint, x, c, g, SubspaceMin);
       // STEP 4: perform linesearch and STEP 5: compute gradient
       Scalar alpha_init = 1.0;
       const Scalar rate = MoreThuente<TProblem, 1>::linesearch(x,  SubspaceMin-x ,  problem, alpha_init);
@@ -238,7 +239,6 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
       x = x - rate*(x-SubspaceMin);
       f = problem.value(x);
       problem.gradient(x, g);
-      xHistory.push_back(x);
       // prepare for next iteration
       TVector newY = g - g_old;
       TVector newS = x - x_old;
@@ -247,15 +247,15 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
       test = (test < 0) ? -1.0 * test : test;
       if (test > 1e-7 * newY.squaredNorm()) {
         if (yHistory.cols() < m_historySize) {
-          yHistory.conservativeResize(DIM, this->m_current.iterations + 1);
-          sHistory.conservativeResize(DIM, this->m_current.iterations + 1);
+          yHistory.conservativeResize(DIM, yHistory.cols() + 1);
+          sHistory.conservativeResize(DIM, sHistory.cols() + 1);
         } else {
           yHistory.leftCols(m_historySize - 1) = yHistory.rightCols(m_historySize - 1).eval();
           sHistory.leftCols(m_historySize - 1) = sHistory.rightCols(m_historySize - 1).eval();
         }
         yHistory.rightCols(1) = newY;
         sHistory.rightCols(1) = newS;
-        // STEP 7:
+    // STEP 7:
         theta = (Scalar)(newY.transpose() * newY) / (newY.transpose() * newS);
         W = MatrixType::Zero(yHistory.rows(), yHistory.cols() + sHistory.cols());
         W << yHistory, (theta * sHistory);
