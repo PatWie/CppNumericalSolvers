@@ -12,7 +12,7 @@
 #include "../../include/cppoptlib/solver/lbfgsbsolver.h"
 #include "../../include/cppoptlib/solver/cmaessolver.h"
 #include "../../include/cppoptlib/solver/neldermeadsolver.h"
-#define PRECISION 1e-4
+#define PRECISION 1e-2
 #define PI 3.14159265358979323846
 using namespace cppoptlib;
 
