@@ -24,6 +24,17 @@ public:
         const Scalar c = 0.2;
         const Scalar rho = 0.9;
         Scalar alpha = alpha_init;
+        int iter;
+        for (iter = 0; iter < 200; iter++) {
+            if (not objFunc.check_x(x + alpha * searchDir)) {
+                alpha = alpha * 0.9;
+            }
+            else {
+                break;
+            }
+        }
+        if (iter == 200)
+            alpha = 0.0;
         Scalar f = objFunc.value(x + alpha * searchDir);
         const Scalar f_in = objFunc.value(x);
         TVector grad(x.rows());
@@ -60,6 +71,17 @@ class Armijo<ProblemType, 2> {
         const Scalar c = 0.2;
         const Scalar rho = 0.9;
         Scalar alpha = 1.0;
+        int iter;
+        for (iter = 0; iter < 200; iter++) {
+            if (not objFunc.check_x(x + alpha * searchDir)) {
+                alpha = alpha * 0.9;
+            }
+            else {
+                break;
+            }
+        }
+        if (iter == 200)
+            alpha = 0.0;
 
         Scalar f = objFunc.value(x + alpha * searchDir);
         const Scalar f_in = objFunc.value(x);

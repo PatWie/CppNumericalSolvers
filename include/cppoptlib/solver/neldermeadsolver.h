@@ -41,6 +41,10 @@ class NelderMeadSolver : public ISolver<ProblemType, 0> {
           }
           x0(r, c) = (1 + 0.05) * x(r);
         }
+        if (x0(r, c) > objFunc.upperBound()[r])
+          x0(r, c) = objFunc.upperBound()[r];
+        else if (x0(r, c) < objFunc.lowerBound()[r])
+          x0(r, c) = objFunc.lowerBound()[r];
       }
     }
 
@@ -92,12 +96,12 @@ class NelderMeadSolver : public ISolver<ProblemType, 0> {
       x_bar /= Scalar(DIM);
 
       // Compute the reflection point
-      const TVector x_r   = ( 1. + rho ) * x_bar - rho   * x0.col(index[DIM]);
+      const TVector x_r   = clamp_x(objFunc, ( 1. + rho ) * x_bar - rho   * x0.col(index[DIM]));
       const Scalar f_r = objFunc(x_r);
 
       if (f_r < f[index[0]]) {
         // the expansion point
-        const TVector x_e = ( 1. + rho * xi ) * x_bar - rho * xi   * x0.col(index[DIM]);
+        const TVector x_e = clamp_x(objFunc, ( 1. + rho * xi ) * x_bar - rho * xi   * x0.col(index[DIM]));
         const Scalar f_e = objFunc(x_e);
         if ( f_e < f_r ) {
           // expand
@@ -115,7 +119,7 @@ class NelderMeadSolver : public ISolver<ProblemType, 0> {
         } else {
           // contraction
           if (f_r < f[index[DIM]]) {
-            const TVector x_c = (1 + rho * gam) * x_bar - rho * gam * x0.col(index[DIM]);
+            const TVector x_c = clamp_x(objFunc, (1 + rho * gam) * x_bar - rho * gam * x0.col(index[DIM]));
             const Scalar f_c = objFunc(x_c);
             if ( f_c <= f_r ) {
               // outside
@@ -126,7 +130,7 @@ class NelderMeadSolver : public ISolver<ProblemType, 0> {
             }
           } else {
             // inside
-            const TVector x_c = ( 1 - gam ) * x_bar + gam   * x0.col(index[DIM]);
+            const TVector x_c = clamp_x(objFunc, ( 1 - gam ) * x_bar + gam   * x0.col(index[DIM]));
             const Scalar f_c = objFunc(x_c);
             if (f_c < f[index[DIM]]) {
               x0.col(index[DIM]) = x_c;
@@ -141,6 +145,19 @@ class NelderMeadSolver : public ISolver<ProblemType, 0> {
       iter++;
     }
     x = x0.col(index[0]);
+  }
+
+  TVector clamp_x(ProblemType &objFunc, const TVector &x) {
+      TVector xx = TVector::Zero(x.rows());
+      for (int i = 0; i < x.rows(); i++) {
+          if (x[i] < objFunc.lowerBound()[i])
+              xx[i] = objFunc.lowerBound()[i];
+          else if (x[i] > objFunc.upperBound()[i])
+              xx[i] = objFunc.upperBound()[i];
+          else
+              xx[i] = x[i];
+      }
+      return xx;
   }
 
   void shrink(MatrixType &x, std::vector<int> &index, std::vector<Scalar> &f, ProblemType &objFunc) {
