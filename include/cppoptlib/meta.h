@@ -2,6 +2,7 @@
 #ifndef META_H
 #define META_H
 
+#include <string>
 #include <iostream>
 #include <Eigen/Core>
 
@@ -22,8 +23,48 @@ enum class Status {
     XDeltaTolerance,
     FDeltaTolerance,
     GradNormTolerance,
-    Condition
+    Condition,
+    UserDefined
 };
+
+enum class SimplexOp {
+  Place,
+  Reflect,
+  Expand,
+  ContractIn,
+  ContractOut,
+  Shrink
+};
+
+inline std::ostream &operator<<(std::ostream &os, const SimplexOp &op) {
+  switch (op) {
+    case SimplexOp::Place: os << "place"; break;
+    case SimplexOp::Reflect:   os << "reflect"; break;
+    case SimplexOp::Expand:   os << "expand"; break;
+    case SimplexOp::ContractIn:   os << "contract-in"; break;
+    case SimplexOp::ContractOut:   os << "contract-out"; break;
+    case SimplexOp::Shrink:   os << "shrink"; break;
+  }
+  return os;
+}
+
+std::string op_to_string(SimplexOp op) {
+  switch (op) {
+    case SimplexOp::Place:
+      return "place";
+    case SimplexOp::Expand:
+      return "expand";
+    case SimplexOp::Reflect:
+      return "reflect";
+    case SimplexOp::ContractIn:
+      return "contract-in";
+    case SimplexOp::ContractOut:
+      return "contract-out";
+    case SimplexOp::Shrink:
+      return "shrink";
+  }
+  return "unknown";
+}
 
 template<typename T>
 class Criteria {
@@ -95,6 +136,7 @@ inline std::ostream &operator<<(std::ostream &os, const Status &s) {
         case Status::FDeltaTolerance: os << "Change in cost function value too small."; break;
         case Status::GradNormTolerance: os << "Gradient vector norm too small."; break;
         case Status::Condition: os << "Condition of Hessian/Covariance matrix too large."; break;
+        case Status::UserDefined: os << "Stop condition defined in the callback."; break;
     }
     return os;
 }
