@@ -28,9 +28,12 @@ size_t in_cols;
 char error_msg[200];
 
 template<typename T>
-class MATLABobjective : public Problem<T> {
+class MATLABobjective : public BoundedProblem<T> {
  public:
-  T value(const Vector<T> &x) {
+  using Superclass = BoundedProblem<T>;
+  using typename Superclass::TVector;
+  using TMatrix = typename Superclass::THessian;
+  T value(const TVector &x) {
     mxArray * objective_ans, *objective_param[1];
     objective_param[0] = mxCreateDoubleMatrix(x.rows(), x.cols(), mxREAL);
     const T *constVariablePtr = &x(0);
@@ -39,7 +42,7 @@ class MATLABobjective : public Problem<T> {
     return mxGetScalar(objective_ans);
   }
 
-  void gradient(const Vector<T> &x, Vector<T> &grad) {
+  void gradient(const TVector &x, TVector &grad) {
     if (hasGradient) {
       mxArray * objective_ans, *objective_param[1];
       objective_param[0] = mxCreateDoubleMatrix(x.rows(), x.cols(), mxREAL);
@@ -60,7 +63,7 @@ class MATLABobjective : public Problem<T> {
     }
   }
 
-  void hessian(const Vector<T> &x, Matrix<T> & hessian) {
+  void hessian(const TVector &x, TMatrix & hessian) {
     if (hasHessian) {
 
       mxArray * objective_ans, *objective_param[1];
@@ -88,7 +91,10 @@ class MATLABobjective : public Problem<T> {
 
 void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[]) {
 
-  MATLABobjective<double> f;
+  typedef double T;
+  typedef MATLABobjective<T> MATLAB_OBJECTIVE;
+  typedef typename MATLAB_OBJECTIVE::TVector TVector;
+  MATLABobjective<T> f;
 
   // check parameters
   if (inLen < 2) {
@@ -107,9 +113,8 @@ void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[
     sprintf(error_msg, "The first argument has to be the inital guess x0 (format: n x 1), but the input format is %zu x %zu", in_rows, in_cols);
     mexErrMsgIdAndTxt("MATLAB:cppoptlib", error_msg);
   }
-  Eigen::Map<Eigen::VectorXd> solution = Eigen::Map<Eigen::VectorXd>(mxGetPr(inArr[0]), mxGetM(inArr[0]) * mxGetN(inArr[0]));
-
-  Vector<double> x = solution.eval();
+  auto solution = Eigen::Map<Eigen::VectorXd>(mxGetPr(inArr[0]), mxGetM(inArr[0]) * mxGetN(inArr[0]));
+  auto x = solution.eval();
   // check objective function
   // ----------------------------------------------------------
   if (mxGetClassID(inArr[1]) != mxFUNCTION_CLASS) {
@@ -195,8 +200,8 @@ void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[
           mexErrMsgIdAndTxt("MATLAB:cppoptlib", error_msg);
         }
 
-        Eigen::Map<Eigen::VectorXd> tmp = Eigen::Map<Eigen::VectorXd>(mxGetPr(inArr[arg + 1]), mxGetM(inArr[arg + 1]) * mxGetN(inArr[arg + 1]));
-        Vector<double> t = tmp;
+        auto tmp = Eigen::Map<Eigen::VectorXd>(mxGetPr(inArr[arg + 1]), mxGetM(inArr[arg + 1]) * mxGetN(inArr[arg + 1]));
+        TVector t = tmp;
         f.setLowerBound(t);
 
       }
@@ -212,8 +217,8 @@ void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[
           mexErrMsgIdAndTxt("MATLAB:cppoptlib", error_msg);
         }
 
-        Eigen::Map<Eigen::VectorXd> tmp = Eigen::Map<Eigen::VectorXd>(mxGetPr(inArr[arg + 1]), mxGetM(inArr[arg + 1]) * mxGetN(inArr[arg + 1]));
-        Vector<double> t = tmp;
+        auto tmp = Eigen::Map<Eigen::VectorXd>(mxGetPr(inArr[arg + 1]), mxGetM(inArr[arg + 1]) * mxGetN(inArr[arg + 1]));
+        TVector t = tmp;
         f.setUpperBound(t);
 
       }
@@ -227,43 +232,43 @@ void mexFunction(int outLen, mxArray *outArr[], int inLen, const mxArray *inArr[
 
   switch (selected_solver) {
   case LBFGS: {
-    LbfgsSolver<double> solver;
+    LbfgsSolver<MATLABobjective <double> > solver;
     solver.minimize(f, x);
   }
   break;
   case LBFGSB: {
-    LbfgsbSolver<double> solver;
+    LbfgsbSolver<MATLABobjective <double> > solver;
     solver.minimize(f, x);
   }
   break;
   case BFGS: {
-    BfgsSolver<double> solver;
+    BfgsSolver<MATLABobjective <double> > solver;
     solver.minimize(f, x);
   }
   break;
   case GRADIENTDESCENT: {
-    GradientDescentSolver<double> solver;
+    GradientDescentSolver<MATLABobjective <double> > solver;
     solver.minimize(f, x);
   }
   break;
   case CONJUGATEDGRADIENTDESCENT: {
-    ConjugatedGradientDescentSolver<double> solver;
+    ConjugatedGradientDescentSolver<MATLABobjective <double> > solver;
     solver.minimize(f, x);
   }
   break;
   case NEWTON: {
-    NewtonDescentSolver<double> solver;
+    NewtonDescentSolver<MATLABobjective <double> > solver;
     solver.minimize(f, x);
   }
   break;
   case NELDERMEAD: {
-    NelderMeadSolver<double> solver;
+    NelderMeadSolver<MATLABobjective <double> > solver;
     solver.minimize(f, x);
   }
   break;
   case CMAES: {
-    CMAesSolver<double> solver;
-    solver.minimize(f, x);
+    // CMAesSolver<MATLABobjective <double> > solver;
+    // solver.minimize(f, x);
   }
   break;
   default:

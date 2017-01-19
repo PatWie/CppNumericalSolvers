@@ -22,16 +22,8 @@ if(BUILD_TESTING)
     include_directories(gtest)
 endif()
 
-# Eigen3 Headerfiles, prefer config-module
-find_package(Eigen3 CONFIG QUIET) 
-
-# fall-back to find-module
-if(NOT Eigen3_FOUND AND NOT EIGEN3_FOUND)
-    find_package(Eigen3 REQUIRED)
-    include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
-else()
-    link_libraries(::Eigen3)
-endif()
+find_package(Eigen3 REQUIRED)
+include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 
 add_library(cppoptlib INTERFACE)
 target_include_directories(cppoptlib INTERFACE
