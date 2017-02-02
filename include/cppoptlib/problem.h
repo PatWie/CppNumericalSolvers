@@ -80,7 +80,7 @@ class Problem {
     gradient(x, actual_grad);
     finiteGradient(x, expected_grad, accuracy);
     for (TIndex d = 0; d < D; ++d) {
-      Scalar scale = std::max((std::max(fabs(actual_grad[d]), fabs(expected_grad[d]))), 1.);
+      Scalar scale = std::max(static_cast<Scalar>(std::max(fabs(actual_grad[d]), fabs(expected_grad[d]))), Scalar(1.));
       if(fabs(actual_grad[d]-expected_grad[d])>1e-2 * scale)
         return false;
     }
