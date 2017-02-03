@@ -48,7 +48,7 @@ inline std::ostream &operator<<(std::ostream &os, const SimplexOp &op) {
   return os;
 }
 
-std::string op_to_string(SimplexOp op) {
+inline std::string op_to_string(SimplexOp op) {
   switch (op) {
     case SimplexOp::Place:
       return "place";
