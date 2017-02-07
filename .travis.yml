@@ -1,10 +1,9 @@
-sudo: required
-dist: precise
 language: cpp
 
 matrix:
   include:
-    - compiler: gcc
+    - os: linux
+      compiler: gcc
       addons:
         apt:
           sources:
@@ -12,7 +11,8 @@ matrix:
           packages:
             - g++-4.9
       env: COMPILER=g++-4.9
-    - compiler: gcc
+    - os: linux
+      compiler: gcc
       addons:
         apt:
           sources:
@@ -20,26 +20,29 @@ matrix:
           packages:
             - g++-5
       env: COMPILER=g++-5
+    - os: linux
+      compiler: clang
+      env: COMPILER=clang++
+    - os: linux
+      compiler: clang
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.7']
+          packages: ['clang-3.7']
+      env: COMPILER=clang++-3.7
+    - os: linux
+      compiler: clang
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.8']
+          packages: ['clang-3.8']
+      env: COMPILER=clang++-3.8
 
 before_install:
-  - sudo apt-get update -qq
+  - cmake --version
   - chmod u+x get_dependencies.sh
   - ./get_dependencies.sh
   - git submodule update --init --recursive
-
-install:
-  ############################################################################
-  # Install a recent CMake
-  ############################################################################
-  - |
-    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
-      CMAKE_DIR="install_cmake"
-      CMAKE_URL="http://www.cmake.org/files/v3.3/cmake-3.3.2-Linux-x86_64.tar.gz"
-      mkdir $CMAKE_DIR && travis_retry wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C $CMAKE_DIR
-      export PATH=${TRAVIS_BUILD_DIR}/${CMAKE_DIR}/bin:${PATH}
-    else
-      brew install cmake
-    fi
 
 script:
   - mkdir build
@@ -48,14 +51,6 @@ script:
   - make all -j
   - make lint
   - ./bin/verify
-
-addons:
-  apt:
-    sources:
-    - ubuntu-toolchain-r-test
-    packages:
-    - gcc-4.8
-    - g++-4.8
 
 notifications:
   email: false
