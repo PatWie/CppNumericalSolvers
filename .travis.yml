@@ -17,13 +17,10 @@ before_install:
   - sudo dpkg -i bazel_0.3.1-linux-x86_64.deb
 
 script:
-  - python lint.py
   - bazel run verify
+  - python lint.py
 
 
 notifications:
   email: false
 
-branches:
-  except:
-    -gtest
