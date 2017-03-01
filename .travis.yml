@@ -1,65 +1,35 @@
-sudo: required
-dist: precise
-language: cpp
-
-matrix:
-  include:
-    - compiler: gcc
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-4.9
-      env: COMPILER=g++-4.9
-    - compiler: gcc
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-5
-      env: COMPILER=g++-5
-
-before_install:
-  - sudo apt-get update -qq
-  - chmod u+x get_dependencies.sh
-  - ./get_dependencies.sh
-  - git submodule update --init --recursive
-
-install:
-  ############################################################################
-  # Install a recent CMake
-  ############################################################################
-  - |
-    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
-      CMAKE_DIR="install_cmake"
-      CMAKE_URL="http://www.cmake.org/files/v3.3/cmake-3.3.2-Linux-x86_64.tar.gz"
-      mkdir $CMAKE_DIR && travis_retry wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C $CMAKE_DIR
-      export PATH=${TRAVIS_BUILD_DIR}/${CMAKE_DIR}/bin:${PATH}
-    else
-      brew install cmake
-    fi
-
-script:
-  - mkdir build
-  - cd build
-  - cmake -DEIGEN3_INCLUDE_DIR=eigen -DCMAKE_CXX_COMPILER=$COMPILER -DCMAKE_BUILD_TYPE=Release ..
-  - make all -j
-  - make lint
-  - ./bin/verify
+dist: trusty
 
 addons:
   apt:
     sources:
-    - ubuntu-toolchain-r-test
+      - ubuntu-toolchain-r-test
     packages:
-    - gcc-4.8
-    - g++-4.8
+      - wget
+      - pkg-config
+      - g++
+      - g++-4.9
+      - g++-5
+      - pkg-config
+      - zip
+      - zlib1g-dev
+      - unzip
+
+
+before_install:
+  - wget https://github.com/bazelbuild/bazel/releases/download/0.4.4/bazel-0.4.4-installer-linux-x86_64.sh
+  - wget https://github.com/bazelbuild/bazel/releases/download/0.4.4/bazel-0.4.4-installer-linux-x86_64.sh.sha256
+  - sha256sum -c bazel-0.4.4-installer-linux-x86_64.sh.sha256
+  - chmod +x bazel-0.4.4-installer-linux-x86_64.sh
+  - ./bazel-0.4.4-installer-linux-x86_64.sh --user
+  - export PATH="$PATH:$HOME/bin"
+
+
+script:
+  - bazel run verify
+  - python lint.py
+
 
 notifications:
   email: false
 
-branches:
-  except:
-    -gtest

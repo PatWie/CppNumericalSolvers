@@ -6,22 +6,15 @@ CppOptimizationLibrary
 Get this Library
 -----------
 
-    git clone --recursive https://github.com/PatWie/CppNumericalSolvers.git
-
-or a complete copy and paste version
 ````bash
-    git clone --recursive https://github.com/PatWie/CppNumericalSolvers.git
+    git clone https://github.com/PatWie/CppNumericalSolvers.git
     cd CppNumericalSolvers/
-    ./get_dependencies.sh
-    mkdir build
-    cd build
-    cmake ..
-    make all
-    ./bin/verify
+    bazel run verify
 ````
+
 About
 -----------
-Have you ever googled for a c++ version of *fminsearch*, which is easy to use without adding tons of dependencies and without editing many setting-structs? This project exactly addresses this issue by providing a *header-only* library without dependencies. All solvers are written from scratch, which means they do not represent the current state-of-the-art implementation with all tricky optimizations (at least for now). But they are very easy to use. Want a full example?
+Have you ever looked for a c++ version of MATLAB's *fminsearch*, which is easy to use without adding tons of dependencies and without editing many setting-structs? This project exactly addresses this issue by providing a *header-only* library without dependencies. All solvers are written from scratch, which means they do not represent the current state-of-the-art implementation with all tricky optimizations (at least for now). But they are very easy to use. Want a full example?
 
 ````cpp
     class Rosenbrock : public Problem<double> {
@@ -62,24 +55,9 @@ For checking your gradient this library uses high-order central difference. Stud
 Install
 -----------
 
-Before compiling you need to adjust one path to the [Eigen3][eigen3]-Library (header only), which can by downloaded by a single bashscript, if you haven't Eigen already.
-````bash
-    # download Eigen
-    ./get_dependencies.sh
-````
-To compile the examples and the unit test just do
-````bash
-    # create a new directory
-    mkdir build && cd build   
-    cmake ..
-    # build tests and demo  
-    make all    
-    # run all tests                
-    ./bin/verify  
-    # run an example
-    ./bin/examples/linearregression    
-````
-For using the MATLAB-binding open Matlab and run `make.m` inside the MATLAB folder once.
+Note, this library is header-only, so you just need to add `include/cppoptlib` to your project without compiling anything and without adding further dependencies. We ship some examples for demonstration purposes and use [bazel](https://bazel.build/) to compile these examples and unittests. The latest commit using CMake is da314c6581d076e0dbadacdd263aefe4d06a2397.
+
+When using the MATLAB-binding, you need to compile the mex-file. Hereby, open Matlab and run `make.m` inside the MATLAB folder once.
 
 Extensive Introduction
 -----------
@@ -192,7 +170,8 @@ Currently, not all solvers are equally good at all objective functions. The file
 
 # Contribute
 
-Make sure that `make lint` does not display any errors and check if travis is happy. Do not forget to `chmod +x lint.py`. It would be great, if some of the Forks-Owner are willing to make pull-request.
+Make sure that `python lint.py` does not display any errors and check if travis is happy. It would be great, if some of the Forks-Owner are willing to make pull-request.
 
 [eigen3]: http://eigen.tuxfamily.org/
+[bazel]: https://bazel.build/
 [matlab]: http://www.mathworks.de/products/matlab/
