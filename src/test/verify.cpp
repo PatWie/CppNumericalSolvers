@@ -142,6 +142,7 @@ TEST(CMAesTest, RosenbrockNearValue)                               { SOLVE_PROBL
 TYPED_TEST(NelderMeadTest, RosenbrockFarValue)                     { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockValue, 15.0, 8.0, 0.0) }
 TYPED_TEST(NelderMeadTest, RosenbrockNearValue)                    { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockValue, -1.0, 2.0, 0.0) }
 TYPED_TEST(NelderMeadTest, RosenbrockMixValue)                     { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockValue, -1.2, 100.0, 0.0) }
+TYPED_TEST(NelderMeadTest, RosenbrockZeroValue)                    { SOLVE_PROBLEM(cppoptlib::NelderMeadSolver,RosenbrockValue, 0.0, 100.0, 0.0) }
 
 // gradient information ( Hessian for newton descent)
 TYPED_TEST(GradientDescentTest, RosenbrockFarGradient)             { SOLVE_PROBLEM(cppoptlib::GradientDescentSolver,RosenbrockGradient, 15.0, 8.0, 0.0) }
