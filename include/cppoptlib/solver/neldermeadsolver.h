@@ -30,8 +30,9 @@ class NelderMeadSolver : public ISolver<ProblemType, 0> {
         if (r == c - 1) {
           if (x(r) == 0) {
             s(r, c) = 0.00025;
+          } else {
+            s(r, c) = (1 + 0.05) * x(r);
           }
-          s(r, c) = (1 + 0.05) * x(r);
         }
       }
     }
