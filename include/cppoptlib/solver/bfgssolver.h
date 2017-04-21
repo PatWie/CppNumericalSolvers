@@ -23,8 +23,8 @@ class BfgsSolver : public ISolver<ProblemType, 1> {
         TVector grad(DIM);
         TVector x_old = x0;
         this->m_current.reset();
+        objFunc.gradient(x0, grad);
         do {
-            objFunc.gradient(x0, grad);
             TVector searchDir = -1 * H * grad;
             // check "positive definite"
             Scalar phi = grad.dot(searchDir);

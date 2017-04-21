@@ -112,8 +112,8 @@ public:
         TVarVector costs(la);
         Scalar prevCost = objFunc.value(x0);
         // CMA-ES Main Loop
-        int eigen_last_eval = 0;
-        int eigen_next_eval = std::max<Scalar>(1, 1/(10*n*(c1+cmu)));
+        size_t eigen_last_eval = 0;
+        size_t eigen_next_eval = std::max<Scalar>(1, 1/(10*n*(c1+cmu)));
         this->m_current.reset();
         if (Super::m_debug >= DebugLevel::Low) {
             std::cout << "CMA-ES Initial Config" << std::endl;
