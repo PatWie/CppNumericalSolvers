@@ -21,7 +21,6 @@ class NewtonDescentSolver : public ISolver<ProblemType, 2> {
         const int DIM = x0.rows();
         TVector grad = TVector::Zero(DIM);
         THessian hessian = THessian::Zero(DIM, DIM);
-        Scalar gradNorm = 0;
         this->m_current.reset();
         do {
             objFunc.gradient(x0, grad);
