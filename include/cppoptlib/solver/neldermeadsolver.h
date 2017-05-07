@@ -146,7 +146,7 @@ class NelderMeadSolver : public ISolver<ProblemType, 0> {
           f[index[DIM]] = f_r;
         }
       } else {
-        if ( f_r < f[index[DIM]] ) {
+        if ( f_r < f[index[DIM - 1]] ) {
           x0.col(index[DIM]) = x_r;
           f[index[DIM]] = f_r;
         } else {
