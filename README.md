@@ -140,9 +140,9 @@ For convenience there are some typedefs:
 ````
 ### using box-constraints
 
-The `L-BFGS-B` algorithm allows to optimize functions with box-constraints, i.e., `min_x f(x) s.t. a <= x <= b` for some `a, b`. Given a `problem`-class you can enter these constraints by
+The `L-BFGS-B` algorithm allows to optimize functions with box-constraints, i.e., `min_x f(x) s.t. a <= x <= b` for some `a, b`. Given a `BoundedProblem`-class you can enter these constraints by
 ````cpp
-    cppoptlib::YourProblem<T> f;
+    cppoptlib::LbfgsSolver<T> f;
     f.setLowerBound(Vector<double>::Zero(DIM));
     f.setUpperBound(Vector<double>::Ones(DIM)*5);
 ````
