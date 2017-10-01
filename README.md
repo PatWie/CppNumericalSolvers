@@ -92,7 +92,7 @@ After defining the problem it can be initialized in your code by:
 By convention, a solver minimizes a given objective function starting in `x`
 ````cpp
     // choose a solver
-    BfgsSolver<double> solver;
+    BfgsSolver<YourProblem> solver;
     // and minimize the function
     solver.minimize(f, x);
     double minValue = f(x);
@@ -142,16 +142,25 @@ For convenience there are some typedefs:
 
 The `L-BFGS-B` algorithm allows to optimize functions with box-constraints, i.e., `min_x f(x) s.t. a <= x <= b` for some `a, b`. Given a `BoundedProblem`-class you can enter these constraints by
 ````cpp
-    cppoptlib::LbfgsbSolver<T> f;
+    // init problem
+    YourBoundedProblem f;
     f.setLowerBound(Vector<double>::Zero(DIM));
     f.setUpperBound(Vector<double>::Ones(DIM)*5);
+    // init solver
+    cppoptlib::LbfgsbSolver<YourBoundedProblem> solver;
+    solver.minimize(f, x);
 ````
 If you do not specify a bound, the algorithm will assume the unbounded case, eg.
 ````cpp
-    cppoptlib::YourProblem<T> f;
+    // init problem
+    YourBoundedProblem f;
     f.setLowerBound(Vector<double>::Zero(DIM));
+    // init solver
+    cppoptlib::LbfgsbSolver<YourBoundedProblem> solver;
+    solver.minimize(f, x);
 ````
 will optimize in x s.t. `0 <= x`.
+See [src/examples/nonnegls.cpp](src/examples/nonnegls.cpp) for an example using L-BFGS-B to solve a bounded problem.
 
 ## within MATLAB
 
