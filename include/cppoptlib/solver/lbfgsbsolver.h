@@ -188,7 +188,8 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
     N = MatrixType::Identity(N.rows(), N.rows()) - M * N;
     // STEP: 5
     // v = N^{-1}*v
-    v = N.lu().solve(v);
+    if (v.size() > 0)
+      v = N.lu().solve(v);
     // STEP: 6
     // HERE IS A MISTAKE IN THE ORIGINAL PAPER!
     VariableTVector du = -theta_inverse * r - theta_inverse * theta_inverse * WZ.transpose() * v;
@@ -205,6 +206,8 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
   void setHistorySize(const int hs) { m_historySize = hs; }
 
   void minimize(TProblem &problem, TVector &x0) {
+    if(!problem.isValid(x0))
+      std::cerr << "start with invalid x0" << std::endl;
     DIM = x0.rows();
     theta = 1.0;
     W = MatrixType::Zero(DIM, 0);
@@ -213,7 +216,7 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
     MatrixType sHistory = MatrixType::Zero(DIM, 0);
     TVector x = x0, g = x0;
     Scalar f = problem.value(x);
-  problem.gradient(x, g);
+    problem.gradient(x, g);
     // conv. crit.
     auto noConvergence =
     [&](TVector &x, TVector &g)->bool {
