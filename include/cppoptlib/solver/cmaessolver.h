@@ -99,8 +99,8 @@ public:
 
         TVector pc = TVector::Zero(n);
         TVector ps = TVector::Zero(n);
-        THessian B = THessian::Identity();
-        THessian D = THessian::Identity();
+        THessian B = THessian::Identity(n, n);
+        THessian D = THessian::Identity(n, n);
         THessian C = B*D*(B*D).transpose();
 
         Scalar sigma = m_stepSize;
