@@ -1,20 +1,13 @@
-CppOptimizationLibrary
+CppOptimizationLibrary (Support for TensorFlow)
 =================================================================
 
 [![Build Status](https://api.travis-ci.org/PatWie/CppNumericalSolvers.svg?branch=master)](http://travis-ci.org/PatWie/CppNumericalSolvers)
 
-Get this Library
------------
+A *header-only* library with bindings to **C++**, **TensorFlow** and **Matlab**.
 
-````bash
-    git clone https://github.com/PatWie/CppNumericalSolvers.git
-    cd CppNumericalSolvers/
-    bazel run verify
-````
+Have you ever looked for a C++ function *fminsearch*, which is easy to use without adding tons of dependencies and without editing many setting-structs and without dependencies? Solve even your large-scale problems by using **TensorFlow+Python** to accelerate the minimization. See the <a href="./tensorflow">TensorFlow-Example</a>.
 
-About
------------
-Have you ever looked for a c++ version of MATLAB's *fminsearch*, which is easy to use without adding tons of dependencies and without editing many setting-structs? This project exactly addresses this issue by providing a *header-only* library without dependencies. All solvers are written from scratch, which means they do not represent the current state-of-the-art implementation with all tricky optimizations (at least for now). But they are very easy to use. Want a full example?
+All solvers are written scratch using Eigen, which means they are very easy to use. Want a full example?
 
 ````cpp
     class Rosenbrock : public Problem<double> {
@@ -52,17 +45,26 @@ Additional benchmark functions are *Beale, GoldsteinPrice, Booth, Matyas, Levi*.
 
 For checking your gradient this library uses high-order central difference. Study the examples for more information about including box-constraints and gradient-information.
 
-Install
------------
-
-Note, this library is header-only, so you just need to add `include/cppoptlib` to your project without compiling anything and without adding further dependencies. We ship some examples for demonstration purposes and use [bazel](https://bazel.build/) to compile these examples and unittests. The latest commit using CMake is da314c6581d076e0dbadacdd263aefe4d06a2397.
-
-When using the MATLAB-binding, you need to compile the mex-file. Hereby, open Matlab and run `make.m` inside the MATLAB folder once.
 
 Extensive Introduction
 -----------
 
 There are currently two ways to use this library: directly in your C++ code or in MATLAB by calling the provided mex-File.
+
+## TensorFlow
+
+You can use the expressive power of TensorFlow to accelerate the problem evaluation and compute reliable the gradients. You just write the problem in Python:
+
+```
+# y = x'Ax + b'x + c
+y = tf.matmul(x, tf.matmul(A, x, transpose_b=True)) + tf.matmul(x, b, transpose_b=True) + c
+dx = tf.gradients(y, x)[0]
+
+y = tf.identity(y, name='problem_objective')
+dx = tf.identity(dx, name='problem_gradient')
+```
+
+and let TensorFlow figure out how to evaluate this expression and the gradients.
 
 ## C++
 
@@ -173,6 +175,17 @@ Simply create a function file for the objective and replace `fminsearch` or `fmi
 ````
 Even optimizing without any gradient information this library outperforms optimization routines from MATLAB on some problems.
 
+Install
+-----------
+
+Note, this library is header-only, so you just need to add `include/cppoptlib` to your project without compiling anything and without adding further dependencies. We ship some examples for demonstration purposes and use [bazel](https://bazel.build/) to compile these examples and unittests. The latest commit using CMake is da314c6581d076e0dbadacdd263aefe4d06a2397.
+
+When using the MATLAB-binding, you need to compile the mex-file. Hereby, open Matlab and run `make.m` inside the MATLAB folder once. For TensorFlow-Support you need to build TensorFlow-Library from source
+
+```
+bazel build -c opt --copt=-mfpmath=both --copt=-msse4.2 --config=cuda //tensorflow:libtensorflow.so
+bazel build -c opt --copt=-mfpmath=both --copt=-msse4.2 --config=cuda //tensorflow:libtensorflow_cc.so
+```
 # Benchmarks
 
 Currently, not all solvers are equally good at all objective functions. The file `src/test/benchmark.cpp` contains some challenging objective functions which are tested by each provided solver. Note, MATLAB will also fail at some objective functions.
