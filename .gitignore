@@ -66,3 +66,7 @@ CppNumericalSolvers.config
 /bazel-*
 # Ignore outputs generated during Bazel bootstrapping.
 /output/
+/tester
+/test
+/tester.tar
+tensorflow/solve
