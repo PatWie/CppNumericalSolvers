@@ -21,7 +21,7 @@ All solvers are written scratch using Eigen, which means they are very easy to u
     int main(int argc, char const *argv[]) {
         Rosenbrock f;
         Vector<double> x(2); x << -1, 2;
-        BfgsSolver<double> solver;
+        BfgsSolver<Rosenbrock> solver;
         solver.minimize(f, x);
         std::cout << "argmin      " << x.transpose() << std::endl;
         std::cout << "f in argmin " << f(x) << std::endl;
