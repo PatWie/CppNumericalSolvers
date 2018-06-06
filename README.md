@@ -213,3 +213,11 @@ Make sure that `python lint.py` does not display any errors and check if travis 
 [bazel]: https://bazel.build/
 [matlab]: http://www.mathworks.de/products/matlab/
 [tensorflow]: https://www.tensorflow.org/
+
+# References
+
+**L-BFGS-B**: A LIMITED MEMORY ALGORITHM FOR BOUND CONSTRAINED OPTIMIZATION
+*Richard H. Byrd, Peihuang Lu, Jorge Nocedal and Ciyou Zhu*
+
+**L-BFGS**: Numerical Optimization, 2nd ed. New York: Springer
+*J. Nocedal and S. J. Wright*

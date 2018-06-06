@@ -1,4 +1,7 @@
 // CppNumericalSolver
+// based on:
+// L-BFGS-B: A LIMITED MEMORY ALGORITHM FOR BOUND CONSTRAINED OPTIMIZATION
+// Richard H. Byrd, Peihuang Lu, Jorge Nocedal and Ciyou Zhu
 #include <iostream>
 #include <list>
 #include <Eigen/LU>

@@ -1,4 +1,7 @@
 // CppNumericalSolver
+// based on:
+// Numerical Optimization, 2nd ed. New York: Springer
+// J. Nocedal and S. J. Wright
 #include <iostream>
 #include <Eigen/LU>
 #include "isolver.h"
