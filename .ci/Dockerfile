@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 MAINTAINER Patwie <mail@patwie.com>
 
 RUN apt-get -qq update && apt-get -qq dist-upgrade && apt-get install -qq -y --no-install-recommends \
@@ -6,12 +6,12 @@ RUN apt-get -qq update && apt-get -qq dist-upgrade && apt-get install -qq -y --n
     wget \
     pkg-config \
     g++ \
-    g++-4.9 \
-    g++-5 \
     pkg-config \
     zip \
     zlib1g-dev \
     unzip \
+    python \
+    ca-certificates \
     && apt-get -qq clean
 
 WORKDIR /bazel
@@ -22,6 +22,4 @@ RUN chmod +x bazel-0.14.0-installer-linux-x86_64.sh
 RUN ./bazel-0.14.0-installer-linux-x86_64.sh --user
 ENV PATH="$PATH:$HOME/bin"
 
-RUN apt-get install ca-certificates -qq -y
-RUN apt-get install python -qq -y
 WORKDIR /project
