@@ -1,8 +1,8 @@
 new_http_archive(
   name = "eigen_archive",
-  url = "https://bitbucket.org/eigen/eigen/get/3.2.10.tar.gz",
+  url = "https://bitbucket.org/eigen/eigen/get/3.3.4.tar.gz",
   build_file = "eigen.BUILD",
-  strip_prefix = "eigen-eigen-b9cd8366d4e8",
+  strip_prefix = "eigen-eigen-5a0156e40feb",
 )
 
 
