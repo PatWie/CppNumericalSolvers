@@ -1,0 +1,10 @@
+pipeline:
+  build:
+    image: cppnumericalsolver_dynamic
+    commands:
+      - /root/bin/bazel run verify
+      - python lint.py
+
+
+
+

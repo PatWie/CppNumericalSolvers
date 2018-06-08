@@ -1,7 +1,7 @@
 CppOptimizationLibrary (Support for TensorFlow)
 =================================================================
 
-[![Build Status](https://api.travis-ci.org/PatWie/CppNumericalSolvers.svg?branch=master)](http://travis-ci.org/PatWie/CppNumericalSolvers)
+[![Build Status](http://ci.patwie.com/api/badges/PatWie/CppNumericalSolvers/status.svg)](http://ci.patwie.com/PatWie/CppNumericalSolvers)
 
 A *header-only* library with bindings to **C++**, **[TensorFlow](https://www.tensorflow.org/)** and **Matlab**.
 
