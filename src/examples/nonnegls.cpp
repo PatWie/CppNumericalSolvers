@@ -19,7 +19,7 @@ class NonNegativeLeastSquares : public BoundedProblem<T> {
 
   public:
     NonNegativeLeastSquares(const TMatrix &X_, const TVector y_) :
-        Superclass(X_.rows()),
+        Superclass(X_.cols()),
         X(X_), y(y_) {}
 
     T value(const TVector &beta) {
