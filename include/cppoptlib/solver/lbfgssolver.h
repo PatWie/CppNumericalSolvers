@@ -30,7 +30,6 @@ class LbfgsSolver : public ISolver<ProblemType, 1> {
         TVector grad(DIM), q(DIM), grad_old(DIM), s(DIM), y(DIM);
         objFunc.gradient(x0, grad);
         TVector x_old = x0;
-        TVector x_old2 = x0;
 
         size_t iter = 0, globIter = 0;
         Scalar H0k = 1;
