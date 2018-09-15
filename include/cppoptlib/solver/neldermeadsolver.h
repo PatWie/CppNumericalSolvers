@@ -87,8 +87,8 @@ class NelderMeadSolver : public ISolver<ProblemType, 0> {
         if (tmp2 > max2)
           max2 = tmp2;
       }
-      const Scalar tt1 = std::max(Scalar(1.e-04), 10 * std::nextafter(f[index[0]], std::numeric_limits<Scalar>::epsilon()) - f[index[0]]);
-      const Scalar tt2 = std::max(Scalar(1.e-04), 10 * (std::nextafter(x0.col(index[0]).maxCoeff(), std::numeric_limits<Scalar>::epsilon())
+      const Scalar tt1 = std::max<Scalar>(Scalar(1.e-04), 10 * std::nextafter(f[index[0]], std::numeric_limits<Scalar>::epsilon()) - f[index[0]]);
+      const Scalar tt2 = std::max<Scalar>(Scalar(1.e-04), 10 * (std::nextafter(x0.col(index[0]).maxCoeff(), std::numeric_limits<Scalar>::epsilon())
                     - x0.col(index[0]).maxCoeff()));
 
       // User-defined stopping criteria

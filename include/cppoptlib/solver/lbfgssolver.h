@@ -35,14 +35,14 @@ class LbfgsSolver : public ISolver<ProblemType, 1> {
         Scalar H0k = 1;
         this->m_current.reset();
         do {
-            const Scalar relativeEpsilon = static_cast<Scalar>(0.0001) * std::max(static_cast<Scalar>(1.0), x0.norm());
+            const Scalar relativeEpsilon = static_cast<Scalar>(0.0001) * std::max<Scalar>(static_cast<Scalar>(1.0), x0.norm());
 
             if (grad.norm() < relativeEpsilon)
                 break;
 
             //Algorithm 7.4 (L-BFGS two-loop recursion)
             q = grad;
-            const int k = std::min(m, iter);
+            const int k = std::min<Scalar>(m, iter);
 
             // for i = k − 1, k − 2, . . . , k − m§
             for (int i = k - 1; i >= 0; i--) {

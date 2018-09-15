@@ -33,7 +33,7 @@ public:
   }
 
   /**
-   * @brief break stopwatch, but allows resuming
+   * @brief pause stopwatch, but allows resuming
    * @details [long description]
    */
   void pause() {

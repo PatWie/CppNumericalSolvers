@@ -89,8 +89,8 @@ public:
         const Scalar cc     = (4. + mu_eff / n) / (n + 4. + 2.*mu_eff/n);
         const Scalar cs     = (mu_eff + 2.) / (n + mu_eff + 5.);
         const Scalar c1     = 2. / (pow(n + 1.3, 2.) + mu_eff);
-        const Scalar cmu    = std::min(1. - c1, 2.*(mu_eff - 2. + 1./mu_eff) / (pow(n+2, 2.) + mu_eff));
-        const Scalar ds     = 1. + cs + 2.*std::max(0., sqrt((mu_eff - 1.) / (n + 1.)) - 1.);
+        const Scalar cmu    = std::min<Scalar>(1. - c1, 2.*(mu_eff - 2. + 1./mu_eff) / (pow(n+2, 2.) + mu_eff));
+        const Scalar ds     = 1. + cs + 2.*std::max<Scalar>(0., sqrt((mu_eff - 1.) / (n + 1.)) - 1.);
         const Scalar chi    = sqrt(n) * (1. - 1./(4.*n) + 1./(21.*n*n));
         const Scalar hsig_thr = (1.4 + 2 / (n + 1.)) * chi;
 
