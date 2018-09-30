@@ -221,3 +221,16 @@ Make sure that `python lint.py` does not display any errors and check if travis 
 
 **L-BFGS**: Numerical Optimization, 2nd ed. New York: Springer
 *J. Nocedal and S. J. Wright*
+
+# Citing this implementation
+
+I see some interests in citing this implementation. Please use the following bibtex entry, if you consider to cite this implementation:
+
+```bibtex
+@misc{wieschollek2016cppoptimizationlibrary,
+  title={CppOptimizationLibrary},
+  author={Wieschollek, Patrick},
+  year={2016},
+  howpublished={\url{https://github.com/PatWie/CppNumericalSolvers}},
+}
+```
