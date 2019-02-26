@@ -1,11 +1,11 @@
-pipeline:
-  build:
-    # image: cppnumericalsolver_dynamic
-    image: patwie/cppnumericalsolvers
-    commands:
-      - /root/bin/bazel run verify
-      - python lint.py
+kind: pipeline
+name: default
 
-
-
+steps:
+- name: build
+  image: cppnumericalsolver_dynamic
+  pull: never
+  commands:
+  - /root/bin/bazel run verify
+  - python lint.py
 
