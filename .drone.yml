@@ -1,7 +1,8 @@
 pipeline:
   build:
-    # image: cppnumericalsolver_dynamic
-    image: patwie/cppnumericalsolvers
+    image: cppnumericalsolver_dynamic
+    pull: never
+    # image: patwie/cppnumericalsolvers
     commands:
       - /root/bin/bazel run verify
       - python lint.py
