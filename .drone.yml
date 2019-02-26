@@ -1,7 +1,7 @@
 pipeline:
   build:
     image: cppnumericalsolver_dynamic
-    pull: never
+    pull: false
     # image: patwie/cppnumericalsolvers
     commands:
       - /root/bin/bazel run verify
