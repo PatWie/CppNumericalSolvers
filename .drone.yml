@@ -1,3 +1,4 @@
+---
 pipeline:
   build:
     image: patwie/cppnumericalsolvers
@@ -8,3 +9,8 @@ pipeline:
 
 
 
+---
+kind: signature
+hmac: 2fb2d80377b3f8b9e1c6b84c50dca9cef9b77a8a1ae0df67f2916b2265d00a0f
+
+...
