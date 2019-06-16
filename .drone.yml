@@ -2,6 +2,7 @@
 pipeline:
   build:
     image: patwie/cppnumericalsolvers
+    pull: never
     commands:
       - /root/bin/bazel run verify
       - python lint.py
@@ -11,6 +12,6 @@ pipeline:
 
 ---
 kind: signature
-hmac: 2fb2d80377b3f8b9e1c6b84c50dca9cef9b77a8a1ae0df67f2916b2265d00a0f
+hmac: 8a9b9fdfe5335f17b99d29fbaf338ecebef6369280198a66adb35d7da7fafd7c
 
 ...
