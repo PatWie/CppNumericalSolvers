@@ -1,17 +1,27 @@
 ---
-pipeline:
-  build:
-    image: patwie/cppnumericalsolvers
-    pull: never
-    commands:
-      - /root/bin/bazel run verify
-      - python lint.py
+kind: pipeline
+name: Build
 
+platform:
+  os: linux
+  arch: amd64
 
+steps:
+- name: lint
+  pull: never
+  image: patwie/cppnumericalsolvers
+  commands:
+  - python lint.py
+
+- name: build
+  pull: never
+  image: patwie/cppnumericalsolvers
+  commands:
+  - /root/bin/bazel run verify
 
 
 ---
 kind: signature
-hmac: 8a9b9fdfe5335f17b99d29fbaf338ecebef6369280198a66adb35d7da7fafd7c
+hmac: eb9ce76e7e30d8a1ca46cdc9449d412f2b38717a27f33245fa236239d9ad836a
 
 ...
