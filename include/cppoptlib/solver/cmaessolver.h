@@ -2,6 +2,7 @@
 #ifndef CMAES_H_
 #define CMAES_H_
 
+#include <cmath>
 #include <random>
 #include <Eigen/Dense>
 #include "isolver.h"
@@ -80,8 +81,8 @@ public:
     void minimize(TProblem &objFunc, TVector &x0, const TVector &var0) {
         const int n = x0.rows();
         eigen_assert(x0.rows() == var0.rows());
-        int la = ceil(4 + round(3 * log(n)));
-        const int mu = floor(la / 2);
+        int la = static_cast<int>(ceil(4 + round(3 * log(n))));
+        const int mu = static_cast<int>(floor(la / 2));
         TVarVector w = TVarVector::Zero(mu);
         for (int i = 0; i < mu; ++i) {
           w[i] = log(mu+1/2)-log(i+1);
@@ -113,7 +114,7 @@ public:
         Scalar prevCost = objFunc.value(x0);
         // CMA-ES Main Loop
         size_t eigen_last_eval = 0;
-        size_t eigen_next_eval = std::max<Scalar>(1, 1/(10*n*(c1+cmu)));
+        size_t eigen_next_eval = std::max<size_t>(1, static_cast<size_t>(ceil(1/(10*n*(c1+cmu)))));  // TODO: unclear whether ceil or floor?
         this->m_current.reset();
         if (Super::m_debug >= DebugLevel::Low) {
             std::cout << "CMA-ES Initial Config" << std::endl;

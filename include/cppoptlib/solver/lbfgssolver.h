@@ -2,6 +2,7 @@
 // based on:
 // Numerical Optimization, 2nd ed. New York: Springer
 // J. Nocedal and S. J. Wright
+#include <algorithm>
 #include <iostream>
 #include <Eigen/LU>
 #include "isolver.h"
@@ -42,7 +43,7 @@ class LbfgsSolver : public ISolver<ProblemType, 1> {
 
             //Algorithm 7.4 (L-BFGS two-loop recursion)
             q = grad;
-            const int k = std::min<Scalar>(m, iter);
+            const int k = std::min<int>(m, iter);
 
             // for i = k − 1, k − 2, . . . , k − m§
             for (int i = k - 1; i >= 0; i--) {
