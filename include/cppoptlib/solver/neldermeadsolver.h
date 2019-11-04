@@ -55,7 +55,7 @@ class NelderMeadSolver : public ISolver<ProblemType, 0> {
     const size_t DIM = x.rows();
 
     // create initial simplex
-    if (not initialSimplexCreated) {
+    if (! initialSimplexCreated) {
       x0 = makeInitialSimplex(x);
     }
 
@@ -72,7 +72,7 @@ class NelderMeadSolver : public ISolver<ProblemType, 0> {
     int iter = 0;
     const int maxIter = this->m_stop.iterations * DIM;
     while (
-      objFunc.callback(this->m_current, x0.col(index[0])) and
+      objFunc.callback(this->m_current, x0.col(index[0])) &&
       (iter < maxIter)
     ) {
       // conv-check
@@ -96,7 +96,7 @@ class NelderMeadSolver : public ISolver<ProblemType, 0> {
       this->m_current.fDelta = max1;
       this->m_current.xDelta = max2;
       stop_condition = checkConvergence(this->m_stop, this->m_current);
-      if (this->m_stop.iterations != 0 and stop_condition != Status::Continue) {
+      if (this->m_stop.iterations != 0 && stop_condition != Status::Continue) {
         break;
       }
 
