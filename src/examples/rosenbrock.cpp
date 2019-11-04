@@ -30,7 +30,7 @@ class Rosenbrock : public cppoptlib::Problem<T> {
     // if you want ot use 2nd-order solvers, I encourage you to specify the hessian
     // finite differences usually (this implementation) behave bad
     void hessian(const TVector &x, THessian &hessian) {
-        hessian(0, 0) = 1200 * x[0] * x[0] - 400 * x[1] + 1;
+        hessian(0, 0) = 1200 * x[0] * x[0] - 400 * x[1] + 2;
         hessian(0, 1) = -400 * x[0];
         hessian(1, 0) = -400 * x[0];
         hessian(1, 1) = 200;
@@ -46,7 +46,7 @@ int main(int argc, char const *argv[]) {
     // choose a starting point
     Eigen::VectorXd x(2); x << -1, 2;
 
-    // first check the given derivative 
+    // first check the given derivative
     // there is output, if they are NOT similar to finite differences
     bool probably_correct = f.checkGradient(x);
 
