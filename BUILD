@@ -10,6 +10,8 @@ build_example("simple")
 build_example("simple_withoptions")
 build_example("neldermead")
 build_example("neldermead-customized")
+build_example("nonnegls")
+build_example("nonnegls2")
 
 build_test("verify")
 

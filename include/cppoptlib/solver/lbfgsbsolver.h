@@ -42,6 +42,17 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
     });
     return idx;
   }
+
+  void clampToBound(const TProblem &problem, TVector &x) {
+    for (int r = 0; r < x.rows(); ++r)
+    {
+      if(x(r) < problem.lowerBound()(r))
+        x(r) = problem.lowerBound()(r);
+      else if (x(r) > problem.upperBound()(r))
+        x(r) = problem.upperBound()(r);
+    }
+  }
+
   /**
    * @brief Algorithm CP: Computation of the generalized Cauchy point
    * @details PAGE 8
@@ -243,6 +254,8 @@ class LbfgsbSolver : public ISolver<TProblem, 1> {
       const Scalar rate = MoreThuente<TProblem, 1>::linesearch(x,  SubspaceMin-x ,  problem, alpha_init);
       // update current guess and function information
       x = x - rate*(x-SubspaceMin);
+      // if current solution is out of bound, we clip it
+      clampToBound(problem, x);
       f = problem.value(x);
       problem.gradient(x, g);
       // prepare for next iteration
