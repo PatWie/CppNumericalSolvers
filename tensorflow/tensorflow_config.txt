@@ -1,2 +1,0 @@
-set(TensorFlow_ABI 1)
-set(TensorFlow_INCLUDE_DIRS "/home/wieschol/.local/lib/python2.7/site-packages/tensorflow/include")

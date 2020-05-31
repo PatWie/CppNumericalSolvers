@@ -1,1 +1,0 @@
-x = fminsearch(@beale,[-1 ,2]);

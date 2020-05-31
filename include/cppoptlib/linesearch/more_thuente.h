@@ -1,57 +1,61 @@
-// CppNumericalSolver
-#ifndef MORETHUENTE_H_
-#define MORETHUENTE_H_
+// Copyright 2020, https://github.com/PatWie/CppNumericalSolvers
+//
+#ifndef INCLUDE_CPPOPTLIB_LINESEARCH_MORE_THUENTE_H_
+#define INCLUDE_CPPOPTLIB_LINESEARCH_MORE_THUENTE_H_
 
-#include "../meta.h"
 #include <cmath>
 
 namespace cppoptlib {
+namespace solver {
+namespace linesearch {
 
-template<typename ProblemType, int Ord>
+template <typename Function, int Ord>
 class MoreThuente {
-
  public:
-  using Scalar = typename ProblemType::Scalar;
-  using TVector = typename ProblemType::TVector;
+  using Scalar = typename Function::Scalar;
+  using Vector = typename Function::Vector;
 
   /**
    * @brief use MoreThuente Rule for (strong) Wolfe conditiions
    * @details [long description]
    *
    * @param searchDir search direction for next update step
-   * @param objFunc handle to problem
+   * @param function handle to problem
    *
    * @return step-width
    */
 
-  static Scalar linesearch(const TVector &x, const TVector &searchDir, ProblemType &objFunc, const  Scalar alpha_init = 1.0) {
-    // assume step width
+  static Scalar search(const Vector &x, const Vector &searchDir,
+                       const Function &function,
+                       const Scalar alpha_init = 1.0) {
+    // Assumed step width.
     Scalar ak = alpha_init;
 
-    Scalar fval = objFunc.value(x);
-    TVector  g  = x.eval();
-    objFunc.gradient(x, g);
+    Scalar fval = function(x);
+    Vector g = x.eval();
+    function.gradient(x, &g);
 
-    TVector s = searchDir.eval();
-    TVector xx = x.eval();
+    Vector s = searchDir.eval();
+    Vector xx = x.eval();
 
-    cvsrch(objFunc, xx, fval, g, ak, s);
+    cvsrch(function, xx, fval, g, ak, s);
 
     return ak;
   }
 
-  static int cvsrch(ProblemType &objFunc, TVector &x, Scalar f, TVector &g, Scalar &stp, TVector &s) {
+  static int cvsrch(const Function &function, Vector &x, Scalar f, Vector &g,
+                    Scalar &stp, Vector &s) {
     // we rewrite this from MIN-LAPACK and some MATLAB code
-    int info           = 0;
-    int infoc          = 1;
-    const Scalar xtol   = 1e-15;
-    const Scalar ftol   = 1e-4;
-    const Scalar gtol   = 1e-2;
+    int info = 0;
+    int infoc = 1;
+    const Scalar xtol = 1e-15;
+    const Scalar ftol = 1e-4;
+    const Scalar gtol = 1e-2;
     const Scalar stpmin = 1e-15;
     const Scalar stpmax = 1e15;
     const Scalar xtrapf = 4;
-    const int maxfev   = 20;
-    int nfev           = 0;
+    const int maxfev = 20;
+    int nfev = 0;
 
     Scalar dginit = g.dot(s);
     if (dginit >= 0.0) {
@@ -60,27 +64,26 @@ class MoreThuente {
       return -1;
     }
 
-    bool brackt      = false;
-    bool stage1      = true;
+    bool brackt = false;
+    bool stage1 = true;
 
-    Scalar finit      = f;
-    Scalar dgtest     = ftol * dginit;
-    Scalar width      = stpmax - stpmin;
-    Scalar width1     = 2 * width;
-    TVector wa = x.eval();
+    Scalar finit = f;
+    Scalar dgtest = ftol * dginit;
+    Scalar width = stpmax - stpmin;
+    Scalar width1 = 2 * width;
+    Vector wa = x.eval();
 
-    Scalar stx        = 0.0;
-    Scalar fx         = finit;
-    Scalar dgx        = dginit;
-    Scalar sty        = 0.0;
-    Scalar fy         = finit;
-    Scalar dgy        = dginit;
+    Scalar stx = 0.0;
+    Scalar fx = finit;
+    Scalar dgx = dginit;
+    Scalar sty = 0.0;
+    Scalar fy = finit;
+    Scalar dgy = dginit;
 
     Scalar stmin;
     Scalar stmax;
 
     while (true) {
-
       // make sure we stay in the interval when setting min/max-step-width
       if (brackt) {
         stmin = std::min<Scalar>(stx, sty);
@@ -95,45 +98,38 @@ class MoreThuente {
       stp = std::min<Scalar>(stp, stpmax);
 
       // Oops, let us return the last reliable values
-      if (
-      (brackt && ((stp <= stmin) || (stp >= stmax)))
-      || (nfev >= maxfev - 1 ) || (infoc == 0)
-      || (brackt && ((stmax - stmin) <= (xtol * stmax)))) {
+      if ((brackt && ((stp <= stmin) || (stp >= stmax))) ||
+          (nfev >= maxfev - 1) || (infoc == 0) ||
+          (brackt && ((stmax - stmin) <= (xtol * stmax)))) {
         stp = stx;
       }
 
       // test new point
       x = wa + stp * s;
-      f = objFunc.value(x);
-      objFunc.gradient(x, g);
+      f = function(x);
+      function.gradient(x, &g);
       nfev++;
       Scalar dg = g.dot(s);
       Scalar ftest1 = finit + stp * dgtest;
 
       // all possible convergence tests
-      if ((brackt & ((stp <= stmin) | (stp >= stmax))) | (infoc == 0))
-        info = 6;
+      if ((brackt & ((stp <= stmin) | (stp >= stmax))) | (infoc == 0)) info = 6;
 
-      if ((stp == stpmax) & (f <= ftest1) & (dg <= dgtest))
-        info = 5;
+      if ((stp == stpmax) & (f <= ftest1) & (dg <= dgtest)) info = 5;
 
-      if ((stp == stpmin) & ((f > ftest1) | (dg >= dgtest)))
-        info = 4;
+      if ((stp == stpmin) & ((f > ftest1) | (dg >= dgtest))) info = 4;
 
-      if (nfev >= maxfev)
-        info = 3;
+      if (nfev >= maxfev) info = 3;
 
-      if (brackt & (stmax - stmin <= xtol * stmax))
-        info = 2;
+      if (brackt & (stmax - stmin <= xtol * stmax)) info = 2;
 
-      if ((f <= ftest1) & (fabs(dg) <= gtol * (-dginit)))
-        info = 1;
+      if ((f <= ftest1) & (fabs(dg) <= gtol * (-dginit))) info = 1;
 
       // terminate when convergence reached
-      if (info != 0)
-        return -1;
+      if (info != 0) return -1;
 
-      if (stage1 & (f <= ftest1) & (dg >= std::min<Scalar>(ftol, gtol)*dginit))
+      if (stage1 & (f <= ftest1) &
+          (dg >= std::min<Scalar>(ftol, gtol) * dginit))
         stage1 = false;
 
       if (stage1 & (f <= fx) & (f > ftest1)) {
@@ -144,7 +140,8 @@ class MoreThuente {
         Scalar dgxm = dgx - dgtest;
         Scalar dgym = dgy - dgtest;
 
-        cstep( stx, fxm, dgxm, sty, fym, dgym, stp, fm, dgm, brackt, stmin, stmax, infoc);
+        cstep(stx, fxm, dgxm, sty, fym, dgym, stp, fm, dgm, brackt, stmin,
+              stmax, infoc);
 
         fx = fxm + stx * dgtest;
         fy = fym + sty * dgtest;
@@ -152,12 +149,12 @@ class MoreThuente {
         dgy = dgym + dgtest;
       } else {
         // this is ugly and some variables should be moved to the class scope
-        cstep( stx, fx, dgx, sty, fy, dgy, stp, f, dg, brackt, stmin, stmax, infoc);
+        cstep(stx, fx, dgx, sty, fy, dgy, stp, f, dg, brackt, stmin, stmax,
+              infoc);
       }
 
       if (brackt) {
-        if (fabs(sty - stx) >= 0.66 * width1)
-          stp = stx + 0.5 * (sty - stx);
+        if (fabs(sty - stx) >= 0.66 * width1) stp = stx + 0.5 * (sty - stx);
         width1 = width;
         width = fabs(sty - stx);
       }
@@ -166,14 +163,16 @@ class MoreThuente {
     return 0;
   }
 
-  static int cstep(Scalar& stx, Scalar& fx, Scalar& dx, Scalar& sty, Scalar& fy, Scalar& dy, Scalar& stp,
-  Scalar& fp, Scalar& dp, bool& brackt, Scalar& stpmin, Scalar& stpmax, int& info) {
+  static int cstep(Scalar &stx, Scalar &fx, Scalar &dx, Scalar &sty, Scalar &fy,
+                   Scalar &dy, Scalar &stp, Scalar &fp, Scalar &dp,
+                   bool &brackt, Scalar &stpmin, Scalar &stpmax, int &info) {
     info = 0;
     bool bound = false;
 
     // Check the input parameters for errors.
-    if ((brackt & ((stp <= std::min<Scalar>(stx, sty) ) | (stp >= std::max<Scalar>(stx, sty)))) | (dx * (stp - stx) >= 0.0)
-    | (stpmax < stpmin)) {
+    if ((brackt & ((stp <= std::min<Scalar>(stx, sty)) |
+                   (stp >= std::max<Scalar>(stx, sty)))) |
+        (dx * (stp - stx) >= 0.0) | (stpmax < stpmin)) {
       return -1;
     }
 
@@ -189,8 +188,7 @@ class MoreThuente {
       Scalar theta = 3. * (fx - fp) / (stp - stx) + dx + dp;
       Scalar s = std::max<Scalar>(theta, std::max<Scalar>(dx, dp));
       Scalar gamma = s * sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
-      if (stp < stx)
-        gamma = -gamma;
+      if (stp < stx) gamma = -gamma;
       Scalar p = (gamma - dx) + theta;
       Scalar q = ((gamma - dx) + gamma) + dp;
       Scalar r = p / q;
@@ -206,9 +204,8 @@ class MoreThuente {
       bound = false;
       Scalar theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
       Scalar s = std::max<Scalar>(theta, std::max<Scalar>(dx, dp));
-      Scalar gamma = s * sqrt((theta / s) * (theta / s)  - (dx / s) * (dp / s));
-      if (stp > stx)
-        gamma = -gamma;
+      Scalar gamma = s * sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
+      if (stp > stx) gamma = -gamma;
 
       Scalar p = (gamma - dp) + theta;
       Scalar q = ((gamma - dp) + gamma) + dx;
@@ -224,10 +221,11 @@ class MoreThuente {
       info = 3;
       bound = 1;
       Scalar theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
-      Scalar s = std::max<Scalar>(theta, std::max<Scalar>( dx, dp));
-      Scalar gamma = s * sqrt(std::max<Scalar>(static_cast<Scalar>(0.), (theta / s) * (theta / s) - (dx / s) * (dp / s)));
-      if (stp > stx)
-        gamma = -gamma;
+      Scalar s = std::max<Scalar>(theta, std::max<Scalar>(dx, dp));
+      Scalar gamma = s * sqrt(std::max<Scalar>(
+                             static_cast<Scalar>(0.),
+                             (theta / s) * (theta / s) - (dx / s) * (dp / s)));
+      if (stp > stx) gamma = -gamma;
       Scalar p = (gamma - dp) + theta;
       Scalar q = (gamma + (dx - dp)) + gamma;
       Scalar r = p / q;
@@ -251,7 +249,6 @@ class MoreThuente {
         } else {
           stpf = stpq;
         }
-
       }
     } else {
       info = 4;
@@ -259,9 +256,9 @@ class MoreThuente {
       if (brackt) {
         Scalar theta = 3 * (fp - fy) / (sty - stp) + dy + dp;
         Scalar s = std::max<Scalar>(theta, std::max<Scalar>(dy, dp));
-        Scalar gamma = s * sqrt((theta / s) * (theta / s) - (dy / s) * (dp / s));
-        if (stp > sty)
-          gamma = -gamma;
+        Scalar gamma =
+            s * sqrt((theta / s) * (theta / s) - (dy / s) * (dp / s));
+        if (stp > sty) gamma = -gamma;
 
         Scalar p = (gamma - dp) + theta;
         Scalar q = ((gamma - dp) + gamma) + dy;
@@ -297,18 +294,19 @@ class MoreThuente {
 
     if (brackt & bound) {
       if (sty > stx) {
-        stp = std::min<Scalar>(stx + static_cast<Scalar>(0.66) * (sty - stx), stp);
+        stp = std::min<Scalar>(stx + static_cast<Scalar>(0.66) * (sty - stx),
+                               stp);
       } else {
-        stp = std::max<Scalar>(stx + static_cast<Scalar>(0.66) * (sty - stx), stp);
+        stp = std::max<Scalar>(stx + static_cast<Scalar>(0.66) * (sty - stx),
+                               stp);
       }
     }
 
     return 0;
-
   }
-
 };
+};  // namespace linesearch
+};  // namespace solver
+}  // namespace cppoptlib
 
-}
-
-#endif /* MORETHUENTE_H_ */
+#endif  // INCLUDE_CPPOPTLIB_LINESEARCH_MORE_THUENTE_H_

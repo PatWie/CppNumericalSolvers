@@ -4,6 +4,7 @@ cc_library(
         "*.h",
         "solver/*.h",
         "linesearch/*.h",
+        "utils/*.h",
     ]),
     visibility = ["//visibility:public"],
 )
