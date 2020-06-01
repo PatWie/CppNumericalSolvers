@@ -26,8 +26,8 @@ class MoreThuente {
    */
 
   static ScalarT search(const VectorT &x, const VectorT &searchDir,
-                       const Function &function,
-                       const ScalarT alpha_init = 1.0) {
+                        const Function &function,
+                        const ScalarT alpha_init = 1.0) {
     // Assumed step width.
     ScalarT ak = alpha_init;
 
@@ -163,9 +163,10 @@ class MoreThuente {
     return 0;
   }
 
-  static int cstep(ScalarT &stx, ScalarT &fx, ScalarT &dx, ScalarT &sty, ScalarT &fy,
-                   ScalarT &dy, ScalarT &stp, ScalarT &fp, ScalarT &dp,
-                   bool &brackt, ScalarT &stpmin, ScalarT &stpmax, int &info) {
+  static int cstep(ScalarT &stx, ScalarT &fx, ScalarT &dx, ScalarT &sty,
+                   ScalarT &fy, ScalarT &dy, ScalarT &stp, ScalarT &fp,
+                   ScalarT &dp, bool &brackt, ScalarT &stpmin, ScalarT &stpmax,
+                   int &info) {
     info = 0;
     bool bound = false;
 
@@ -223,8 +224,8 @@ class MoreThuente {
       ScalarT theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
       ScalarT s = std::max<ScalarT>(theta, std::max<ScalarT>(dx, dp));
       ScalarT gamma = s * sqrt(std::max<ScalarT>(
-                             static_cast<ScalarT>(0.),
-                             (theta / s) * (theta / s) - (dx / s) * (dp / s)));
+                              static_cast<ScalarT>(0.),
+                              (theta / s) * (theta / s) - (dx / s) * (dp / s)));
       if (stp > stx) gamma = -gamma;
       ScalarT p = (gamma - dp) + theta;
       ScalarT q = (gamma + (dx - dp)) + gamma;
@@ -295,10 +296,10 @@ class MoreThuente {
     if (brackt & bound) {
       if (sty > stx) {
         stp = std::min<ScalarT>(stx + static_cast<ScalarT>(0.66) * (sty - stx),
-                               stp);
+                                stp);
       } else {
         stp = std::max<ScalarT>(stx + static_cast<ScalarT>(0.66) * (sty - stx),
-                               stp);
+                                stp);
       }
     }
 

@@ -66,10 +66,10 @@ class Function {
     State<ScalarT, VectorT, HessianT, Ord> state;
     state.value = this->operator()(x);
     state.x = x;
-    if (Ord == 1) {
+    if (Ord >= 1) {
       this->Gradient(x, &state.gradient);
     }
-    if (Ord == 2) {
+    if (Ord >= 2) {
       this->Hessian(x, &state.hessian);
     }
     return state;

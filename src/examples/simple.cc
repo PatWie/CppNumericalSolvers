@@ -4,12 +4,13 @@
 
 #include "include/cppoptlib/function.h"
 #include "include/cppoptlib/solver/gradient_descent.h"
+#include "include/cppoptlib/solver/newton_descent.h"
 
 template <typename T>
-class Simple : public cppoptlib::function::Function<T, 1, 2> {
+class Simple : public cppoptlib::function::Function<T, 2, 2> {
  public:
-  using VectorT = typename cppoptlib::function::Function<T, 1, 2>::VectorT;
-  using ScalarT = typename cppoptlib::function::Function<T, 1, 2>::ScalarT;
+  using VectorT = typename cppoptlib::function::Function<T, 2, 2>::VectorT;
+  using ScalarT = typename cppoptlib::function::Function<T, 2, 2>::ScalarT;
 
   ScalarT operator()(const VectorT &x) const override {
     return 5 * x[0] * x[0] + 100 * x[1] * x[1] + 5;
@@ -40,7 +41,8 @@ int main(int argc, char const *argv[]) {
   std::cout << cppoptlib::utils::IsGradientCorrect(f, x) << std::endl;
   std::cout << cppoptlib::utils::IsHessianCorrect(f, x) << std::endl;
 
-  cppoptlib::solver::GradientDescent<Function> solver;
+  cppoptlib::solver::NewtonDescent<Function> solver;
+  // cppoptlib::solver::GradientDescent<Function> solver;
 
   auto solution = solver.minimize(f, x);
   std::cout << "argmin " << solution.x.transpose() << std::endl;

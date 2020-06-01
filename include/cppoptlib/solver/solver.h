@@ -86,8 +86,8 @@ template <class T>
 State<T> DefaultStoppingSolverState() {
   State<T> state;
   state.num_iterations = 10000;
-  state.x_delta = T{0};
-  state.f_delta = T{0};
+  state.x_delta = T{1e-5};
+  state.f_delta = T{1e-5};
   state.gradient_norm = T{1e-4};
   state.condition_hessian = T{0};
   state.status = Status::NotStarted;
@@ -132,6 +132,7 @@ class Solver {
 
  public:
   static const int Order = TOrder;
+  static const int Dim = TFunction::Dim;
   using FunctionT = TFunction;
   using ScalarT = typename TFunction::ScalarT;
   using VectorT = typename TFunction::VectorT;
@@ -161,6 +162,7 @@ class Solver {
                                   const VectorT &x0) {
     // Function state during the optimization.
     FunctionStateT current = function.CurrentState(x0);
+
     // Solver state during the optimization.
     this->current_state_.Reset();
     do {
