@@ -153,10 +153,15 @@ class Solver {
   // Minimizes a given function and returns the function state
   virtual std::tuple<function_state_t, solver_state_t> minimize(
       const function_t &function, const vector_t &x0) {
+    return this->minimize(function, function.Eval(x0));
+  }
+
+  virtual std::tuple<function_state_t, solver_state_t> minimize(
+      const function_t &function, const function_state_t &initial_state) {
     // Solver state during the optimization.
     solver_state_t solver_state;
     // Function state during the optimization.
-    function_state_t function_state = function.Eval(x0);
+    function_state_t function_state(initial_state);
 
     do {
       // Trigger a user-defined callback.

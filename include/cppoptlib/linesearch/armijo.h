@@ -14,26 +14,26 @@ class Armijo {
    * @brief use Armijo Rule for (weak) Wolfe conditiions
    * @details [long description]
    *
-   * @param searchDir search direction for next update step
+   * @param search_direction search direction for next update step
    * @param function handle to problem
    *
    * @return step-width
    */
-  static scalar_t search(const vector_t &x, const vector_t &searchDir,
+  static scalar_t search(const vector_t &x, const vector_t &search_direction,
                          const function_t &function,
                          const scalar_t alpha_init = 1.0) {
     const scalar_t c = 0.2;
     const scalar_t rho = 0.9;
     scalar_t alpha = alpha_init;
-    scalar_t f = function(x + alpha * searchDir);
+    scalar_t f = function(x + alpha * search_direction);
     const scalar_t f_in = function(x);
     vector_t grad(x.rows());
     function.Gradient(x, grad);
-    const scalar_t Cache = c * grad.dot(searchDir);
+    const scalar_t Cache = c * grad.dot(search_direction);
 
     while (f > f_in + alpha * Cache) {
       alpha *= rho;
-      f = function(x + alpha * searchDir);
+      f = function(x + alpha * search_direction);
     }
 
     return alpha;
@@ -50,30 +50,30 @@ class Armijo<function_t, 2> {
    * @brief use Armijo Rule for (weak) Wolfe conditiions
    * @details [long description]
    *
-   * @param searchDir search direction for next update step
+   * @param search_direction search direction for next update step
    * @param function handle to problem
    *
    * @return step-width
    */
-  static scalar_t search(const vector_t &x, const vector_t &searchDir,
+  static scalar_t search(const vector_t &x, const vector_t &search_direction,
                          const function_t &function) {
     const scalar_t c = 0.2;
     const scalar_t rho = 0.9;
     scalar_t alpha = 1.0;
 
-    scalar_t f = function(x + alpha * searchDir);
+    scalar_t f = function(x + alpha * search_direction);
     const scalar_t f_in = function(x);
     hessian_t hessian(x.rows(), x.rows());
     function.Hessian(x, &hessian);
     vector_t grad(x.rows());
     function.Gradient(x, &grad);
-    const scalar_t Cache =
-        c * grad.dot(searchDir) +
-        0.5 * c * c * searchDir.transpose() * (hessian * searchDir);
+    const scalar_t Cache = c * grad.dot(search_direction) +
+                           0.5 * c * c * search_direction.transpose() *
+                               (hessian * search_direction);
 
     while (f > f_in + alpha * Cache) {
       alpha *= rho;
-      f = function(x + alpha * searchDir);
+      f = function(x + alpha * search_direction);
     }
     return alpha;
   }

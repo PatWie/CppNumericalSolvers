@@ -19,15 +19,15 @@ class MoreThuente {
    * @brief use MoreThuente Rule for (strong) Wolfe conditiions
    * @details [long description]
    *
-   * @param searchDir search direction for next update step
+   * @param search_direction search direction for next update step
    * @param function handle to problem
    *
    * @return step-width
    */
 
-  static scalar_t search(const vector_t &x, const vector_t &searchDir,
-                        const Function &function,
-                        const scalar_t alpha_init = 1.0) {
+  static scalar_t search(const vector_t &x, const vector_t &search_direction,
+                         const Function &function,
+                         const scalar_t alpha_init = 1.0) {
     // Assumed step width.
     scalar_t ak = alpha_init;
 
@@ -35,7 +35,7 @@ class MoreThuente {
     vector_t g = x.eval();
     function.Gradient(x, &g);
 
-    vector_t s = searchDir.eval();
+    vector_t s = search_direction.eval();
     vector_t xx = x.eval();
 
     cvsrch(function, xx, fval, g, ak, s);
@@ -43,8 +43,8 @@ class MoreThuente {
     return ak;
   }
 
-  static int cvsrch(const Function &function, vector_t &x, scalar_t f, vector_t &g,
-                    scalar_t &stp, vector_t &s) {
+  static int cvsrch(const Function &function, vector_t &x, scalar_t f,
+                    vector_t &g, scalar_t &stp, vector_t &s) {
     // we rewrite this from MIN-LAPACK and some MATLAB code
     int info = 0;
     int infoc = 1;
@@ -165,8 +165,8 @@ class MoreThuente {
 
   static int cstep(scalar_t &stx, scalar_t &fx, scalar_t &dx, scalar_t &sty,
                    scalar_t &fy, scalar_t &dy, scalar_t &stp, scalar_t &fp,
-                   scalar_t &dp, bool &brackt, scalar_t &stpmin, scalar_t &stpmax,
-                   int &info) {
+                   scalar_t &dp, bool &brackt, scalar_t &stpmin,
+                   scalar_t &stpmax, int &info) {
     info = 0;
     bool bound = false;
 
@@ -188,7 +188,8 @@ class MoreThuente {
       bound = true;
       scalar_t theta = 3. * (fx - fp) / (stp - stx) + dx + dp;
       scalar_t s = std::max<scalar_t>(theta, std::max<scalar_t>(dx, dp));
-      scalar_t gamma = s * sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
+      scalar_t gamma =
+          s * sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
       if (stp < stx) gamma = -gamma;
       scalar_t p = (gamma - dx) + theta;
       scalar_t q = ((gamma - dx) + gamma) + dp;
@@ -205,7 +206,8 @@ class MoreThuente {
       bound = false;
       scalar_t theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
       scalar_t s = std::max<scalar_t>(theta, std::max<scalar_t>(dx, dp));
-      scalar_t gamma = s * sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
+      scalar_t gamma =
+          s * sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
       if (stp > stx) gamma = -gamma;
 
       scalar_t p = (gamma - dp) + theta;
@@ -223,9 +225,9 @@ class MoreThuente {
       bound = 1;
       scalar_t theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
       scalar_t s = std::max<scalar_t>(theta, std::max<scalar_t>(dx, dp));
-      scalar_t gamma = s * sqrt(std::max<scalar_t>(
-                              static_cast<scalar_t>(0.),
-                              (theta / s) * (theta / s) - (dx / s) * (dp / s)));
+      scalar_t gamma = s * sqrt(std::max<scalar_t>(static_cast<scalar_t>(0.),
+                                                   (theta / s) * (theta / s) -
+                                                       (dx / s) * (dp / s)));
       if (stp > stx) gamma = -gamma;
       scalar_t p = (gamma - dp) + theta;
       scalar_t q = (gamma + (dx - dp)) + gamma;
@@ -295,11 +297,11 @@ class MoreThuente {
 
     if (brackt & bound) {
       if (sty > stx) {
-        stp = std::min<scalar_t>(stx + static_cast<scalar_t>(0.66) * (sty - stx),
-                                stp);
+        stp = std::min<scalar_t>(
+            stx + static_cast<scalar_t>(0.66) * (sty - stx), stp);
       } else {
-        stp = std::max<scalar_t>(stx + static_cast<scalar_t>(0.66) * (sty - stx),
-                                stp);
+        stp = std::max<scalar_t>(
+            stx + static_cast<scalar_t>(0.66) * (sty - stx), stp);
       }
     }
 
