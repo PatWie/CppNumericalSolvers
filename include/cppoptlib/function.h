@@ -62,7 +62,7 @@ class Function {
   }
 
   // For improved performance, this function will return the state directly.
-  State<ScalarT, VectorT, HessianT, Ord> CurrentState(const VectorT &x) const {
+  State<ScalarT, VectorT, HessianT, Ord> Eval(const VectorT &x) const {
     State<ScalarT, VectorT, HessianT, Ord> state;
     state.value = this->operator()(x);
     state.x = x;

@@ -5,6 +5,7 @@
 
 #include <functional>
 #include <iostream>
+#include <tuple>
 
 #include "../function.h"
 
@@ -35,28 +36,21 @@ struct State {
 
   State() = default;
 
-  // Resets the state.
-  void Reset() {
-    num_iterations = 0;
-    x_delta = T{0};
-    f_delta = T{0};
-    gradient_norm = T{0};
-    condition_hessian = T{0};
-    status = Status::NotStarted;
-  }
-
   // Updates state from function information.
   template <class ScalarT, class VectorT, class HessianT, int Order>
-  void UpdateState(
-      const function::State<ScalarT, VectorT, HessianT, Order> previous,
-      const function::State<ScalarT, VectorT, HessianT, Order> current) {
-    f_delta = fabs(current.value - previous.value);
-    x_delta = (current.x - previous.x).template lpNorm<Eigen::Infinity>();
-    gradient_norm = current.gradient.template lpNorm<Eigen::Infinity>();
-  }
+  void Update(const function::State<ScalarT, VectorT, HessianT, Order>
+                  previous_function_state,
+              const function::State<ScalarT, VectorT, HessianT, Order>
+                  current_function_state,
+              const State &stop_state) {
+    num_iterations++;
+    f_delta =
+        fabs(current_function_state.value - previous_function_state.value);
+    x_delta = (current_function_state.x - previous_function_state.x)
+                  .template lpNorm<Eigen::Infinity>();
+    gradient_norm =
+        current_function_state.gradient.template lpNorm<Eigen::Infinity>();
 
-  // updates status given another state.
-  void UpdateStatus(const State &stop_state) {
     if (num_iterations > stop_state.num_iterations) {
       status = Status::IterationLimit;
       return;
@@ -97,9 +91,9 @@ State<T> DefaultStoppingSolverState() {
 // Returns the defaul callback function.
 template <class ScalarT, class VectorT, class HessianT, int Order>
 auto GetDefaultStepCallback() {
-  return [](const State<ScalarT> &solver_state,
-            const function::State<ScalarT, VectorT, HessianT, Order>
-                &function_state) {
+  return [](
+      const function::State<ScalarT, VectorT, HessianT, Order> &function_state,
+      const State<ScalarT> &solver_state) {
     std::cout << "Function-State" << std::endl;
     std::cout << "  value    " << function_state.value << std::endl;
     std::cout << "  x    " << function_state.x.transpose() << std::endl;
@@ -115,8 +109,8 @@ auto GetDefaultStepCallback() {
 
 template <class ScalarT, class VectorT, class HessianT, int Order>
 auto GetEmptyStepCallback() {
-  return [](const State<ScalarT> &,
-            const function::State<ScalarT, VectorT, HessianT, Order> &) {};
+  return [](const function::State<ScalarT, VectorT, HessianT, Order> &,
+            const State<ScalarT> &) {};
 }
 
 // Specifies a solver implementation (of a given order) for a given function
@@ -141,12 +135,11 @@ class Solver {
   using FunctionStateT = function::State<ScalarT, VectorT, HessianT, TOrder>;
   using SolverStateT = State<ScalarT>;
   using CallbackT =
-      std::function<void(const SolverStateT &, const FunctionStateT &)>;
+      std::function<void(const FunctionStateT &, const SolverStateT &)>;
 
   explicit Solver(const State<ScalarT> &stopping_state =
                       DefaultStoppingSolverState<ScalarT>())
       : stopping_state_(stopping_state),
-        current_state_(State<ScalarT>()),
         step_callback_(
             GetDefaultStepCallback<ScalarT, VectorT, HessianT, TOrder>()) {}
 
@@ -158,49 +151,40 @@ class Solver {
   }
 
   // Minimizes a given function and returns the function state
-  virtual FunctionStateT minimize(const TFunction &function,
-                                  const VectorT &x0) {
-    // Function state during the optimization.
-    FunctionStateT current = function.CurrentState(x0);
-
+  virtual std::tuple<FunctionStateT, SolverStateT> minimize(
+      const TFunction &function, const VectorT &x0) {
     // Solver state during the optimization.
-    this->current_state_.Reset();
+    SolverStateT solver_state;
+    // Function state during the optimization.
+    FunctionStateT function_state = function.Eval(x0);
+
     do {
       // Trigger a user-defined callback.
-      this->step_callback_(this->current_state_, current);
+      this->step_callback_(function_state, solver_state);
 
       // Find next function state.
-      FunctionStateT previous(current);
-      current = this->optimization_step(function, previous);
+      FunctionStateT previous_function_state(function_state);
+      function_state =
+          this->optimization_step(function, previous_function_state);
 
       // Update current solver state.
-      this->UpdateState(previous, current);
-    } while (this->current_state_.status == Status::Continue);
+      solver_state.Update(previous_function_state, function_state,
+                          stopping_state_);
+    } while (solver_state.status == Status::Continue);
+
     // Final Trigger of a user-defined callback.
-    this->step_callback_(this->current_state_, current);
-    return current;
+    this->step_callback_(function_state, solver_state);
+
+    // TODO(patwie): Give C++17 a try.
+    return std::make_tuple(function_state, solver_state);
   }
 
   virtual FunctionStateT optimization_step(const TFunction &function,
                                            const FunctionStateT &state) = 0;
 
-  State<ScalarT> CurrentState() const { return this->current_state_; }
-
- private:
-  // Updates solver state from two function states.
-  void UpdateState(const FunctionStateT &previous,
-                   const FunctionStateT &current) {
-    ++this->current_state_.num_iterations;
-    this->current_state_.UpdateState(previous, current);
-    this->current_state_.UpdateStatus(this->stopping_state_);
-  }
-
  protected:
-  State<ScalarT>
-      stopping_state_;  // A solver state, where the optimization should stop.
-  State<ScalarT> current_state_;  // The current solver state.
-
-  CallbackT step_callback_;  // A user-defined callback function.
+  SolverStateT stopping_state_;  // Specifies when to stop.
+  CallbackT step_callback_;      // A user-defined callback function.
 };
 
 };  // namespace solver
