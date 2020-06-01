@@ -14,20 +14,20 @@ namespace cppoptlib {
 namespace function {
 
 // Specifies a current function state.
-template <class scalar_t, class vector_t, class MatrixT, int Ord>
+template <class scalar_t, class vector_t, class matrix_t, int Ord>
 struct State {
-  scalar_t value = 0;                   // The objective value.
+  scalar_t value = 0;                    // The objective value.
   vector_t x = vector_t::Zero();         // The current input value in x.
   vector_t gradient = vector_t::Zero();  // The gradient in x.
-  MatrixT hessian = MatrixT::Zero();   // The Hessian in x;
+  matrix_t hessian = matrix_t::Zero();   // The Hessian in x;
 
   State() {}
-  State(const State<scalar_t, vector_t, MatrixT, 0> &rhs) {
+  State(const State<scalar_t, vector_t, matrix_t, 0> &rhs) {
     value = rhs.value;
     x = rhs.x.eval();
   }
 
-  State(const State<scalar_t, vector_t, MatrixT, 1> &rhs) {
+  State(const State<scalar_t, vector_t, matrix_t, 1> &rhs) {
     value = rhs.value;
     x = rhs.x.eval();
     gradient = rhs.gradient.eval();
@@ -42,10 +42,10 @@ class Function {
   using scalar_t = TScalar;
   using vector_t = Eigen::Matrix<TScalar, Dim, 1>;
   using hessian_t = Eigen::Matrix<TScalar, Dim, Dim>;
-  using IndexT = typename vector_t::Index;
-  using MatrixT = Eigen::Matrix<TScalar, Eigen::Dynamic, Eigen::Dynamic>;
+  using index_t = typename vector_t::Index;
+  using matrix_t = Eigen::Matrix<TScalar, Eigen::Dynamic, Eigen::Dynamic>;
 
-  using StateT = function::State<scalar_t, vector_t, hessian_t, Order>;
+  using state_t = function::State<scalar_t, vector_t, hessian_t, Order>;
 
  public:
   Function() = default;

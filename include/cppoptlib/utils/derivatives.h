@@ -18,7 +18,7 @@ void ComputeFiniteGradient(const function_t &function,
                            const int accuracy = 0) {
   using scalar_t = typename function_t::scalar_t;
   using vector_t = typename function_t::vector_t;
-  using IndexT = typename function_t::IndexT;
+  using index_t = typename function_t::index_t;
   // The 'accuracy' can be 0, 1, 2, 3.
   constexpr scalar_t eps = 2.2204e-6;
   static const std::array<std::vector<scalar_t>, 4> coeff = {
@@ -39,7 +39,7 @@ void ComputeFiniteGradient(const function_t &function,
   const int innerSteps = 2 * (accuracy + 1);
   const scalar_t ddVal = dd[accuracy] * eps;
 
-  for (IndexT d = 0; d < x0.rows(); d++) {
+  for (index_t d = 0; d < x0.rows(); d++) {
     (*grad)[d] = 0;
     for (int s = 0; s < innerSteps; ++s) {
       scalar_t tmp = x[d];
@@ -59,7 +59,7 @@ void ComputeFiniteHessian(const function_t &function,
                           int accuracy = 0) {
   using scalar_t = typename function_t::scalar_t;
   using vector_t = typename function_t::vector_t;
-  using IndexT = typename function_t::IndexT;
+  using index_t = typename function_t::index_t;
 
   constexpr scalar_t eps = std::numeric_limits<scalar_t>::epsilon() * 10e7;
 
@@ -67,8 +67,8 @@ void ComputeFiniteHessian(const function_t &function,
   vector_t &x = const_cast<vector_t &>(x0);
 
   if (accuracy == 0) {
-    for (IndexT i = 0; i < x0.rows(); i++) {
-      for (IndexT j = 0; j < x0.rows(); j++) {
+    for (index_t i = 0; i < x0.rows(); i++) {
+      for (index_t j = 0; j < x0.rows(); j++) {
         scalar_t tmpi = x[i];
         scalar_t tmpj = x[j];
 
@@ -97,8 +97,8 @@ void ComputeFiniteHessian(const function_t &function,
           74(f_{-1,-1}+f_{1,1}-f_{1,-1}-f_{-1,1})
       \end{matrix}\right] }
     */
-    for (IndexT i = 0; i < x0.rows(); i++) {
-      for (IndexT j = 0; j < x0.rows(); j++) {
+    for (index_t i = 0; i < x0.rows(); i++) {
+      for (index_t j = 0; j < x0.rows(); j++) {
         scalar_t tmpi = x[i];
         scalar_t tmpj = x[j];
 
@@ -209,16 +209,16 @@ bool IsGradientCorrect(const function_t &function,
 
   using scalar_t = typename function_t::scalar_t;
   using vector_t = typename function_t::vector_t;
-  using IndexT = typename function_t::IndexT;
+  using index_t = typename function_t::index_t;
 
-  const IndexT D = x0.rows();
+  const index_t D = x0.rows();
   vector_t actual_gradient(D);
   vector_t expected_gradient(D);
 
   function.Gradient(x0, &actual_gradient);
   ComputeFiniteGradient(function, x0, &expected_gradient, accuracy);
 
-  for (IndexT d = 0; d < D; ++d) {
+  for (index_t d = 0; d < D; ++d) {
     scalar_t scale =
         std::max(static_cast<scalar_t>(std::max(fabs(actual_gradient[d]),
                                                fabs(expected_gradient[d]))),
@@ -236,16 +236,16 @@ bool IsHessianCorrect(const function_t &function,
 
   using scalar_t = typename function_t::scalar_t;
   using hessian_t = typename function_t::hessian_t;
-  using IndexT = typename function_t::IndexT;
+  using index_t = typename function_t::index_t;
 
-  const IndexT D = x0.rows();
+  const index_t D = x0.rows();
 
   hessian_t actual_hessian = hessian_t::Zero(D, D);
   hessian_t expected_hessian = hessian_t::Zero(D, D);
   function.Hessian(x0, &actual_hessian);
   ComputeFiniteHessian(function, x0, &expected_hessian, accuracy);
-  for (IndexT d = 0; d < D; ++d) {
-    for (IndexT e = 0; e < D; ++e) {
+  for (index_t d = 0; d < D; ++d) {
+    for (index_t e = 0; e < D; ++e) {
       scalar_t scale =
           std::max(static_cast<scalar_t>(std::max(fabs(actual_hessian(d, e)),
                                                  fabs(expected_hessian(d, e)))),

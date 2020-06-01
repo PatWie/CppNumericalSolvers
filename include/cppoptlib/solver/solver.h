@@ -132,10 +132,10 @@ class Solver {
   using vector_t = typename function_t::vector_t;
   using hessian_t = typename function_t::hessian_t;
 
-  using function_state_t = typename function_t::StateT;
-  using solver_state_t = State<scalar_t>;
+  using function_state_t = typename function_t::state_t;
+  using state_t = State<scalar_t>;
   using callback_t =
-      std::function<void(const function_state_t &, const solver_state_t &)>;
+      std::function<void(const function_state_t &, const state_t &)>;
 
   explicit Solver(const State<scalar_t> &stopping_state =
                       DefaultStoppingSolverState<scalar_t>())
@@ -151,15 +151,15 @@ class Solver {
   }
 
   // Minimizes a given function and returns the function state
-  virtual std::tuple<function_state_t, solver_state_t> minimize(
+  virtual std::tuple<function_state_t, state_t> minimize(
       const function_t &function, const vector_t &x0) {
     return this->minimize(function, function.Eval(x0));
   }
 
-  virtual std::tuple<function_state_t, solver_state_t> minimize(
+  virtual std::tuple<function_state_t, state_t> minimize(
       const function_t &function, const function_state_t &initial_state) {
     // Solver state during the optimization.
-    solver_state_t solver_state;
+    state_t solver_state;
     // Function state during the optimization.
     function_state_t function_state(initial_state);
 
@@ -188,8 +188,8 @@ class Solver {
                                              const function_state_t &state) = 0;
 
  protected:
-  solver_state_t stopping_state_;  // Specifies when to stop.
-  callback_t step_callback_;       // A user-defined callback function.
+  state_t stopping_state_;    // Specifies when to stop.
+  callback_t step_callback_;  // A user-defined callback function.
 };
 
 };  // namespace solver

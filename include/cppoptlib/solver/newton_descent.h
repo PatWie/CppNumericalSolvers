@@ -9,42 +9,30 @@
 namespace cppoptlib {
 
 namespace solver {
-template <typename FunctionT>
-class NewtonDescent : public Solver<FunctionT, 2> {
+template <typename function_t>
+class NewtonDescent : public Solver<function_t, 2> {
  public:
-  using Superclass = Solver<FunctionT, 2>;
+  using Superclass = Solver<function_t, 2>;
   using typename Superclass::Dim;
   using typename Superclass::scalar_t;
   using typename Superclass::vector_t;
   using typename Superclass::hessian_t;
   using typename Superclass::function_state_t;
 
-  function_state_t optimization_step(const FunctionT &function,
+  function_state_t optimization_step(const function_t &function,
                                      const function_state_t &state) override {
     function_state_t current(state);
-
-    std::cout << "------- >" << state.value << std::endl;
-    std::cout << "this" << std::endl;
-
-    std::cout << current.gradient << std::endl;
-    std::cout << "this" << std::endl;
 
     constexpr scalar_t safe_guard = 1e-5;
     current.hessian += safe_guard * hessian_t::Identity();
 
     const vector_t delta_x = current.hessian.lu().solve(-current.gradient);
-    std::cout << delta_x.transpose() << std::endl;
-
     const scalar_t rate =
-        linesearch::Armijo<FunctionT, 2>::search(current.x, delta_x, function);
+        linesearch::Armijo<function_t, 2>::search(current.x, delta_x, function);
 
     current.x = current.x - rate * delta_x;
-    current.value = function(current.x);
-    std::cout << "------- >" << current.value << std::endl;
-    function.Gradient(current.x, &current.gradient);
-    function.Hessian(current.x, &current.hessian);
 
-    return current;
+    return function.Eval(current.x);
   }
 };
 
