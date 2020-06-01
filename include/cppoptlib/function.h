@@ -45,6 +45,8 @@ class Function {
   using IndexT = typename VectorT::Index;
   using MatrixT = Eigen::Matrix<TScalar, Eigen::Dynamic, Eigen::Dynamic>;
 
+  using StateT = function::State<ScalarT, VectorT, HessianT, Order>;
+
  public:
   Function() = default;
   virtual ~Function() = default;

@@ -25,19 +25,20 @@ enum class Status {
 };
 
 // The state of the solver.
-template <class T>
+template <class ScalarT>
 struct State {
   size_t num_iterations = 0;           // Maximum number of allowed iterations.
-  T x_delta = T{0};                    // Minimum change in parameter vector.
-  T f_delta = T{0};                    // Minimum change in cost function.
-  T gradient_norm = T{0};              // Minimum norm of gradient vector.
-  T condition_hessian = T{0};          // Maximum condition number of HessianT.
+  ScalarT x_delta = ScalarT{0};        // Minimum change in parameter vector.
+  ScalarT f_delta = ScalarT{0};        // Minimum change in cost function.
+  ScalarT gradient_norm = ScalarT{0};  // Minimum norm of gradient vector.
+  ScalarT condition_hessian =
+      ScalarT{0};                      // Maximum condition number of HessianT.
   Status status = Status::NotStarted;  // Status of state.
 
   State() = default;
 
   // Updates state from function information.
-  template <class ScalarT, class VectorT, class HessianT, int Order>
+  template <class VectorT, class HessianT, int Order>
   void Update(const function::State<ScalarT, VectorT, HessianT, Order>
                   previous_function_state,
               const function::State<ScalarT, VectorT, HessianT, Order>
@@ -132,7 +133,7 @@ class Solver {
   using VectorT = typename TFunction::VectorT;
   using HessianT = typename TFunction::HessianT;
 
-  using FunctionStateT = function::State<ScalarT, VectorT, HessianT, TOrder>;
+  using FunctionStateT = typename TFunction::StateT;
   using SolverStateT = State<ScalarT>;
   using CallbackT =
       std::function<void(const FunctionStateT &, const SolverStateT &)>;
