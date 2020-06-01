@@ -1,3 +1,5 @@
+**It has been now 6 years since the initial release. I did some mistakes in the design of the library and some features feel a bit ad-hoc. Given that C++14 is around and c++17 will become mainstream, I will take the chance to correct some of these mistakes and simplify things. There is some progress in the [v2-branch](https://github.com/PatWie/CppNumericalSolvers/tree/v2).**
+
 CppOptimizationLibrary (Support for TensorFlow)
 =================================================================
 
