@@ -5,11 +5,11 @@
 namespace cppoptlib {
 namespace solver {
 namespace linesearch {
-template <typename TFunction, int Ord>
+template <typename function_t, int Ord>
 class Armijo {
  public:
-  using ScalarT = typename TFunction::ScalarT;
-  using VectorT = typename TFunction::VectorT;
+  using scalar_t = typename function_t::scalar_t;
+  using vector_t = typename function_t::vector_t;
   /**
    * @brief use Armijo Rule for (weak) Wolfe conditiions
    * @details [long description]
@@ -19,17 +19,17 @@ class Armijo {
    *
    * @return step-width
    */
-  static ScalarT search(const VectorT &x, const VectorT &searchDir,
-                        const TFunction &function,
-                        const ScalarT alpha_init = 1.0) {
-    const ScalarT c = 0.2;
-    const ScalarT rho = 0.9;
-    ScalarT alpha = alpha_init;
-    ScalarT f = function(x + alpha * searchDir);
-    const ScalarT f_in = function(x);
-    VectorT grad(x.rows());
+  static scalar_t search(const vector_t &x, const vector_t &searchDir,
+                         const function_t &function,
+                         const scalar_t alpha_init = 1.0) {
+    const scalar_t c = 0.2;
+    const scalar_t rho = 0.9;
+    scalar_t alpha = alpha_init;
+    scalar_t f = function(x + alpha * searchDir);
+    const scalar_t f_in = function(x);
+    vector_t grad(x.rows());
     function.Gradient(x, grad);
-    const ScalarT Cache = c * grad.dot(searchDir);
+    const scalar_t Cache = c * grad.dot(searchDir);
 
     while (f > f_in + alpha * Cache) {
       alpha *= rho;
@@ -40,12 +40,12 @@ class Armijo {
   }
 };
 
-template <typename TFunction>
-class Armijo<TFunction, 2> {
+template <typename function_t>
+class Armijo<function_t, 2> {
  public:
-  using ScalarT = typename TFunction::ScalarT;
-  using VectorT = typename TFunction::VectorT;
-  using HessianT = typename TFunction::HessianT;
+  using scalar_t = typename function_t::scalar_t;
+  using vector_t = typename function_t::vector_t;
+  using hessian_t = typename function_t::hessian_t;
   /**
    * @brief use Armijo Rule for (weak) Wolfe conditiions
    * @details [long description]
@@ -55,19 +55,19 @@ class Armijo<TFunction, 2> {
    *
    * @return step-width
    */
-  static ScalarT search(const VectorT &x, const VectorT &searchDir,
-                        const TFunction &function) {
-    const ScalarT c = 0.2;
-    const ScalarT rho = 0.9;
-    ScalarT alpha = 1.0;
+  static scalar_t search(const vector_t &x, const vector_t &searchDir,
+                         const function_t &function) {
+    const scalar_t c = 0.2;
+    const scalar_t rho = 0.9;
+    scalar_t alpha = 1.0;
 
-    ScalarT f = function(x + alpha * searchDir);
-    const ScalarT f_in = function(x);
-    HessianT hessian(x.rows(), x.rows());
+    scalar_t f = function(x + alpha * searchDir);
+    const scalar_t f_in = function(x);
+    hessian_t hessian(x.rows(), x.rows());
     function.Hessian(x, &hessian);
-    VectorT grad(x.rows());
+    vector_t grad(x.rows());
     function.Gradient(x, &grad);
-    const ScalarT Cache =
+    const scalar_t Cache =
         c * grad.dot(searchDir) +
         0.5 * c * c * searchDir.transpose() * (hessian * searchDir);
 

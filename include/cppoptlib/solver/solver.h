@@ -20,28 +20,28 @@ enum class Status {
   XDeltaViolation,  // Minimum change in parameter vector has been reached.
   FDeltaViolation,  // Minimum chnage in cost function has been reached.
   GradientNormViolation,  // Minimum norm in gradient vector has been reached.
-  HessianConditionViolation  // Maximum condition number of HessianT has been
+  HessianConditionViolation  // Maximum condition number of hessian_t has been
                              // reached.
 };
 
 // The state of the solver.
-template <class ScalarT>
+template <class scalar_t>
 struct State {
-  size_t num_iterations = 0;           // Maximum number of allowed iterations.
-  ScalarT x_delta = ScalarT{0};        // Minimum change in parameter vector.
-  ScalarT f_delta = ScalarT{0};        // Minimum change in cost function.
-  ScalarT gradient_norm = ScalarT{0};  // Minimum norm of gradient vector.
-  ScalarT condition_hessian =
-      ScalarT{0};                      // Maximum condition number of HessianT.
+  size_t num_iterations = 0;       // Maximum number of allowed iterations.
+  scalar_t x_delta = scalar_t{0};  // Minimum change in parameter vector.
+  scalar_t f_delta = scalar_t{0};  // Minimum change in cost function.
+  scalar_t gradient_norm = scalar_t{0};  // Minimum norm of gradient vector.
+  scalar_t condition_hessian =
+      scalar_t{0};                     // Maximum condition number of hessian_t.
   Status status = Status::NotStarted;  // Status of state.
 
   State() = default;
 
   // Updates state from function information.
-  template <class VectorT, class HessianT, int Order>
-  void Update(const function::State<ScalarT, VectorT, HessianT, Order>
+  template <class vector_t, class hessian_t, int Order>
+  void Update(const function::State<scalar_t, vector_t, hessian_t, Order>
                   previous_function_state,
-              const function::State<ScalarT, VectorT, HessianT, Order>
+              const function::State<scalar_t, vector_t, hessian_t, Order>
                   current_function_state,
               const State &stop_state) {
     num_iterations++;
@@ -90,11 +90,11 @@ State<T> DefaultStoppingSolverState() {
 }
 
 // Returns the defaul callback function.
-template <class ScalarT, class VectorT, class HessianT, int Order>
+template <class scalar_t, class vector_t, class hessian_t, int Order>
 auto GetDefaultStepCallback() {
-  return [](
-      const function::State<ScalarT, VectorT, HessianT, Order> &function_state,
-      const State<ScalarT> &solver_state) {
+  return [](const function::State<scalar_t, vector_t, hessian_t, Order>
+                &function_state,
+            const State<scalar_t> &solver_state) {
     std::cout << "Function-State" << std::endl;
     std::cout << "  value    " << function_state.value << std::endl;
     std::cout << "  x    " << function_state.x.transpose() << std::endl;
@@ -108,14 +108,14 @@ auto GetDefaultStepCallback() {
   };
 }
 
-template <class ScalarT, class VectorT, class HessianT, int Order>
+template <class scalar_t, class vector_t, class hessian_t, int Order>
 auto GetEmptyStepCallback() {
-  return [](const function::State<ScalarT, VectorT, HessianT, Order> &,
-            const State<ScalarT> &) {};
+  return [](const function::State<scalar_t, vector_t, hessian_t, Order> &,
+            const State<scalar_t> &) {};
 }
 
 // Specifies a solver implementation (of a given order) for a given function
-template <typename TFunction, int TOrder>
+template <typename function_t, int TOrder>
 class Solver {
   // The solver can be only
   // TOrder==0, given only the objective value
@@ -123,48 +123,47 @@ class Solver {
   // TOrder==2, Hessian+Gradient based.
   static_assert(TOrder < 3, "");
   static_assert(TOrder >= 0, "");
-  static_assert(TOrder <= TFunction::Order, "");
+  static_assert(TOrder <= function_t::Order, "");
 
  public:
   static const int Order = TOrder;
-  static const int Dim = TFunction::Dim;
-  using FunctionT = TFunction;
-  using ScalarT = typename TFunction::ScalarT;
-  using VectorT = typename TFunction::VectorT;
-  using HessianT = typename TFunction::HessianT;
+  static const int Dim = function_t::Dim;
+  using scalar_t = typename function_t::scalar_t;
+  using vector_t = typename function_t::vector_t;
+  using hessian_t = typename function_t::hessian_t;
 
-  using FunctionStateT = typename TFunction::StateT;
-  using SolverStateT = State<ScalarT>;
-  using CallbackT =
-      std::function<void(const FunctionStateT &, const SolverStateT &)>;
+  using function_state_t = typename function_t::StateT;
+  using solver_state_t = State<scalar_t>;
+  using callback_t =
+      std::function<void(const function_state_t &, const solver_state_t &)>;
 
-  explicit Solver(const State<ScalarT> &stopping_state =
-                      DefaultStoppingSolverState<ScalarT>())
+  explicit Solver(const State<scalar_t> &stopping_state =
+                      DefaultStoppingSolverState<scalar_t>())
       : stopping_state_(stopping_state),
         step_callback_(
-            GetDefaultStepCallback<ScalarT, VectorT, HessianT, TOrder>()) {}
+            GetDefaultStepCallback<scalar_t, vector_t, hessian_t, TOrder>()) {}
 
   virtual ~Solver() = default;
 
   // Sets a Callback function which is triggered after each update step.
-  void SetStepCallback(CallbackT step_callback) {
+  void SetStepCallback(callback_t step_callback) {
     step_callback_ = step_callback;
   }
 
   // Minimizes a given function and returns the function state
-  virtual std::tuple<FunctionStateT, SolverStateT> minimize(
-      const TFunction &function, const VectorT &x0) {
+  virtual std::tuple<function_state_t, solver_state_t> minimize(
+      const function_t &function, const vector_t &x0) {
     // Solver state during the optimization.
-    SolverStateT solver_state;
+    solver_state_t solver_state;
     // Function state during the optimization.
-    FunctionStateT function_state = function.Eval(x0);
+    function_state_t function_state = function.Eval(x0);
 
     do {
       // Trigger a user-defined callback.
       this->step_callback_(function_state, solver_state);
 
       // Find next function state.
-      FunctionStateT previous_function_state(function_state);
+      function_state_t previous_function_state(function_state);
       function_state =
           this->optimization_step(function, previous_function_state);
 
@@ -180,12 +179,12 @@ class Solver {
     return std::make_tuple(function_state, solver_state);
   }
 
-  virtual FunctionStateT optimization_step(const TFunction &function,
-                                           const FunctionStateT &state) = 0;
+  virtual function_state_t optimization_step(const function_t &function,
+                                             const function_state_t &state) = 0;
 
  protected:
-  SolverStateT stopping_state_;  // Specifies when to stop.
-  CallbackT step_callback_;      // A user-defined callback function.
+  solver_state_t stopping_state_;  // Specifies when to stop.
+  callback_t step_callback_;       // A user-defined callback function.
 };
 
 };  // namespace solver

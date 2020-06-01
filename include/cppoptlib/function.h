@@ -14,20 +14,20 @@ namespace cppoptlib {
 namespace function {
 
 // Specifies a current function state.
-template <class ScalarT, class VectorT, class MatrixT, int Ord>
+template <class scalar_t, class vector_t, class MatrixT, int Ord>
 struct State {
-  ScalarT value = 0;                   // The objective value.
-  VectorT x = VectorT::Zero();         // The current input value in x.
-  VectorT gradient = VectorT::Zero();  // The gradient in x.
+  scalar_t value = 0;                   // The objective value.
+  vector_t x = vector_t::Zero();         // The current input value in x.
+  vector_t gradient = vector_t::Zero();  // The gradient in x.
   MatrixT hessian = MatrixT::Zero();   // The Hessian in x;
 
   State() {}
-  State(const State<ScalarT, VectorT, MatrixT, 0> &rhs) {
+  State(const State<scalar_t, vector_t, MatrixT, 0> &rhs) {
     value = rhs.value;
     x = rhs.x.eval();
   }
 
-  State(const State<ScalarT, VectorT, MatrixT, 1> &rhs) {
+  State(const State<scalar_t, vector_t, MatrixT, 1> &rhs) {
     value = rhs.value;
     x = rhs.x.eval();
     gradient = rhs.gradient.eval();
@@ -39,33 +39,33 @@ class Function {
  public:
   static const int Dim = TDim;
   static const int Order = Ord;
-  using ScalarT = TScalar;
-  using VectorT = Eigen::Matrix<TScalar, Dim, 1>;
-  using HessianT = Eigen::Matrix<TScalar, Dim, Dim>;
-  using IndexT = typename VectorT::Index;
+  using scalar_t = TScalar;
+  using vector_t = Eigen::Matrix<TScalar, Dim, 1>;
+  using hessian_t = Eigen::Matrix<TScalar, Dim, Dim>;
+  using IndexT = typename vector_t::Index;
   using MatrixT = Eigen::Matrix<TScalar, Eigen::Dynamic, Eigen::Dynamic>;
 
-  using StateT = function::State<ScalarT, VectorT, HessianT, Order>;
+  using StateT = function::State<scalar_t, vector_t, hessian_t, Order>;
 
  public:
   Function() = default;
   virtual ~Function() = default;
 
   // Computes the value of a function.
-  virtual ScalarT operator()(const VectorT &x) const = 0;
+  virtual scalar_t operator()(const vector_t &x) const = 0;
 
   // Computes the gradient of a function.
-  virtual void Gradient(const VectorT &x, VectorT *grad) const {
+  virtual void Gradient(const vector_t &x, vector_t *grad) const {
     utils::ComputeFiniteGradient(*this, x, grad);
   }
   // Computes the Hessian of a function.
-  virtual void Hessian(const VectorT &x, HessianT *hessian) const {
+  virtual void Hessian(const vector_t &x, hessian_t *hessian) const {
     utils::ComputeFiniteHessian(*this, x, hessian);
   }
 
   // For improved performance, this function will return the state directly.
-  State<ScalarT, VectorT, HessianT, Ord> Eval(const VectorT &x) const {
-    State<ScalarT, VectorT, HessianT, Ord> state;
+  State<scalar_t, vector_t, hessian_t, Ord> Eval(const vector_t &x) const {
+    State<scalar_t, vector_t, hessian_t, Ord> state;
     state.value = this->operator()(x);
     state.x = x;
     if (Ord >= 1) {

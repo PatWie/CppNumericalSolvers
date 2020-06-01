@@ -15,14 +15,14 @@ using SecondOrderProblem = cppoptlib::function::Function<T, Order, Dim>;
 template <typename T>
 class Simple : public SecondOrderProblem<T> {
  public:
-  using VectorT = typename SecondOrderProblem<T>::VectorT;
-  using ScalarT = typename SecondOrderProblem<T>::ScalarT;
+  using vector_t = typename SecondOrderProblem<T>::vector_t;
+  using scalar_t = typename SecondOrderProblem<T>::scalar_t;
 
-  ScalarT operator()(const VectorT &x) const override {
+  scalar_t operator()(const vector_t &x) const override {
     return 5 * x[0] * x[0] + 100 * x[1] * x[1] + 5;
   }
 
-  void Gradient(const VectorT &x, VectorT *grad) const override {
+  void Gradient(const vector_t &x, vector_t *grad) const override {
     (*grad)[0] = 2 * 5 * x[0];
     (*grad)[1] = 2 * 100 * x[1];
   }
@@ -33,7 +33,7 @@ int main(int argc, char const *argv[]) {
   using Solver = cppoptlib::solver::NewtonDescent<Function>;
 
   Function f;
-  Function::VectorT x(2);
+  Function::vector_t x(2);
   x << -1, 2;
 
   auto state = f.Eval(x);
@@ -46,8 +46,8 @@ int main(int argc, char const *argv[]) {
   std::cout << cppoptlib::utils::IsHessianCorrect(f, x) << std::endl;
 
   Solver solver;
-  Solver::FunctionStateT solution;
-  Solver::SolverStateT solver_state;
+  Solver::function_state_t solution;
+  Solver::solver_state_t solver_state;
 
   std::tie(solution, solver_state) = solver.minimize(f, x);
   std::cout << "argmin " << solution.x.transpose() << std::endl;

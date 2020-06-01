@@ -9,19 +9,19 @@
 namespace cppoptlib {
 
 namespace solver {
-template <typename Function>
-class GradientDescent : public Solver<Function, 1> {
+template <typename FunctionT>
+class GradientDescent : public Solver<FunctionT, 1> {
  public:
-  using Superclass = Solver<Function, 1>;
-  using typename Superclass::ScalarT;
-  using typename Superclass::VectorT;
-  using typename Superclass::FunctionStateT;
+  using Superclass = Solver<FunctionT, 1>;
+  using typename Superclass::scalar_t;
+  using typename Superclass::vector_t;
+  using typename Superclass::function_state_t;
 
-  FunctionStateT optimization_step(const Function &function,
-                                   const FunctionStateT &state) override {
-    FunctionStateT current(state);
+  function_state_t optimization_step(const FunctionT &function,
+                                     const function_state_t &state) override {
+    function_state_t current(state);
 
-    const ScalarT rate = linesearch::MoreThuente<Function, 1>::search(
+    const scalar_t rate = linesearch::MoreThuente<FunctionT, 1>::search(
         current.x, -current.gradient, function);
 
     current.x = current.x - rate * current.gradient;
