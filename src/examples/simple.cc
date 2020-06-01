@@ -46,8 +46,8 @@ int main(int argc, char const *argv[]) {
   std::cout << cppoptlib::utils::IsHessianCorrect(f, x) << std::endl;
 
   Solver solver;
-  Solver::function_state_t solution;
-  Solver::solver_state_t solver_state;
+  Function::state_t solution;
+  Solver::state_t solver_state;
 
   std::tie(solution, solver_state) = solver.minimize(f, x);
   std::cout << "argmin " << solution.x.transpose() << std::endl;

@@ -32,6 +32,13 @@ struct State {
     x = rhs.x.eval();
     gradient = rhs.gradient.eval();
   }
+
+  State(const State<scalar_t, vector_t, matrix_t, 2> &rhs) {
+    value = rhs.value;
+    x = rhs.x.eval();
+    gradient = rhs.gradient.eval();
+    hessian = rhs.hessian.eval();
+  }
 };
 
 template <class TScalar, int Ord = 1, int TDim = Eigen::Dynamic>
@@ -64,7 +71,10 @@ class Function {
   }
 
   // For improved performance, this function will return the state directly.
-  State<scalar_t, vector_t, hessian_t, Ord> Eval(const vector_t &x) const {
+  // Override this method if you can compute the objective value, gradient and
+  // Hessian simultaneously.
+  virtual State<scalar_t, vector_t, hessian_t, Ord> Eval(
+      const vector_t &x) const {
     State<scalar_t, vector_t, hessian_t, Ord> state;
     state.value = this->operator()(x);
     state.x = x;
