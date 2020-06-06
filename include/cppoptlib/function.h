@@ -1,16 +1,11 @@
 // Copyright https://github.com/PatWie/CppNumericalSolvers, MIT license
-
 #ifndef INCLUDE_CPPOPTLIB_FUNCTION_H_
 #define INCLUDE_CPPOPTLIB_FUNCTION_H_
-
-#include <array>
-#include <vector>
 
 #include "Eigen/Core"
 #include "utils/derivatives.h"
 
 namespace cppoptlib {
-
 namespace function {
 
 // Specifies a current function state.
@@ -22,22 +17,26 @@ struct State {
   matrix_t hessian = matrix_t::Zero();   // The Hessian in x;
 
   State() {}
-  State(const State<scalar_t, vector_t, matrix_t, 0> &rhs) {
+
+  State operator=(const State<scalar_t, vector_t, matrix_t, 0> &rhs) {
     value = rhs.value;
     x = rhs.x.eval();
+    return *this;
   }
 
-  State(const State<scalar_t, vector_t, matrix_t, 1> &rhs) {
+  State operator=(const State<scalar_t, vector_t, matrix_t, 1> &rhs) {
     value = rhs.value;
     x = rhs.x.eval();
     gradient = rhs.gradient.eval();
+    return *this;
   }
 
-  State(const State<scalar_t, vector_t, matrix_t, 2> &rhs) {
+  State operator=(const State<scalar_t, vector_t, matrix_t, 2> &rhs) {
     value = rhs.value;
     x = rhs.x.eval();
     gradient = rhs.gradient.eval();
     hessian = rhs.hessian.eval();
+    return *this;
   }
 };
 
@@ -87,8 +86,8 @@ class Function {
     return state;
   }
 };
-};  // namespace function
 
+}  // namespace function
 }  // namespace cppoptlib
 
 #endif  // INCLUDE_CPPOPTLIB_FUNCTION_H_

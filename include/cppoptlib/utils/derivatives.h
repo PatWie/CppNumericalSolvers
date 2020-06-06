@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <limits>
 #include <vector>
+#include <array>
 
 namespace cppoptlib {
 namespace utils {

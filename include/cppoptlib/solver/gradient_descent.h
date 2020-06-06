@@ -13,26 +13,28 @@ template <typename function_t>
 class GradientDescent : public Solver<function_t, 1> {
  public:
   using Superclass = Solver<function_t, 1>;
+  using typename Superclass::state_t;
   using typename Superclass::scalar_t;
   using typename Superclass::vector_t;
   using typename Superclass::function_state_t;
 
   function_state_t optimization_step(const function_t &function,
-                                     const function_state_t &state) override {
-    function_state_t current(state);
+                                     const function_state_t &current,
+                                     const state_t &state) override {
+    function_state_t next = current;
 
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::search(
-        current.x, -current.gradient, function);
+        next.x, -next.gradient, function);
 
-    current.x = current.x - rate * current.gradient;
-    current.value = function(current.x);
-    function.Gradient(current.x, &current.gradient);
+    next.x = next.x - rate * next.gradient;
+    next.value = function(next.x);
+    function.Gradient(next.x, &next.gradient);
 
-    return current;
+    return next;
   }
 };
 
-};  // namespace solver
-} /* namespace cppoptlib */
+}  // namespace solver
+}  // namespace cppoptlib
 
 #endif  // INCLUDE_CPPOPTLIB_SOLVER_GRADIENT_DESCENT_H_

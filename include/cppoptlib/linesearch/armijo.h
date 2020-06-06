@@ -28,7 +28,7 @@ class Armijo {
     scalar_t f = function(x + alpha * search_direction);
     const scalar_t f_in = function(x);
     vector_t grad(x.rows());
-    function.Gradient(x, grad);
+    function.Gradient(x, &grad);
     const scalar_t Cache = c * grad.dot(search_direction);
 
     while (f > f_in + alpha * Cache) {

@@ -24,6 +24,33 @@ enum class Status {
                              // reached.
 };
 
+inline std::ostream &operator<<(std::ostream &os, const Status &s) {
+  switch (s) {
+    case Status::NotStarted:
+      os << "Solver not started.";
+      break;
+    case Status::Continue:
+      os << "Convergence criteria not reached.";
+      break;
+    case Status::IterationLimit:
+      os << "Iteration limit reached.";
+      break;
+    case Status::XDeltaViolation:
+      os << "Change in parameter vector too small.";
+      break;
+    case Status::FDeltaViolation:
+      os << "Change in cost function value too small.";
+      break;
+    case Status::GradientNormViolation:
+      os << "Gradient vector norm too small.";
+      break;
+    case Status::HessianConditionViolation:
+      os << "Condition of Hessian/Covariance matrix too large.";
+      break;
+  }
+  return os;
+}
+
 // The state of the solver.
 template <class scalar_t>
 struct State {
@@ -52,25 +79,30 @@ struct State {
     gradient_norm =
         current_function_state.gradient.template lpNorm<Eigen::Infinity>();
 
-    if (num_iterations > stop_state.num_iterations) {
+    if ((stop_state.num_iterations > 0) &&
+        (num_iterations > stop_state.num_iterations)) {
       status = Status::IterationLimit;
       return;
     }
-    if (x_delta < stop_state.x_delta) {
+    if ((stop_state.x_delta > 0) && (x_delta < stop_state.x_delta)) {
       status = Status::XDeltaViolation;
       return;
     }
-    if (f_delta < stop_state.f_delta) {
+    if ((stop_state.f_delta > 0) && (f_delta < stop_state.f_delta)) {
       status = Status::FDeltaViolation;
       return;
     }
-    if (gradient_norm < stop_state.gradient_norm) {
+    if ((stop_state.gradient_norm > 0) &&
+        (gradient_norm < stop_state.gradient_norm)) {
       status = Status::GradientNormViolation;
       return;
     }
-    if (condition_hessian > stop_state.condition_hessian) {
-      status = Status::HessianConditionViolation;
-      return;
+    if (Order == 2) {
+      if ((stop_state.condition_hessian > 0) &&
+          (condition_hessian > stop_state.condition_hessian)) {
+        status = Status::HessianConditionViolation;
+        return;
+      }
     }
     status = Status::Continue;
   }
@@ -95,14 +127,18 @@ auto GetDefaultStepCallback() {
   return [](const function::State<scalar_t, vector_t, hessian_t, Order>
                 &function_state,
             const State<scalar_t> &solver_state) {
-    std::cout << "Function-State" << std::endl;
-    std::cout << "  value    " << function_state.value << std::endl;
-    std::cout << "  x    " << function_state.x.transpose() << std::endl;
-    std::cout << "Solver-State" << std::endl;
-    std::cout << "  iterations " << solver_state.num_iterations << std::endl;
-    std::cout << "  x_delta " << solver_state.x_delta << std::endl;
-    std::cout << "  f_delta " << solver_state.f_delta << std::endl;
-    std::cout << "  gradient_norm " << solver_state.gradient_norm << std::endl;
+    std::cout << "Function-State"
+              << "\t";
+    std::cout << "  value    " << function_state.value << "\t";
+    std::cout << "  x    " << function_state.x.transpose() << "\t";
+    std::cout << "  gradient    " << function_state.gradient.transpose()
+              << std::endl;
+    std::cout << "Solver-State"
+              << "\t";
+    std::cout << "  iterations " << solver_state.num_iterations << "\t";
+    std::cout << "  x_delta " << solver_state.x_delta << "\t";
+    std::cout << "  f_delta " << solver_state.f_delta << "\t";
+    std::cout << "  gradient_norm " << solver_state.gradient_norm << "\t";
     std::cout << "  condition_hessian " << solver_state.condition_hessian
               << std::endl;
   };
@@ -120,7 +156,7 @@ class Solver {
   // The solver can be only
   // TOrder==0, given only the objective value
   // TOrder==1, gradient based.
-  // TOrder==2, Hessian+Gradient based.
+  // TOrder==2, Hessian+gradient based.
   static_assert(TOrder < 3, "");
   static_assert(TOrder >= 0, "");
   static_assert(TOrder <= function_t::Order, "");
@@ -150,6 +186,8 @@ class Solver {
     step_callback_ = step_callback;
   }
 
+  virtual void InitializeSolver(const function_state_t &initial_state) {}
+
   // Minimizes a given function and returns the function state
   virtual std::tuple<function_state_t, state_t> minimize(
       const function_t &function, const vector_t &x0) {
@@ -163,14 +201,16 @@ class Solver {
     // Function state during the optimization.
     function_state_t function_state(initial_state);
 
+    this->InitializeSolver(initial_state);
+
     do {
       // Trigger a user-defined callback.
       this->step_callback_(function_state, solver_state);
 
       // Find next function state.
       function_state_t previous_function_state(function_state);
-      function_state =
-          this->optimization_step(function, previous_function_state);
+      function_state = this->optimization_step(
+          function, previous_function_state, solver_state);
 
       // Update current solver state.
       solver_state.Update(previous_function_state, function_state,
@@ -180,12 +220,12 @@ class Solver {
     // Final Trigger of a user-defined callback.
     this->step_callback_(function_state, solver_state);
 
-    // TODO(patwie): Give C++17 a try.
-    return std::make_tuple(function_state, solver_state);
+    return {function_state, solver_state};
   }
 
   virtual function_state_t optimization_step(const function_t &function,
-                                             const function_state_t &state) = 0;
+                                             const function_state_t &current,
+                                             const state_t &state) = 0;
 
  protected:
   state_t stopping_state_;    // Specifies when to stop.
