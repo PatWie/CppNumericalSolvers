@@ -6,6 +6,7 @@
 #include "include/cppoptlib/solver/conjugated_gradient_descent.h"
 #include "include/cppoptlib/solver/gradient_descent.h"
 #include "include/cppoptlib/solver/newton_descent.h"
+#include "include/cppoptlib/solver/bfgs.h"
 
 constexpr int Order = 1;
 constexpr int Dim = 2;
@@ -41,7 +42,8 @@ int main(int argc, char const *argv[]) {
   using Function = Simple<double>;
   // using Solver = cppoptlib::solver::NewtonDescent<Function>;
   // using Solver = cppoptlib::solver::GradientDescent<Function>;
-  using Solver = cppoptlib::solver::ConjugatedGradientDescent<Function>;
+  // using Solver = cppoptlib::solver::ConjugatedGradientDescent<Function>;
+  using Solver = cppoptlib::solver::Bfgs<Function>;
 
   Function f;
   Function::vector_t x(2);
