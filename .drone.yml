@@ -7,21 +7,16 @@ platform:
   arch: amd64
 
 steps:
-- name: lint
-  pull: never
-  image: patwie/cppnumericalsolvers
-  commands:
-  - python lint.py
 
 - name: build
   pull: never
-  image: patwie/cppnumericalsolvers
+  image: cppnumericalsolver2
   commands:
-  - /root/bin/bazel run verify
+  - /root/bin/bazel run simple
 
 
 ---
 kind: signature
-hmac: a370fbc7962c2d6dd6fc520f6492046228942cf9529a33e53b1cda59e6ad3281
+hmac: 27088188ae1ab304dea0a156a1a8de819a130dcba1d71268378f9f6e11cbe66b
 
 ...
