@@ -1,6 +1,8 @@
 CppOptimizationLibrary (A header-only C++17 optimization library)
 =================================================================
 
+[![Build Status](https://ci.patwie.com/api/badges/PatWie/CppNumericalSolvers/status.svg?ref=refs/heads/v2)](https://ci.patwie.com/PatWie/CppNumericalSolvers)
+
 It has been now 6 years since the initial release. I did some mistakes in the previous design of this library and some features felt a bit ad-hoc. Given that C++14 is around and C++17 will become mainstream, I will take the opportunity to correct some of these mistakes and simplify things here in this v2-branch.
 
 This branch is under development.
