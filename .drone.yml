@@ -14,9 +14,15 @@ steps:
   commands:
   - /root/bin/bazel run simple
 
+- name: verify
+  pull: never
+  image: cppnumericalsolver2
+  commands:
+  - /root/bin/bazel run verify
+
 
 ---
 kind: signature
-hmac: 27088188ae1ab304dea0a156a1a8de819a130dcba1d71268378f9f6e11cbe66b
+hmac: f1d4c1c1842c1b8f69c2083023db3044510eed3a52f716c464b7a2e2950a3063
 
 ...

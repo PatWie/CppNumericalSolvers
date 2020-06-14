@@ -26,13 +26,13 @@ class NewtonDescent : public Solver<function_t, 2> {
     function_state_t next = current;
 
     constexpr scalar_t safe_guard = 1e-5;
-    next.hessian += safe_guard * hessian_t::Identity();
+    hessian_t hessian = next.hessian + safe_guard * hessian_t::Identity();
 
-    const vector_t delta_x = next.hessian.lu().solve(-next.gradient);
+    const vector_t delta_x = hessian.lu().solve(-next.gradient);
     const scalar_t rate =
         linesearch::Armijo<function_t, 2>::search(next.x, delta_x, function);
 
-    next.x = next.x - rate * delta_x;
+    next.x = next.x + rate * delta_x;
 
     return function.Eval(next.x);
   }

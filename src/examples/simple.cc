@@ -3,11 +3,11 @@
 #include <iostream>
 
 #include "include/cppoptlib/function.h"
+#include "include/cppoptlib/solver/bfgs.h"
 #include "include/cppoptlib/solver/conjugated_gradient_descent.h"
 #include "include/cppoptlib/solver/gradient_descent.h"
-#include "include/cppoptlib/solver/newton_descent.h"
-#include "include/cppoptlib/solver/bfgs.h"
 #include "include/cppoptlib/solver/lbfgs.h"
+#include "include/cppoptlib/solver/newton_descent.h"
 
 constexpr int Order = 1;
 constexpr int Dim = 2;
@@ -15,12 +15,11 @@ constexpr int Dim = 2;
 template <typename T>
 using SecondOrderProblem = cppoptlib::function::Function<T, Order, Dim>;
 
-template <typename T>
-class Simple : public SecondOrderProblem<T> {
+template <typename scalar_t>
+class Simple : public SecondOrderProblem<scalar_t> {
  public:
-  using scalar_t = typename SecondOrderProblem<T>::scalar_t;
-  using vector_t = typename SecondOrderProblem<T>::vector_t;
-  using hessian_t = typename SecondOrderProblem<T>::hessian_t;
+  using vector_t = typename SecondOrderProblem<scalar_t>::vector_t;
+  using hessian_t = typename SecondOrderProblem<scalar_t>::hessian_t;
 
   scalar_t operator()(const vector_t &x) const override {
     return 5 * x[0] * x[0] + 100 * x[1] * x[1] + 5;

@@ -12,7 +12,7 @@ def build_example(name, visibility=None):
 def build_test(name, visibility=None):
   native.cc_test(
     name = name,
-    srcs = ["src/test/"+name+".cpp"],
+    srcs = ["src/test/"+name+".cc"],
     copts = ["-Iexternal/gtest/include", "-std=c++17"],
     deps = [
         "//include/cppoptlib:cppoptlib",

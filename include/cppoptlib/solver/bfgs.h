@@ -2,7 +2,7 @@
 #ifndef INCLUDE_CPPOPTLIB_SOLVER_BFGS_H_
 #define INCLUDE_CPPOPTLIB_SOLVER_BFGS_H_
 
-#include "../linesearch/armijo.h"
+#include "../linesearch/more_thuente.h"
 #include "Eigen/Core"
 #include "solver.h"
 
@@ -37,6 +37,7 @@ class Bfgs : public Solver<function_t, 1> {
       inverse_hessian_ = hessian_t::Identity(function_t::Dim, function_t::Dim);
       search_direction = -current.gradient;
     }
+
     function_state_t next = current;
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::search(
         next.x, search_direction, function);
@@ -55,6 +56,7 @@ class Bfgs : public Solver<function_t, 1> {
         rho * (s * (y.transpose() * inverse_hessian_) +
                (inverse_hessian_ * y) * s.transpose()) +
         rho * (rho * y.dot(inverse_hessian_ * y) + 1.0) * (s * s.transpose());
+    return next;
   }
 
  private:

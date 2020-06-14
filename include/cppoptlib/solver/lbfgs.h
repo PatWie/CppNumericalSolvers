@@ -28,12 +28,13 @@ class Lbfgs : public Solver<function_t, 1> {
   using typename Superclass::vector_t;
   using typename Superclass::function_state_t;
 
-  using memory_t = Eigen::Matrix<scalar_t, function_t::Dim, m>;
+  using memory_matrix_t = Eigen::Matrix<scalar_t, function_t::Dim, m>;
+  using memory_vector_t = Eigen::Matrix<scalar_t, 1, m>;
 
   void InitializeSolver(const function_state_t &initial_state) override {
-    x_diff_memory_ = memory_t::Zero();
-    grad_diff_memory_ = memory_t::Zero();
-    alpha = vector_t::Zero();
+    x_diff_memory_ = memory_matrix_t::Zero(function_t::Dim, m);
+    grad_diff_memory_ = memory_matrix_t::Zero(function_t::Dim, m);
+    alpha = memory_vector_t::Zero(m);
     memory_idx_ = 0;
     scaling_factor_ = 1;
   }
@@ -49,7 +50,10 @@ class Lbfgs : public Solver<function_t, 1> {
         std::max<scalar_t>(scalar_t{1.0}, current.x.norm());
 
     // Algorithm 7.4 (L-BFGS two-loop recursion)
-    const int k = std::min<int>(m, memory_idx_);
+    int k = 0;
+    if (state.num_iterations > 0) {
+      k = std::min<int>(m, memory_idx_ - 1);
+    }
 
     // for i = k − 1, k − 2, . . . , k − m
     for (int i = k - 1; i >= 0; i--) {
@@ -73,13 +77,14 @@ class Lbfgs : public Solver<function_t, 1> {
       // r <- r + s_i * ( alpha_i - beta)
       search_direction += x_diff_memory_.col(i) * (alpha(i) - beta);
     }
+
     // stop with result "H_k*f_f'=q"
 
     // any issues with the descent direction ?
     scalar_t descent_direction = -current.gradient.dot(search_direction);
     scalar_t alpha_init = 1.0 / current.gradient.norm();
     if (descent_direction > -absolute_eps * relative_eps) {
-      search_direction = -1 * current.gradient;
+      search_direction = -current.gradient.eval();
       memory_idx_ = 0;
       alpha_init = 1.0;
     }
@@ -97,8 +102,8 @@ class Lbfgs : public Solver<function_t, 1> {
 
     // Update the history
     if (memory_idx_ < m) {
-      x_diff_memory_.col(memory_idx_) = x_diff;
-      grad_diff_memory_.col(memory_idx_) = grad_diff;
+      x_diff_memory_.col(memory_idx_) = x_diff.eval();
+      grad_diff_memory_.col(memory_idx_) = grad_diff.eval();
     } else {
       internal::ShiftLeft<m>(&x_diff_memory_);
       internal::ShiftLeft<m>(&grad_diff_memory_);
@@ -116,11 +121,11 @@ class Lbfgs : public Solver<function_t, 1> {
   }
 
  private:
-  memory_t x_diff_memory_;
-  memory_t grad_diff_memory_;
+  memory_matrix_t x_diff_memory_;
+  memory_matrix_t grad_diff_memory_;
   size_t memory_idx_;
 
-  vector_t alpha;
+  memory_vector_t alpha;
   scalar_t scaling_factor_;
 };
 

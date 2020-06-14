@@ -56,7 +56,9 @@ template <class scalar_t>
 struct State {
   size_t num_iterations = 0;       // Maximum number of allowed iterations.
   scalar_t x_delta = scalar_t{0};  // Minimum change in parameter vector.
+  int x_delta_violations = 0;      // Number of violations in pareameter vector.
   scalar_t f_delta = scalar_t{0};  // Minimum change in cost function.
+  int f_delta_violations = 0;      // Number of violations in cost function.
   scalar_t gradient_norm = scalar_t{0};  // Minimum norm of gradient vector.
   scalar_t condition_hessian =
       scalar_t{0};                     // Maximum condition number of hessian_t.
@@ -85,12 +87,22 @@ struct State {
       return;
     }
     if ((stop_state.x_delta > 0) && (x_delta < stop_state.x_delta)) {
-      status = Status::XDeltaViolation;
-      return;
+      x_delta_violations++;
+      if (x_delta_violations >= stop_state.x_delta_violations) {
+        status = Status::XDeltaViolation;
+        return;
+      }
+    } else {
+      x_delta_violations = 0;
     }
     if ((stop_state.f_delta > 0) && (f_delta < stop_state.f_delta)) {
-      status = Status::FDeltaViolation;
-      return;
+      f_delta_violations++;
+      if (f_delta_violations >= stop_state.f_delta_violations) {
+        status = Status::FDeltaViolation;
+        return;
+      } else {
+        f_delta_violations = 0;
+      }
     }
     if ((stop_state.gradient_norm > 0) &&
         (gradient_norm < stop_state.gradient_norm)) {
@@ -113,8 +125,10 @@ template <class T>
 State<T> DefaultStoppingSolverState() {
   State<T> state;
   state.num_iterations = 10000;
-  state.x_delta = T{1e-5};
-  state.f_delta = T{1e-5};
+  state.x_delta = T{1e-9};
+  state.x_delta_violations = 5;
+  state.f_delta = T{1e-9};
+  state.f_delta_violations = 5;
   state.gradient_norm = T{1e-4};
   state.condition_hessian = T{0};
   state.status = Status::NotStarted;
