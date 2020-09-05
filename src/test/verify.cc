@@ -10,6 +10,7 @@
 #include "include/cppoptlib/solver/conjugated_gradient_descent.h"
 #include "include/cppoptlib/solver/gradient_descent.h"
 #include "include/cppoptlib/solver/lbfgs.h"
+#include "include/cppoptlib/solver/lbfgsb.h"
 #include "include/cppoptlib/solver/newton_descent.h"
 
 #define PRECISION 1e-4
@@ -83,6 +84,8 @@ template <class T>
 class BfgsTest : public testing::Test {};
 template <class T>
 class LbfgsTest : public testing::Test {};
+template <class T>
+class LbfgsbTest : public testing::Test {};
 
 #define SOLVE_PROBLEM(sol, func, a, b, fx)                                \
   using Function = func<TypeParam>;                                       \
@@ -107,6 +110,7 @@ TYPED_TEST_CASE(ConjugatedGradientDescentTest, DoublePrecision);
 TYPED_TEST_CASE(NewtonDescentTest, DoublePrecision);
 TYPED_TEST_CASE(BfgsTest, DoublePrecision);
 TYPED_TEST_CASE(LbfgsTest, DoublePrecision);
+TYPED_TEST_CASE(LbfgsbTest, DoublePrecision);
 
 #define SOLVER_SETUP(sol, func)                                 \
   TYPED_TEST(sol##Test, func##Far) {                            \
@@ -124,6 +128,8 @@ SOLVER_SETUP(Bfgs, RosenbrockValue)
 SOLVER_SETUP(Bfgs, RosenbrockGradient)
 SOLVER_SETUP(Lbfgs, RosenbrockValue)
 SOLVER_SETUP(Lbfgs, RosenbrockGradient)
+SOLVER_SETUP(Lbfgsb, RosenbrockValue)
+SOLVER_SETUP(Lbfgsb, RosenbrockGradient)
 
 SOLVER_SETUP(NewtonDescent, RosenbrockFull)
 

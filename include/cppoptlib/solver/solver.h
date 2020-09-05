@@ -1,7 +1,6 @@
 // Copyright 2020, https://github.com/PatWie/CppNumericalSolvers
-
-#ifndef INCLUDE_CPPOPTLIB_SOLVER_ISOLVER_H_
-#define INCLUDE_CPPOPTLIB_SOLVER_ISOLVER_H_
+#ifndef INCLUDE_CPPOPTLIB_SOLVER_SOLVER_H_
+#define INCLUDE_CPPOPTLIB_SOLVER_SOLVER_H_
 
 #include <functional>
 #include <iostream>
@@ -250,4 +249,4 @@ class Solver {
 };  // namespace solver
 }  // namespace cppoptlib
 
-#endif  // INCLUDE_CPPOPTLIB_SOLVER_ISOLVER_H_
+#endif  // INCLUDE_CPPOPTLIB_SOLVER_SOLVER_H_

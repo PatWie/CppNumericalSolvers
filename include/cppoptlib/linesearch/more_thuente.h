@@ -3,6 +3,7 @@
 #ifndef INCLUDE_CPPOPTLIB_LINESEARCH_MORE_THUENTE_H_
 #define INCLUDE_CPPOPTLIB_LINESEARCH_MORE_THUENTE_H_
 
+#include <algorithm>
 #include <cmath>
 
 namespace cppoptlib {

@@ -31,7 +31,7 @@ class Lbfgs : public Solver<function_t, 1> {
   using memory_matrix_t = Eigen::Matrix<scalar_t, function_t::Dim, m>;
   using memory_vector_t = Eigen::Matrix<scalar_t, 1, m>;
 
-  void InitializeSolver(const function_state_t &initial_state) override {
+  void InitializeSolver(const function_state_t &/*initial_state*/) override {
     x_diff_memory_ = memory_matrix_t::Zero(function_t::Dim, m);
     grad_diff_memory_ = memory_matrix_t::Zero(function_t::Dim, m);
     alpha = memory_vector_t::Zero(m);

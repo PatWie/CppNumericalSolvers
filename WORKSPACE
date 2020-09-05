@@ -1,13 +1,13 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 
-http_archive(
-  name = "eigen_archive",
-  url = "https://bitbucket.org/eigen/eigen/get/3.3.4.tar.gz",
+# Load 3.3.9
+new_git_repository(
+  name="eigen_archive",
+  commit="5f25bcf7d6918f5c6091fb4e961e5607e13b7324",
+  remote="https://gitlab.com/libeigen/eigen.git",
   build_file = "@//:eigen.BUILD",
-  strip_prefix = "eigen-eigen-5a0156e40feb",
-  sha256 = "4286e8f1fabbd74f7ec6ef8ef31c9dbc6102b9248a8f8327b04f5b68da5b05e1"
 )
-
 
 http_archive(
     name = "gtest",

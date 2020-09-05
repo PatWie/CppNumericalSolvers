@@ -20,12 +20,13 @@ class Bfgs : public Solver<function_t, 1> {
   using typename Superclass::function_state_t;
 
   void InitializeSolver(const function_state_t &initial_state) override {
-    inverse_hessian_ = hessian_t::Identity(function_t::Dim, function_t::Dim);
+    inverse_hessian_ =
+        hessian_t::Identity(initial_state.x.rows(), initial_state.x.rows());
   }
 
   function_state_t OptimizationStep(const function_t &function,
-                                     const function_state_t &current,
-                                     const state_t &state) override {
+                                    const function_state_t &current,
+                                    const state_t &state) override {
     vector_t search_direction = -inverse_hessian_ * current.gradient;
 
     // Check "positive definite".
