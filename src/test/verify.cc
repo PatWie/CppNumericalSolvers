@@ -95,7 +95,7 @@ class LbfgsTest : public testing::Test {};
       cppoptlib::solver::GetEmptyStepCallback<                            \
           typename Function::scalar_t, typename Function::vector_t,       \
           typename Function::hessian_t, Function::Order>());              \
-  auto[solution, solver_state] = solver.minimize(f, x);                   \
+  auto[solution, solver_state] = solver.Minimize(f, x);                   \
   if (solver_state.status == cppoptlib::solver::Status::IterationLimit) { \
     std::cout << solver_state.status << std::endl;                        \
   }                                                                       \

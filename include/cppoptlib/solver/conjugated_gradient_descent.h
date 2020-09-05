@@ -22,7 +22,7 @@ class ConjugatedGradientDescent : public Solver<function_t, 1> {
     previous_ = initial_state;
   }
 
-  function_state_t optimization_step(const function_t &function,
+  function_state_t OptimizationStep(const function_t &function,
                                      const function_state_t &current,
                                      const state_t &state) override {
     if (state.num_iterations == 0) {
@@ -36,7 +36,7 @@ class ConjugatedGradientDescent : public Solver<function_t, 1> {
 
     function_state_t next = current;
 
-    const scalar_t rate = linesearch::Armijo<function_t, 1>::search(
+    const scalar_t rate = linesearch::Armijo<function_t, 1>::Search(
         next.x, search_direction_, function);
 
     next.x = next.x + rate * search_direction_;

@@ -180,6 +180,7 @@ class Solver {
   static const int Dim = function_t::Dim;
   using scalar_t = typename function_t::scalar_t;
   using vector_t = typename function_t::vector_t;
+  using matrix_t = typename function_t::matrix_t;
   using hessian_t = typename function_t::hessian_t;
 
   using function_state_t = typename function_t::state_t;
@@ -203,12 +204,12 @@ class Solver {
   virtual void InitializeSolver(const function_state_t &initial_state) {}
 
   // Minimizes a given function and returns the function state
-  virtual std::tuple<function_state_t, state_t> minimize(
+  virtual std::tuple<function_state_t, state_t> Minimize(
       const function_t &function, const vector_t &x0) {
-    return this->minimize(function, function.Eval(x0));
+    return this->Minimize(function, function.Eval(x0));
   }
 
-  virtual std::tuple<function_state_t, state_t> minimize(
+  virtual std::tuple<function_state_t, state_t> Minimize(
       const function_t &function, const function_state_t &initial_state) {
     // Solver state during the optimization.
     state_t solver_state;
@@ -223,8 +224,8 @@ class Solver {
 
       // Find next function state.
       function_state_t previous_function_state(function_state);
-      function_state = this->optimization_step(
-          function, previous_function_state, solver_state);
+      function_state = this->OptimizationStep(function, previous_function_state,
+                                              solver_state);
 
       // Update current solver state.
       solver_state.Update(previous_function_state, function_state,
@@ -237,9 +238,9 @@ class Solver {
     return {function_state, solver_state};
   }
 
-  virtual function_state_t optimization_step(const function_t &function,
-                                             const function_state_t &current,
-                                             const state_t &state) = 0;
+  virtual function_state_t OptimizationStep(const function_t &function,
+                                            const function_state_t &current,
+                                            const state_t &state) = 0;
 
  protected:
   state_t stopping_state_;    // Specifies when to stop.

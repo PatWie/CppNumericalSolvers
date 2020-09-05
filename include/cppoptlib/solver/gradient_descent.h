@@ -18,12 +18,12 @@ class GradientDescent : public Solver<function_t, 1> {
   using typename Superclass::vector_t;
   using typename Superclass::function_state_t;
 
-  function_state_t optimization_step(const function_t &function,
+  function_state_t OptimizationStep(const function_t &function,
                                      const function_state_t &current,
                                      const state_t &state) override {
     function_state_t next = current;
 
-    const scalar_t rate = linesearch::MoreThuente<function_t, 1>::search(
+    const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
         next.x, -next.gradient, function);
 
     next.x = next.x - rate * next.gradient;

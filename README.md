@@ -50,7 +50,7 @@ Want a full example?
 
         Solver solver;
 
-        auto[solution, solver_state] = solver.minimize(f, x);
+        auto[solution, solver_state] = solver.Minimize(f, x);
         std::cout << "argmin " << solution.x.transpose() << std::endl;
         std::cout << "f in argmin " << solution.value << std::endl;
         std::cout << "iterations " << solver_state.num_iterations << std::endl;

@@ -25,7 +25,7 @@ class MoreThuente {
    * @return step-width
    */
 
-  static scalar_t search(const vector_t &x, const vector_t &search_direction,
+  static scalar_t Search(const vector_t &x, const vector_t &search_direction,
                          const Function &function,
                          const scalar_t alpha_init = 1.0) {
     // Assumed step width.

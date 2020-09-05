@@ -23,7 +23,7 @@ class Bfgs : public Solver<function_t, 1> {
     inverse_hessian_ = hessian_t::Identity(function_t::Dim, function_t::Dim);
   }
 
-  function_state_t optimization_step(const function_t &function,
+  function_state_t OptimizationStep(const function_t &function,
                                      const function_state_t &current,
                                      const state_t &state) override {
     vector_t search_direction = -inverse_hessian_ * current.gradient;
@@ -39,7 +39,7 @@ class Bfgs : public Solver<function_t, 1> {
     }
 
     function_state_t next = current;
-    const scalar_t rate = linesearch::MoreThuente<function_t, 1>::search(
+    const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
         next.x, search_direction, function);
 
     next.x = next.x + rate * search_direction;
