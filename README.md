@@ -20,12 +20,9 @@ Want a full example?
     class Rosenbrock : public FunctionXd {
       public:
 
-        using vector_t = Eigen::VectorXd;
-        using scalar_t = double;
-
-        scalar_t operator()(const vector_t &x) {
-            const scalar_t t1 = (1 - x[0]);
-            const scalar_t t2 = (x[1] - x[0] * x[0]);
+        double operator()(const Eigen::VectorXd &x) {
+            const double t1 = (1 - x[0]);
+            const double t2 = (x[1] - x[0] * x[0]);
             return   t1 * t1 + 100 * t2 * t2;
         }
     };
@@ -33,7 +30,7 @@ Want a full example?
         using Solver = cppoptlib::solver::Bfgs<Rosenbrock>;
 
         Rosenbrock f;
-        Rosenbrock::vector_t x(2);
+        Eigen::VectorXd x(2);
         x << -1, 2;
 
         // Evaluate
