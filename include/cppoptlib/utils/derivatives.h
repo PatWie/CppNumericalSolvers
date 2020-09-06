@@ -4,9 +4,9 @@
 #define INCLUDE_CPPOPTLIB_UTILS_DERIVATIVES_H_
 
 #include <algorithm>
+#include <array>
 #include <limits>
 #include <vector>
-#include <array>
 
 namespace cppoptlib {
 namespace utils {
@@ -222,7 +222,7 @@ bool IsGradientCorrect(const function_t &function,
   for (index_t d = 0; d < D; ++d) {
     scalar_t scale =
         std::max(static_cast<scalar_t>(std::max(fabs(actual_gradient[d]),
-                                               fabs(expected_gradient[d]))),
+                                                fabs(expected_gradient[d]))),
                  scalar_t(1.));
     if (fabs(actual_gradient[d] - expected_gradient[d]) > tolerance * scale)
       return false;
@@ -232,7 +232,8 @@ bool IsGradientCorrect(const function_t &function,
 
 template <class function_t>
 bool IsHessianCorrect(const function_t &function,
-                      const typename function_t::vector_t &x0, int accuracy = 3) {
+                      const typename function_t::vector_t &x0,
+                      int accuracy = 3) {
   constexpr float tolerance = 1e-1;
 
   using scalar_t = typename function_t::scalar_t;
@@ -247,10 +248,10 @@ bool IsHessianCorrect(const function_t &function,
   ComputeFiniteHessian(function, x0, &expected_hessian, accuracy);
   for (index_t d = 0; d < D; ++d) {
     for (index_t e = 0; e < D; ++e) {
-      scalar_t scale =
-          std::max(static_cast<scalar_t>(std::max(fabs(actual_hessian(d, e)),
-                                                 fabs(expected_hessian(d, e)))),
-                   scalar_t(1.));
+      scalar_t scale = std::max(
+          static_cast<scalar_t>(std::max(fabs(actual_hessian(d, e)),
+                                         fabs(expected_hessian(d, e)))),
+          scalar_t(1.));
       if (fabs(actual_hessian(d, e) - expected_hessian(d, e)) >
           tolerance * scale)
         return false;

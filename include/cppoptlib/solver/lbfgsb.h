@@ -9,6 +9,7 @@
 
 #include "../linesearch/more_thuente.h"
 #include "Eigen/Core"
+#include "Eigen/LU"
 #include "solver.h"
 
 namespace cppoptlib {
@@ -17,26 +18,30 @@ namespace solver {
 namespace internal {};  // namespace internal
 
 template <typename function_t, int m = 5>
-class Lbfgsb : public Solver<function_t, 1> {
- public:
-  using Superclass = Solver<function_t, 1>;
-  using typename Superclass::state_t;
-  using typename Superclass::scalar_t;
-  using typename Superclass::hessian_t;
-  using typename Superclass::matrix_t;
-  using typename Superclass::vector_t;
-  using typename Superclass::function_state_t;
+class Lbfgsb : public Solver<function_t> {
+ private:
+  using Superclass = Solver<function_t>;
+  using state_t = typename Superclass::state_t;
+
+  using scalar_t = typename function_t::scalar_t;
+  using hessian_t = typename function_t::hessian_t;
+  using matrix_t = typename function_t::matrix_t;
+  using vector_t = typename function_t::vector_t;
+  using function_state_t = typename function_t::state_t;
 
   using dyn_vector_t = Eigen::Matrix<scalar_t, Eigen::Dynamic, 1>;
 
+ public:
   void InitializeSolver(const function_state_t &initial_state) override {
+    dim_ = initial_state.x.rows();
+
     theta_ = 1.0;
 
-    W_ = matrix_t::Zero(initial_state.x.rows(), 0);
+    W_ = matrix_t::Zero(dim_, 0);
     M_ = matrix_t::Zero(0, 0);
 
-    y_history = matrix_t::Zero(initial_state.x.rows(), 0);
-    s_history = matrix_t::Zero(initial_state.x.rows(), 0);
+    y_history_ = matrix_t::Zero(dim_, 0);
+    s_history_ = matrix_t::Zero(dim_, 0);
   }
 
   function_state_t OptimizationStep(const function_t &function,
@@ -48,7 +53,7 @@ class Lbfgsb : public Solver<function_t, 1> {
         current.x.array() * 0 + std::numeric_limits<scalar_t>::lowest();
 
     // STEP 2: compute the cauchy point
-    vector_t CauchyPoint = vector_t::Zero(function_t::Dim);
+    vector_t CauchyPoint = vector_t::Zero(dim_);
     dyn_vector_t c = dyn_vector_t::Zero(W_.cols());
     GetGeneralizedCauchyPoint(upper_bound, lower_bound, current, &CauchyPoint,
                               &c);
@@ -68,7 +73,7 @@ class Lbfgsb : public Solver<function_t, 1> {
     // if current solution is out of bound, we clip it
     x_next = x_next.cwiseMin(upper_bound).cwiseMax(lower_bound);
 
-    function_state_t next = function.Eval(x_next);
+    function_state_t next = function.Eval(x_next, 1);
 
     // prepare for next iteration
     const vector_t new_y = next.gradient - current.gradient;
@@ -77,26 +82,27 @@ class Lbfgsb : public Solver<function_t, 1> {
     // STEP 6:
     const scalar_t test = fabs(new_s.dot(new_y));
     if (test > 1e-7 * new_y.squaredNorm()) {
-      if (y_history.cols() < m) {
-        y_history.conservativeResize(function_t::Dim, y_history.cols() + 1);
-        s_history.conservativeResize(function_t::Dim, s_history.cols() + 1);
+      if (y_history_.cols() < m) {
+        y_history_.conservativeResize(dim_, y_history_.cols() + 1);
+        s_history_.conservativeResize(dim_, s_history_.cols() + 1);
       } else {
-        y_history.leftCols(m - 1) = y_history.rightCols(m - 1).eval();
-        s_history.leftCols(m - 1) = s_history.rightCols(m - 1).eval();
+        y_history_.leftCols(m - 1) = y_history_.rightCols(m - 1).eval();
+        s_history_.leftCols(m - 1) = s_history_.rightCols(m - 1).eval();
       }
-      y_history.rightCols(1) = new_y;
-      s_history.rightCols(1) = new_s;
+      y_history_.rightCols(1) = new_y;
+      s_history_.rightCols(1) = new_s;
       // STEP 7:
       theta_ =
           (scalar_t)(new_y.transpose() * new_y) / (new_y.transpose() * new_s);
-      W_ =
-          matrix_t::Zero(y_history.rows(), y_history.cols() + s_history.cols());
-      W_ << y_history, (theta_ * s_history);
-      matrix_t A = s_history.transpose() * y_history;
+      W_ = matrix_t::Zero(y_history_.rows(),
+                          y_history_.cols() + s_history_.cols());
+      W_ << y_history_, (theta_ * s_history_);
+      matrix_t A = s_history_.transpose() * y_history_;
       matrix_t L = A.template triangularView<Eigen::StrictlyLower>();
       matrix_t MM(A.rows() + L.rows(), A.rows() + L.cols());
       matrix_t D = -1 * A.diagonal().asDiagonal();
-      MM << D, L.transpose(), L, ((s_history.transpose() * s_history) * theta_);
+      MM << D, L.transpose(), L,
+          ((s_history_.transpose() * s_history_) * theta_);
       M_ = MM.inverse();
     }
 
@@ -130,7 +136,7 @@ class Lbfgsb : public Solver<function_t, 1> {
     // the feasible set is implicitly given by "set_of_t - {t_i==0}"
     vector_t d = -current.gradient;
     // n operations
-    for (int j = 0; j < function_t::Dim; j++) {
+    for (int j = 0; j < dim_; j++) {
       if (current.gradient(j) == 0) {
         set_of_t.push_back(std::make_pair(j, max_value));
       } else {
@@ -167,7 +173,7 @@ class Lbfgsb : public Solver<function_t, 1> {
     scalar_t t_old = 0;
     // b :=     argmin {t_i , t_i >0}
     int i = 0;
-    for (int j = 0; j < function_t::Dim; j++) {
+    for (int j = 0; j < dim_; j++) {
       i = j;
       if (set_of_t[sorted_indices[j]].second > 0) break;
     }
@@ -178,7 +184,7 @@ class Lbfgsb : public Solver<function_t, 1> {
     // \delta scalar_t             :=  t - 0
     scalar_t dt = t;
     // examination of subsequent segments
-    while ((dt_min >= dt) && (i < function_t::Dim)) {
+    while ((dt_min >= dt) && (i < dim_)) {
       if (d(b) > 0)
         (*x_cauchy)(b) = upper_bound(b);
       else if (d(b) < 0)
@@ -204,7 +210,7 @@ class Lbfgsb : public Solver<function_t, 1> {
       dt_min = -f_prime / f_doubleprime;
       t_old = t;
       ++i;
-      if (i < function_t::Dim) {
+      if (i < dim_) {
         b = sorted_indices[i];
         t = set_of_t[b].second;
         dt = t - t_old;
@@ -296,12 +302,14 @@ class Lbfgsb : public Solver<function_t, 1> {
   }
 
  private:
+  int dim_;
+
   matrix_t M_;
   matrix_t W_;
   scalar_t theta_;
 
-  matrix_t y_history;
-  matrix_t s_history;
+  matrix_t y_history_;
+  matrix_t s_history_;
 };
 
 }  // namespace solver

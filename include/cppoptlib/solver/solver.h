@@ -66,10 +66,10 @@ struct State {
   State() = default;
 
   // Updates state from function information.
-  template <class vector_t, class hessian_t, int Order>
-  void Update(const function::State<scalar_t, vector_t, hessian_t, Order>
+  template <class vector_t, class hessian_t>
+  void Update(const function::State<scalar_t, vector_t, hessian_t>
                   previous_function_state,
-              const function::State<scalar_t, vector_t, hessian_t, Order>
+              const function::State<scalar_t, vector_t, hessian_t>
                   current_function_state,
               const State &stop_state) {
     num_iterations++;
@@ -108,7 +108,7 @@ struct State {
       status = Status::GradientNormViolation;
       return;
     }
-    if (Order == 2) {
+    if (previous_function_state.order == 2) {
       if ((stop_state.condition_hessian > 0) &&
           (condition_hessian > stop_state.condition_hessian)) {
         status = Status::HessianConditionViolation;
@@ -135,47 +135,41 @@ State<T> DefaultStoppingSolverState() {
 }
 
 // Returns the defaul callback function.
-template <class scalar_t, class vector_t, class hessian_t, int Order>
+template <class scalar_t, class vector_t, class hessian_t>
 auto GetDefaultStepCallback() {
-  return [](const function::State<scalar_t, vector_t, hessian_t, Order>
-                &function_state,
-            const State<scalar_t> &solver_state) {
-    std::cout << "Function-State"
-              << "\t";
-    std::cout << "  value    " << function_state.value << "\t";
-    std::cout << "  x    " << function_state.x.transpose() << "\t";
-    std::cout << "  gradient    " << function_state.gradient.transpose()
-              << std::endl;
-    std::cout << "Solver-State"
-              << "\t";
-    std::cout << "  iterations " << solver_state.num_iterations << "\t";
-    std::cout << "  x_delta " << solver_state.x_delta << "\t";
-    std::cout << "  f_delta " << solver_state.f_delta << "\t";
-    std::cout << "  gradient_norm " << solver_state.gradient_norm << "\t";
-    std::cout << "  condition_hessian " << solver_state.condition_hessian
-              << std::endl;
-  };
+  return
+      [](const function::State<scalar_t, vector_t, hessian_t> &function_state,
+         const State<scalar_t> &solver_state) {
+        std::cout << "Function-State"
+                  << "\t";
+        std::cout << "  value    " << function_state.value << "\t";
+        std::cout << "  x    " << function_state.x.transpose() << "\t";
+        std::cout << "  gradient    " << function_state.gradient.transpose()
+                  << std::endl;
+        std::cout << "Solver-State"
+                  << "\t";
+        std::cout << "  iterations " << solver_state.num_iterations << "\t";
+        std::cout << "  x_delta " << solver_state.x_delta << "\t";
+        std::cout << "  f_delta " << solver_state.f_delta << "\t";
+        std::cout << "  gradient_norm " << solver_state.gradient_norm << "\t";
+        std::cout << "  condition_hessian " << solver_state.condition_hessian
+                  << std::endl;
+      };
 }
 
-template <class scalar_t, class vector_t, class hessian_t, int Order>
+template <class scalar_t, class vector_t, class hessian_t>
 auto GetEmptyStepCallback() {
-  return [](const function::State<scalar_t, vector_t, hessian_t, Order> &,
+  return [](const function::State<scalar_t, vector_t, hessian_t> &,
             const State<scalar_t> &) {};
 }
 
 // Specifies a solver implementation (of a given order) for a given function
-template <typename function_t, int TOrder>
+template <typename function_t>
 class Solver {
-  // The solver can be only
-  // TOrder==0, given only the objective value
-  // TOrder==1, gradient based.
-  // TOrder==2, Hessian+gradient based.
-  static_assert(TOrder < 3, "");
-  static_assert(TOrder >= 0, "");
-  static_assert(TOrder <= function_t::Order, "");
-
  public:
-  static const int Order = TOrder;
+  using state_t = State<typename function_t::scalar_t>;
+
+ private:
   static const int Dim = function_t::Dim;
   using scalar_t = typename function_t::scalar_t;
   using vector_t = typename function_t::vector_t;
@@ -183,29 +177,31 @@ class Solver {
   using hessian_t = typename function_t::hessian_t;
 
   using function_state_t = typename function_t::state_t;
-  using state_t = State<scalar_t>;
   using callback_t =
       std::function<void(const function_state_t &, const state_t &)>;
 
+ public:
   explicit Solver(const State<scalar_t> &stopping_state =
                       DefaultStoppingSolverState<scalar_t>())
       : stopping_state_(stopping_state),
         step_callback_(
-            GetDefaultStepCallback<scalar_t, vector_t, hessian_t, TOrder>()) {}
+            GetDefaultStepCallback<scalar_t, vector_t, hessian_t>()) {}
 
   virtual ~Solver() = default;
+
+  virtual int Order() const { return 1; }
 
   // Sets a Callback function which is triggered after each update step.
   void SetStepCallback(callback_t step_callback) {
     step_callback_ = step_callback;
   }
 
-  virtual void InitializeSolver(const function_state_t &initial_state) {}
+  virtual void InitializeSolver(const function_state_t & /*initial_state*/) {}
 
   // Minimizes a given function and returns the function state
   virtual std::tuple<function_state_t, state_t> Minimize(
       const function_t &function, const vector_t &x0) {
-    return this->Minimize(function, function.Eval(x0));
+    return this->Minimize(function, function.Eval(x0, this->Order()));
   }
 
   virtual std::tuple<function_state_t, state_t> Minimize(

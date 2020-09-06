@@ -13,17 +13,13 @@
 #include "include/cppoptlib/solver/lbfgsb.h"
 #include "include/cppoptlib/solver/newton_descent.h"
 
+// constexpr double PRECISION 1e-4;
 #define PRECISION 1e-4
 
-constexpr int Dim = 2;
-
-template <typename T, int Order>
-using Problem = cppoptlib::function::Function<T, Order, Dim>;
-
 template <typename scalar_t>
-class RosenbrockValue : public Problem<scalar_t, 1> {
+class RosenbrockValue : public cppoptlib::function::Function<scalar_t> {
  public:
-  using vector_t = typename Problem<scalar_t, 1>::vector_t;
+  using vector_t = typename cppoptlib::function::Function<scalar_t>::vector_t;
 
   scalar_t operator()(const vector_t &x) const override {
     const scalar_t t1 = (1 - x[0]);
@@ -33,9 +29,9 @@ class RosenbrockValue : public Problem<scalar_t, 1> {
 };
 
 template <typename scalar_t>
-class RosenbrockGradient : public Problem<scalar_t, 1> {
+class RosenbrockGradient : public cppoptlib::function::Function<scalar_t> {
  public:
-  using vector_t = typename Problem<scalar_t, 1>::vector_t;
+  using vector_t = typename cppoptlib::function::Function<scalar_t>::vector_t;
 
   scalar_t operator()(const vector_t &x) const override {
     const scalar_t t1 = (1 - x[0]);
@@ -50,10 +46,10 @@ class RosenbrockGradient : public Problem<scalar_t, 1> {
 };
 
 template <typename scalar_t>
-class RosenbrockFull : public Problem<scalar_t, 2> {
+class RosenbrockFull : public cppoptlib::function::Function<scalar_t> {
  public:
-  using vector_t = typename Problem<scalar_t, 2>::vector_t;
-  using hessian_t = typename Problem<scalar_t, 2>::hessian_t;
+  using vector_t = typename cppoptlib::function::Function<scalar_t>::vector_t;
+  using hessian_t = typename cppoptlib::function::Function<scalar_t>::hessian_t;
 
   scalar_t operator()(const vector_t &x) const override {
     const scalar_t t1 = (1 - x[0]);
@@ -97,7 +93,7 @@ class LbfgsbTest : public testing::Test {};
   solver.SetStepCallback(                                                 \
       cppoptlib::solver::GetEmptyStepCallback<                            \
           typename Function::scalar_t, typename Function::vector_t,       \
-          typename Function::hessian_t, Function::Order>());              \
+          typename Function::hessian_t>());                               \
   auto[solution, solver_state] = solver.Minimize(f, x);                   \
   if (solver_state.status == cppoptlib::solver::Status::IterationLimit) { \
     std::cout << solver_state.status << std::endl;                        \
@@ -135,10 +131,10 @@ SOLVER_SETUP(NewtonDescent, RosenbrockFull)
 
 // simple function y <- 3*a-b
 template <class scalar_t>
-class SimpleFunction : public Problem<scalar_t, 2> {
+class SimpleFunction : public cppoptlib::function::Function<scalar_t> {
  public:
-  using vector_t = typename Problem<scalar_t, 2>::vector_t;
-  using hessian_t = typename Problem<scalar_t, 2>::hessian_t;
+  using vector_t = typename cppoptlib::function::Function<scalar_t>::vector_t;
+  using hessian_t = typename cppoptlib::function::Function<scalar_t>::hessian_t;
 
   scalar_t operator()(const vector_t &x) const override {
     return 3 * x[0] * x[0] - x[1] * x[0];
@@ -146,25 +142,45 @@ class SimpleFunction : public Problem<scalar_t, 2> {
 };
 
 template <class T>
-class CentralDifference : public testing::Test {};
-TYPED_TEST_CASE(CentralDifference, DoublePrecision);
+class CentralDifferenceState : public testing::Test {};
+TYPED_TEST_CASE(CentralDifferenceState, DoublePrecision);
 
-TYPED_TEST(CentralDifference, Gradient) {
-  typename SimpleFunction<TypeParam>::vector_t x0;
+TYPED_TEST(CentralDifferenceState, Gradient) {
+  typename SimpleFunction<TypeParam>::vector_t x0(2);
   x0(0) = 0;
   x0(1) = 0;
 
   SimpleFunction<TypeParam> f;
-  auto state = f.Eval(x0);
+
+  const auto state = f.Eval(x0);
+
+  EXPECT_NEAR(state.gradient(0), 36 * x0(0) - x0(1), PRECISION);
+  EXPECT_NEAR(state.gradient(1), -x0(0), PRECISION);
+}
+
+template <class T>
+class CentralDifference : public testing::Test {};
+TYPED_TEST_CASE(CentralDifference, DoublePrecision);
+
+TYPED_TEST(CentralDifference, Gradient) {
+  typename SimpleFunction<TypeParam>::vector_t x0(2);
+  typename SimpleFunction<TypeParam>::vector_t gradient(2);
+  x0(0) = 0;
+  x0(1) = 0;
+
+  SimpleFunction<TypeParam> f;
+
   // check from fast/bad to slower/better approximation of the gradient
   for (int accuracy = 0; accuracy < 4; ++accuracy) {
-    EXPECT_NEAR(state.gradient(0), 36 * x0(0) - x0(1), PRECISION);
-    EXPECT_NEAR(state.gradient(1), -x0(0), PRECISION);
+    cppoptlib::utils::ComputeFiniteGradient(f, x0, &gradient, accuracy);
+
+    EXPECT_NEAR(gradient(0), 36 * x0(0) - x0(1), PRECISION);
+    EXPECT_NEAR(gradient(1), -x0(0), PRECISION);
   }
 }
 
 TYPED_TEST(CentralDifference, Hessian) {
-  typename SimpleFunction<TypeParam>::vector_t x0;
+  typename SimpleFunction<TypeParam>::vector_t x0(2);
   x0(0) = 0;
   x0(1) = 0;
 

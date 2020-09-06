@@ -4,7 +4,7 @@
 
 #include <algorithm>
 
-#include "../linesearch/armijo.h"
+#include "../linesearch/more_thuente.h"
 #include "Eigen/Core"
 #include "solver.h"
 
@@ -19,29 +19,33 @@ void ShiftLeft(T *matrix) {
 };  // namespace internal
 
 template <typename function_t, int m = 10>
-class Lbfgs : public Solver<function_t, 1> {
- public:
-  using Superclass = Solver<function_t, 1>;
-  using typename Superclass::state_t;
-  using typename Superclass::scalar_t;
-  using typename Superclass::hessian_t;
-  using typename Superclass::vector_t;
-  using typename Superclass::function_state_t;
+class Lbfgs : public Solver<function_t> {
+ private:
+  using Superclass = Solver<function_t>;
+  using state_t = typename Superclass::state_t;
 
-  using memory_matrix_t = Eigen::Matrix<scalar_t, function_t::Dim, m>;
+  using scalar_t = typename function_t::scalar_t;
+  using hessian_t = typename function_t::hessian_t;
+  using matrix_t = typename function_t::matrix_t;
+  using vector_t = typename function_t::vector_t;
+  using function_state_t = typename function_t::state_t;
+
+  using memory_matrix_t = Eigen::Matrix<scalar_t, Eigen::Dynamic, m>;
   using memory_vector_t = Eigen::Matrix<scalar_t, 1, m>;
 
-  void InitializeSolver(const function_state_t &/*initial_state*/) override {
-    x_diff_memory_ = memory_matrix_t::Zero(function_t::Dim, m);
-    grad_diff_memory_ = memory_matrix_t::Zero(function_t::Dim, m);
+ public:
+  void InitializeSolver(const function_state_t &initial_state) override {
+    dim_ = initial_state.x.rows();
+    x_diff_memory_ = memory_matrix_t::Zero(dim_, m);
+    grad_diff_memory_ = memory_matrix_t::Zero(dim_, m);
     alpha = memory_vector_t::Zero(m);
     memory_idx_ = 0;
     scaling_factor_ = 1;
   }
 
   function_state_t OptimizationStep(const function_t &function,
-                                     const function_state_t &current,
-                                     const state_t &state) override {
+                                    const function_state_t &current,
+                                    const state_t &state) override {
     vector_t search_direction = current.gradient;
 
     constexpr scalar_t absolute_eps = 0.0001;
@@ -121,6 +125,7 @@ class Lbfgs : public Solver<function_t, 1> {
   }
 
  private:
+  int dim_;
   memory_matrix_t x_diff_memory_;
   memory_matrix_t grad_diff_memory_;
   size_t memory_idx_;

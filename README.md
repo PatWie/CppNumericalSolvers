@@ -15,12 +15,13 @@ Have you ever looked for a C++ function *fminsearch*, which is easy to use witho
 Want a full example?
 
 ```cpp
-    using Problem = Function<double, /*Order*/ 1, /*InputDim*/ 2>;
-    class Rosenbrock : public Problem {
+    using FunctionXd = cppoptlib::function::Function<double>;
+
+    class Rosenbrock : public FunctionXd {
       public:
 
-        using vector_t = typename Problem::vector_t;
-        using scalar_t = typename Problem::scalar_t;
+        using vector_t = Eigen::VectorXd;
+        using scalar_t = double;
 
         scalar_t operator()(const vector_t &x) {
             const scalar_t t1 = (1 - x[0]);
@@ -29,12 +30,10 @@ Want a full example?
         }
     };
     int main(int argc, char const *argv[]) {
+        using Solver = cppoptlib::solver::Bfgs<Rosenbrock>;
 
-        using Function = Rosenbrock;
-        using Solver = cppoptlib::solver::Bfgs<Function>;
-
-        Function f;
-        Function::vector_t x(2);
+        Rosenbrock f;
+        Rosenbrock::vector_t x(2);
         x << -1, 2;
 
         // Evaluate

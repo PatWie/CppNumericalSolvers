@@ -10,17 +10,21 @@ namespace cppoptlib {
 
 namespace solver {
 template <typename function_t>
-class GradientDescent : public Solver<function_t, 1> {
- public:
-  using Superclass = Solver<function_t, 1>;
-  using typename Superclass::state_t;
-  using typename Superclass::scalar_t;
-  using typename Superclass::vector_t;
-  using typename Superclass::function_state_t;
+class GradientDescent : public Solver<function_t> {
+ private:
+  using Superclass = Solver<function_t>;
+  using state_t = typename Superclass::state_t;
 
+  using scalar_t = typename function_t::scalar_t;
+  using hessian_t = typename function_t::hessian_t;
+  using matrix_t = typename function_t::matrix_t;
+  using vector_t = typename function_t::vector_t;
+  using function_state_t = typename function_t::state_t;
+
+ public:
   function_state_t OptimizationStep(const function_t &function,
-                                     const function_state_t &current,
-                                     const state_t &state) override {
+                                    const function_state_t &current,
+                                    const state_t & /*state*/) override {
     function_state_t next = current;
 
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(

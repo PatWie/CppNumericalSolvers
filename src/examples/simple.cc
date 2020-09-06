@@ -10,17 +10,12 @@
 #include "include/cppoptlib/solver/lbfgsb.h"
 #include "include/cppoptlib/solver/newton_descent.h"
 
-constexpr int Order = 1;
-constexpr int Dim = 2;
+using FunctionXd = cppoptlib::function::Function<double>;
 
-template <typename T>
-using SecondOrderProblem = cppoptlib::function::Function<T, Order, Dim>;
-
-template <typename scalar_t>
-class Simple : public SecondOrderProblem<scalar_t> {
+class Function : public FunctionXd {
  public:
-  using vector_t = typename SecondOrderProblem<scalar_t>::vector_t;
-  using hessian_t = typename SecondOrderProblem<scalar_t>::hessian_t;
+  using FunctionXd::vector_t;
+  using FunctionXd::hessian_t;
 
   scalar_t operator()(const vector_t &x) const override {
     return 5 * x[0] * x[0] + 100 * x[1] * x[1] + 5;
@@ -40,7 +35,6 @@ class Simple : public SecondOrderProblem<scalar_t> {
 };
 
 int main(int argc, char const *argv[]) {
-  using Function = Simple<double>;
   // using Solver = cppoptlib::solver::NewtonDescent<Function>;
   // using Solver = cppoptlib::solver::GradientDescent<Function>;
   // using Solver = cppoptlib::solver::ConjugatedGradientDescent<Function>;
@@ -53,13 +47,14 @@ int main(int argc, char const *argv[]) {
   x << -1, 2;
 
   auto state = f.Eval(x);
+  std::cout << "this" << std::endl;
 
   std::cout << f(x) << std::endl;
   std::cout << state.gradient << std::endl;
   std::cout << state.hessian << std::endl;
 
-  std::cout << cppoptlib::utils::IsGradientCorrect(f, x) << std::endl;
-  std::cout << cppoptlib::utils::IsHessianCorrect(f, x) << std::endl;
+  // std::cout << cppoptlib::utils::IsGradientCorrect(f, x) << std::endl;
+  // std::cout << cppoptlib::utils::IsHessianCorrect(f, x) << std::endl;
 
   Solver solver;
 
