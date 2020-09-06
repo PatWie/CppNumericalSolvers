@@ -43,13 +43,11 @@ class Bfgs : public Solver<function_t> {
       search_direction = -current.gradient;
     }
 
-    function_state_t next = current;
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
-        next.x, search_direction, function);
+        current.x, search_direction, function);
 
-    next.x = next.x + rate * search_direction;
-    next.value = function(next.x);
-    function.Gradient(next.x, &next.gradient);
+    const function_state_t next =
+        function.Eval(current.x + rate * search_direction, 1);
 
     // Update inverse Hessian estimate.
     const vector_t s = rate * search_direction;
@@ -61,6 +59,7 @@ class Bfgs : public Solver<function_t> {
         rho * (s * (y.transpose() * inverse_hessian_) +
                (inverse_hessian_ * y) * s.transpose()) +
         rho * (rho * y.dot(inverse_hessian_ * y) + 1.0) * (s * s.transpose());
+
     return next;
   }
 

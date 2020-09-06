@@ -69,11 +69,12 @@ class Lbfgsb : public Solver<function_t> {
         current.x, subspace_min - current.x, function, alpha_init);
 
     // update current guess and function information
-    vector_t x_next = current.x - rate * (current.x - subspace_min);
+    const vector_t x_next = current.x - rate * (current.x - subspace_min);
     // if current solution is out of bound, we clip it
-    x_next = x_next.cwiseMin(upper_bound).cwiseMax(lower_bound);
+    const vector_t clipped_x_next =
+        x_next.cwiseMin(upper_bound).cwiseMax(lower_bound);
 
-    function_state_t next = function.Eval(x_next, 1);
+    const function_state_t next = function.Eval(clipped_x_next, 1);
 
     // prepare for next iteration
     const vector_t new_y = next.gradient - current.gradient;

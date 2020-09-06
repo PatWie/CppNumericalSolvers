@@ -23,31 +23,31 @@ enum class Status {
                              // reached.
 };
 
-inline std::ostream &operator<<(std::ostream &os, const Status &s) {
-  switch (s) {
+inline std::ostream &operator<<(std::ostream &stream, const Status &status) {
+  switch (status) {
     case Status::NotStarted:
-      os << "Solver not started.";
+      stream << "Solver not started.";
       break;
     case Status::Continue:
-      os << "Convergence criteria not reached.";
+      stream << "Convergence criteria not reached.";
       break;
     case Status::IterationLimit:
-      os << "Iteration limit reached.";
+      stream << "Iteration limit reached.";
       break;
     case Status::XDeltaViolation:
-      os << "Change in parameter vector too small.";
+      stream << "Change in parameter vector too small.";
       break;
     case Status::FDeltaViolation:
-      os << "Change in cost function value too small.";
+      stream << "Change in cost function value too small.";
       break;
     case Status::GradientNormViolation:
-      os << "Gradient vector norm too small.";
+      stream << "Gradient vector norm too small.";
       break;
     case Status::HessianConditionViolation:
-      os << "Condition of Hessian/Covariance matrix too large.";
+      stream << "Condition of Hessian/Covariance matrix too large.";
       break;
   }
-  return os;
+  return stream;
 }
 
 // The state of the solver.

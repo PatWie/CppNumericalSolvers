@@ -19,7 +19,9 @@ struct State {
   vector_t gradient;   // The gradient in x.
   matrix_t hessian;    // The Hessian in x;
 
+  // TODO(patwie): There is probably a better way.
   State() : dim(-1), order(-1) {}
+
   State(const int dim, const int order)
       : dim(dim),
         order(order),

@@ -96,10 +96,8 @@ class Lbfgs : public Solver<function_t> {
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
         current.x, -search_direction, function, alpha_init);
 
-    function_state_t next = current;
-    next.x = next.x - rate * search_direction;
-    next.value = function(next.x);
-    function.Gradient(next.x, &next.gradient);
+    const function_state_t next =
+        function.Eval(current.x - rate * search_direction, 1);
 
     const vector_t x_diff = next.x - current.x;
     const vector_t grad_diff = next.gradient - current.gradient;
