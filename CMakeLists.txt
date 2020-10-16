@@ -48,8 +48,7 @@ if(HAVE_WTHREAD_SAFETY)
 endif()
 
 # These flags are used to optimize the binary size.
-# add_cxx_compiler_flag(-fno-exceptions)
-add_cxx_compiler_flag(--fno-rtti)
+# add_cxx_compiler_flag(-fno-exceptions) add_cxx_compiler_flag(--fno-rtti)
 
 # Customized flags
 add_cxx_compiler_flag(-DFMT_HEADER_ONLY)
@@ -57,7 +56,7 @@ add_cxx_compiler_flag(-DCEREAL_RAPIDJSON_HAS_CXX11_RVALUE_REFS)
 
 # Build using static libraries to reduce dependency.
 add_cxx_compiler_flag(-flto)
-add_cxx_compiler_flag(-static)
+# add_cxx_compiler_flag(-static)
 
 # Build with ASAN by default add_cxx_compiler_flag(-fsanitize=address)
 
@@ -76,7 +75,7 @@ find_library(LIB_FMT libfmt.a "${EXTERNAL_DIR}/lib" NO_DEFAULT_PATH)
 
 # Add sub-directories
 add_subdirectory(examples)
-# add_subdirectory(unittets) add_subdirectory(benchmarks)
+add_subdirectory(unittests)
 
 # Formating and linting all related files
 file(GLOB_RECURSE SRCS_AND_HDRS *.cpp *.h)
@@ -93,7 +92,8 @@ add_custom_command(
   COMMENT "Format C++ files with clang-format."
   VERBATIM)
 
-file(GLOB CMAKE_FILES CMakeLists.txt)
+file(GLOB CMAKE_FILES CMakeLists.txt examples/CMakeLists.txt
+     unittests/CMakeLists.txt)
 find_program(CMAKE_FORMAT NAMES cmake-format)
 if(${CMAKE_FORMAT} STREQUAL "CMAKE_FORMAT-NOTFOUND")
   add_custom_command(
@@ -141,7 +141,7 @@ else()
 endif()
 
 add_custom_target(
-  fmt
+  format
   DEPENDS .fmt_bash_stamp .fmt_cpp_stamp .fmt_cmake_stamp
   COMMENT "Format Bash, C++, CMake, and Python files.")
 

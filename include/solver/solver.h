@@ -17,7 +17,7 @@ enum class Status {
   Continue = 0,     // Optimization should continue.
   IterationLimit,   // Maximum of allowed iterations has been reached.
   XDeltaViolation,  // Minimum change in parameter vector has been reached.
-  FDeltaViolation,  // Minimum chnage in cost function has been reached.
+  FDeltaViolation,  // Minimum change in cost function has been reached.
   GradientNormViolation,  // Minimum norm in gradient vector has been reached.
   HessianConditionViolation  // Maximum condition number of hessian_t has been
                              // reached.
@@ -168,13 +168,13 @@ template <typename function_t>
 class Solver {
  public:
   using state_t = State<typename function_t::scalar_t>;
-
- private:
-  static const int Dim = function_t::Dim;
   using scalar_t = typename function_t::scalar_t;
   using vector_t = typename function_t::vector_t;
   using matrix_t = typename function_t::matrix_t;
   using hessian_t = typename function_t::hessian_t;
+
+ private:
+  static const int Dim = function_t::Dim;
 
   using function_state_t = typename function_t::state_t;
   using callback_t =

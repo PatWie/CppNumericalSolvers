@@ -8,6 +8,7 @@
 #include <ostream>
 #include <vector>
 
+#include "Eigen/Core"
 #include "fmt/core.h"
 #include "function.h"
 #include "solver/bfgs.h"
@@ -34,30 +35,27 @@ struct Rosenbrock : public FunctionXd {
 };
 
 template <typename Solver>
-void solve(const std::vector<double>& values) {
+auto solve(const std::vector<double>& values) {
   Rosenbrock f;
   Rosenbrock::vector_t x(2);
   x << values[0], values[1];
 
   auto state = f.Eval(x);
 
-  fmt::print("f(x): \n", f(x));
+  fmt::print("f(x): {}\n", f(x));
+  fmt::print("gradient:");
   std::cout << state.gradient << "\n";
+  fmt::print("hessian:");
   std::cout << state.hessian << "\n";
 
-  std::cout << cppoptlib::utils::IsGradientCorrect(f, x) << "\n";
-  std::cout << cppoptlib::utils::IsHessianCorrect(f, x) << "\n";
+  fmt::print("cppoptlib::utils::IsGradientCorrect(f, x): {:b}\n",
+             cppoptlib::utils::IsGradientCorrect(f, x));
+  fmt::print("cppoptlib::utils::IsHessianCorrect(f, x): {}",
+             cppoptlib::utils::IsHessianCorrect(f, x));
 
   Solver solver;
 
-  auto [solution, solver_state] = solver.Minimize(f, x);
-  std::cout << "argmin " << solution.x.transpose() << "\n";
-  std::cout << "f in argmin " << solution.value << "\n";
-  std::cout << "iterations " << solver_state.num_iterations << "\n";
-  std::cout << "status " << solver_state.status << "\n";
-
-  std::cout << "Solution: " << solution.x.transpose() << "\n";
-  std::cout << "f(x): " << f(solution.x) << "\n";
+  return solver.Minimize(f, x);
 }
 
 int main(int argc, char* argv[]) {
@@ -79,41 +77,47 @@ int main(int argc, char* argv[]) {
     case NEWTON_DESCENT: {
       std::cout << "NewtonDescent\n";
       using Solver = cppoptlib::solver::NewtonDescent<Rosenbrock>;
-      solve<Solver>(x);
+      const auto& [sol, state] = solve<Solver>(x);
+      std::cout << "Solution: " << sol.x;
       break;
     }
     case GRADIENT_DESCENT: {
       std::cout << "GradientDescent\n";
       using Solver = cppoptlib::solver::GradientDescent<Rosenbrock>;
-      solve<Solver>(x);
+      const auto& [sol, state] = solve<Solver>(x);
+      std::cout << "Solution: " << sol.x;
       break;
     }
 
     case CONJUGATE_GRADIENT_DESCENT: {
       std::cout << "ConjugatedGradientDescent\n";
       using Solver = cppoptlib::solver::ConjugatedGradientDescent<Rosenbrock>;
-      solve<Solver>(x);
+      const auto& [sol, state] = solve<Solver>(x);
+      std::cout << "Solution: " << sol.x.transpose();
       break;
     }
 
     case BFGS: {
       std::cout << "Bfgs\n";
       using Solver = cppoptlib::solver::Bfgs<Rosenbrock>;
-      solve<Solver>(x);
+      const auto& [sol, state] = solve<Solver>(x);
+      std::cout << "Solution: " << sol.x.transpose();
       break;
     }
 
     case L_BFGS: {
       std::cout << "Lbfgs\n";
       using Solver = cppoptlib::solver::Lbfgs<Rosenbrock>;
-      solve<Solver>(x);
+      const auto& [sol, state] = solve<Solver>(x);
+      std::cout << "Solution: " << sol.x.transpose();
       break;
     }
 
     case L_BFGS_B: {
       std::cout << "Lbfgsb\n";
       using Solver = cppoptlib::solver::Lbfgsb<Rosenbrock>;
-      solve<Solver>(x);
+      const auto& [sol, state] = solve<Solver>(x);
+      std::cout << "Solution: " << sol.x.transpose();
       break;
     }
 
