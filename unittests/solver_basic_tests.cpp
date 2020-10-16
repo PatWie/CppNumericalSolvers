@@ -64,8 +64,83 @@ TEST_CASE("NewtonDescent") {
     CHECK_EQ(cppoptlib::solver::Status::GradientNormViolation, state.status);
     Eigen::VectorXd results(2);
     results << 1, 1;
-    constexpr double expected_relerr = 1e-8;
+    constexpr double epsilon = 1e-6;
     auto relerr = (results - sol.x).norm() / results.norm();
-    CHECK(relerr < expected_relerr);
+    CHECK(relerr == doctest::Approx(0.0).epsilon(epsilon));
+  }
+}
+
+TEST_CASE("GradientDescent") {
+  using Solver = cppoptlib::solver::GradientDescent<Rosenbrock>;
+
+  SUBCASE("Simple usage") {
+    const std::vector<double> x{100, -4};
+    const auto& [sol, state] = solve<Solver>(x);
+    CHECK_EQ(cppoptlib::solver::Status::GradientNormViolation, state.status);
+    Eigen::VectorXd results(2);
+    results << 1, 1;
+    constexpr double epsilon = 1e-3;
+    auto relerr = (results - sol.x).norm() / results.norm();
+    CHECK(relerr == doctest::Approx(0.0).epsilon(epsilon));
+  }
+}
+
+TEST_CASE("ConjugateGradientDescent") {
+  using Solver = cppoptlib::solver::ConjugatedGradientDescent<Rosenbrock>;
+
+  SUBCASE("Simple usage") {
+    const std::vector<double> x{100, -4};
+    const auto& [sol, state] = solve<Solver>(x);
+    CHECK_EQ(cppoptlib::solver::Status::GradientNormViolation, state.status);
+    Eigen::VectorXd results(2);
+    results << 1, 1;
+    constexpr double epsilon = 1e-4;
+    auto relerr = (results - sol.x).norm() / results.norm();
+    CHECK(relerr == doctest::Approx(0.0).epsilon(epsilon));
+  }
+}
+
+TEST_CASE("BFGS") {
+  using Solver = cppoptlib::solver::Bfgs<Rosenbrock>;
+
+  SUBCASE("Simple usage") {
+    const std::vector<double> x{100, -4};
+    const auto& [sol, state] = solve<Solver>(x);
+    CHECK_EQ(cppoptlib::solver::Status::GradientNormViolation, state.status);
+    Eigen::VectorXd results(2);
+    results << 1, 1;
+    constexpr double epsilon = 1e-4;
+    auto relerr = (results - sol.x).norm() / results.norm();
+    CHECK(relerr == doctest::Approx(0.0).epsilon(epsilon));
+  }
+}
+
+TEST_CASE("L-BFGS") {
+  using Solver = cppoptlib::solver::Lbfgs<Rosenbrock>;
+
+  SUBCASE("Simple usage") {
+    const std::vector<double> x{100, -4};
+    const auto& [sol, state] = solve<Solver>(x);
+    CHECK_EQ(cppoptlib::solver::Status::GradientNormViolation, state.status);
+    Eigen::VectorXd results(2);
+    results << 1, 1;
+    constexpr double epsilon = 1e-4;
+    auto relerr = (results - sol.x).norm() / results.norm();
+    CHECK(relerr == doctest::Approx(0.0).epsilon(epsilon));
+  }
+}
+
+TEST_CASE("L-BFGS-B") {
+  using Solver = cppoptlib::solver::Lbfgs<Rosenbrock>;
+
+  SUBCASE("Simple usage") {
+    const std::vector<double> x{100, -4};
+    const auto& [sol, state] = solve<Solver>(x);
+    CHECK_EQ(cppoptlib::solver::Status::GradientNormViolation, state.status);
+    Eigen::VectorXd results(2);
+    results << 1, 1;
+    constexpr double epsilon = 1e-4;
+    auto relerr = (results - sol.x).norm() / results.norm();
+    CHECK(relerr == doctest::Approx(0.0).epsilon(epsilon));
   }
 }
