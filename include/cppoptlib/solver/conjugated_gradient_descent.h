@@ -22,13 +22,13 @@ class ConjugatedGradientDescent : public Solver<function_t> {
   using function_state_t = typename function_t::state_t;
 
  public:
-  void InitializeSolver(const function_state_t &initial_state) override {
+  void InitializeSolver(const function_state_t& initial_state) override {
     previous_ = initial_state;
   }
 
-  function_state_t OptimizationStep(const function_t &function,
-                                    const function_state_t &current,
-                                    const state_t &state) override {
+  function_state_t OptimizationStep(const function_t& function,
+                                    const function_state_t& current,
+                                    const state_t& state) override {
     if (state.num_iterations == 0) {
       search_direction_ = -current.gradient;
     } else {

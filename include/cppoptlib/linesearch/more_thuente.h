@@ -26,8 +26,8 @@ class MoreThuente {
    * @return step-width
    */
 
-  static scalar_t Search(const vector_t &x, const vector_t &search_direction,
-                         const Function &function,
+  static scalar_t Search(const vector_t& x, const vector_t& search_direction,
+                         const Function& function,
                          const scalar_t alpha_init = 1.0) {
     // Assumed step width.
     scalar_t ak = alpha_init;
@@ -44,8 +44,8 @@ class MoreThuente {
     return ak;
   }
 
-  static int cvsrch(const Function &function, vector_t &x, scalar_t f,
-                    vector_t &g, scalar_t &stp, vector_t &s) {
+  static int cvsrch(const Function& function, vector_t& x, scalar_t f,
+                    vector_t& g, scalar_t& stp, vector_t& s) {
     // we rewrite this from MIN-LAPACK and some MATLAB code
     int info = 0;
     int infoc = 1;
@@ -164,10 +164,10 @@ class MoreThuente {
     return 0;
   }
 
-  static int cstep(scalar_t &stx, scalar_t &fx, scalar_t &dx, scalar_t &sty,
-                   scalar_t &fy, scalar_t &dy, scalar_t &stp, scalar_t &fp,
-                   scalar_t &dp, bool &brackt, scalar_t &stpmin,
-                   scalar_t &stpmax, int &info) {
+  static int cstep(scalar_t& stx, scalar_t& fx, scalar_t& dx, scalar_t& sty,
+                   scalar_t& fy, scalar_t& dy, scalar_t& stp, scalar_t& fp,
+                   scalar_t& dp, bool& brackt, scalar_t& stpmin,
+                   scalar_t& stpmax, int& info) {
     info = 0;
     bool bound = false;
 

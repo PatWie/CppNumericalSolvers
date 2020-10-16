@@ -6,24 +6,24 @@ CMAKE_OPTIONS=${*:2}
 
 osType=$(uname)
 case "$osType" in
-    "Darwin")
-        {
-            NCPUS=$(sysctl -n hw.ncpu)
-            BUILD_OPTS=-j$((NCPUS + 1))
-        }
-        ;;
-    "Linux")
-        {
-            NCPUS=$(grep -c ^processor /proc/cpuinfo)
-            BUILD_OPTS=-j$((NCPUS + 1))
-        }
-        ;;
-    *)
-        {
-            echo "Unsupported OS, exiting"
-            exit
-        }
-        ;;
+  "Darwin")
+    {
+      NCPUS=$(sysctl -n hw.ncpu)
+      BUILD_OPTS=-j$((NCPUS + 1))
+    }
+    ;;
+  "Linux")
+    {
+      NCPUS=$(grep -c ^processor /proc/cpuinfo)
+      BUILD_OPTS=-j$((NCPUS + 1))
+    }
+    ;;
+  *)
+    {
+      echo "Unsupported OS, exiting"
+      exit
+    }
+    ;;
 esac
 
 ROOT_DIR="$PWD"

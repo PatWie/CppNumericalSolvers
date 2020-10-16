@@ -29,7 +29,7 @@ struct State {
         gradient(vector_t::Zero(dim)),
         hessian(matrix_t::Zero(dim, dim)) {}
 
-  State operator=(const State<scalar_t, vector_t, matrix_t> &rhs) {
+  State operator=(const State<scalar_t, vector_t, matrix_t>& rhs) {
     assert(rhs.order > -1);
     dim = rhs.dim;
     order = rhs.order;
@@ -64,14 +64,14 @@ class Function {
   virtual ~Function() = default;
 
   // Computes the value of a function.
-  virtual scalar_t operator()(const vector_t &x) const = 0;
+  virtual scalar_t operator()(const vector_t& x) const = 0;
 
   // Computes the gradient of a function.
-  virtual void Gradient(const vector_t &x, vector_t *grad) const {
+  virtual void Gradient(const vector_t& x, vector_t* grad) const {
     utils::ComputeFiniteGradient(*this, x, grad);
   }
   // Computes the Hessian of a function.
-  virtual void Hessian(const vector_t &x, hessian_t *hessian) const {
+  virtual void Hessian(const vector_t& x, hessian_t* hessian) const {
     utils::ComputeFiniteHessian(*this, x, hessian);
   }
 
@@ -80,7 +80,7 @@ class Function {
   // For improved performance, this function will return the state directly.
   // Override this method if you can compute the objective value, gradient and
   // Hessian simultaneously.
-  virtual State<scalar_t, vector_t, hessian_t> Eval(const vector_t &x,
+  virtual State<scalar_t, vector_t, hessian_t> Eval(const vector_t& x,
                                                     const int order = 2) const {
     State<scalar_t, vector_t, hessian_t> state(x.rows(), order);
     state.value = this->operator()(x);

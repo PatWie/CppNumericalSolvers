@@ -23,7 +23,7 @@ enum class Status {
                              // reached.
 };
 
-inline std::ostream &operator<<(std::ostream &stream, const Status &status) {
+inline std::ostream& operator<<(std::ostream& stream, const Status& status) {
   switch (status) {
     case Status::NotStarted:
       stream << "Solver not started.";
@@ -71,7 +71,7 @@ struct State {
                   previous_function_state,
               const function::State<scalar_t, vector_t, hessian_t>
                   current_function_state,
-              const State &stop_state) {
+              const State& stop_state) {
     num_iterations++;
     f_delta =
         fabs(current_function_state.value - previous_function_state.value);
@@ -138,8 +138,8 @@ State<T> DefaultStoppingSolverState() {
 template <class scalar_t, class vector_t, class hessian_t>
 auto GetDefaultStepCallback() {
   return
-      [](const function::State<scalar_t, vector_t, hessian_t> &function_state,
-         const State<scalar_t> &solver_state) {
+      [](const function::State<scalar_t, vector_t, hessian_t>& function_state,
+         const State<scalar_t>& solver_state) {
         std::cout << "Function-State"
                   << "\t";
         std::cout << "  value    " << function_state.value << "\t";
@@ -159,8 +159,8 @@ auto GetDefaultStepCallback() {
 
 template <class scalar_t, class vector_t, class hessian_t>
 auto GetEmptyStepCallback() {
-  return [](const function::State<scalar_t, vector_t, hessian_t> &,
-            const State<scalar_t> &) {};
+  return [](const function::State<scalar_t, vector_t, hessian_t>&,
+            const State<scalar_t>&) {};
 }
 
 // Specifies a solver implementation (of a given order) for a given function
@@ -178,10 +178,10 @@ class Solver {
 
   using function_state_t = typename function_t::state_t;
   using callback_t =
-      std::function<void(const function_state_t &, const state_t &)>;
+      std::function<void(const function_state_t&, const state_t&)>;
 
  public:
-  explicit Solver(const State<scalar_t> &stopping_state =
+  explicit Solver(const State<scalar_t>& stopping_state =
                       DefaultStoppingSolverState<scalar_t>())
       : stopping_state_(stopping_state),
         step_callback_(
@@ -196,16 +196,16 @@ class Solver {
     step_callback_ = step_callback;
   }
 
-  virtual void InitializeSolver(const function_state_t & /*initial_state*/) {}
+  virtual void InitializeSolver(const function_state_t& /*initial_state*/) {}
 
   // Minimizes a given function and returns the function state
   virtual std::tuple<function_state_t, state_t> Minimize(
-      const function_t &function, const vector_t &x0) {
+      const function_t& function, const vector_t& x0) {
     return this->Minimize(function, function.Eval(x0, this->Order()));
   }
 
   virtual std::tuple<function_state_t, state_t> Minimize(
-      const function_t &function, const function_state_t &initial_state) {
+      const function_t& function, const function_state_t& initial_state) {
     // Solver state during the optimization.
     state_t solver_state;
     // Function state during the optimization.
@@ -233,9 +233,9 @@ class Solver {
     return {function_state, solver_state};
   }
 
-  virtual function_state_t OptimizationStep(const function_t &function,
-                                            const function_state_t &current,
-                                            const state_t &state) = 0;
+  virtual function_state_t OptimizationStep(const function_t& function,
+                                            const function_state_t& current,
+                                            const state_t& state) = 0;
 
  protected:
   state_t stopping_state_;    // Specifies when to stop.

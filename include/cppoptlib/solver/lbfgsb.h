@@ -32,7 +32,7 @@ class Lbfgsb : public Solver<function_t> {
   using dyn_vector_t = Eigen::Matrix<scalar_t, Eigen::Dynamic, 1>;
 
  public:
-  void InitializeSolver(const function_state_t &initial_state) override {
+  void InitializeSolver(const function_state_t& initial_state) override {
     dim_ = initial_state.x.rows();
 
     theta_ = 1.0;
@@ -44,9 +44,9 @@ class Lbfgsb : public Solver<function_t> {
     s_history_ = matrix_t::Zero(dim_, 0);
   }
 
-  function_state_t OptimizationStep(const function_t &function,
-                                    const function_state_t &current,
-                                    const state_t & /*state*/) override {
+  function_state_t OptimizationStep(const function_t& function,
+                                    const function_state_t& current,
+                                    const state_t& /*state*/) override {
     const vector_t upper_bound =
         current.x.array() * 0 + std::numeric_limits<scalar_t>::max();
     const vector_t lower_bound =
@@ -115,7 +115,7 @@ class Lbfgsb : public Solver<function_t> {
    * @brief sort pairs (k,v) according v ascending
    */
   std::vector<int> SortIndexes(
-      const std::vector<std::pair<int, scalar_t> > &v) {
+      const std::vector<std::pair<int, scalar_t> >& v) {
     std::vector<int> idx(v.size());
     for (size_t i = 0; i != idx.size(); ++i) idx[i] = v[i].first;
     sort(idx.begin(), idx.end(),
@@ -123,10 +123,10 @@ class Lbfgsb : public Solver<function_t> {
     return idx;
   }
 
-  void GetGeneralizedCauchyPoint(const vector_t &upper_bound,
-                                 const vector_t &lower_bound,
-                                 const function_state_t &current,
-                                 vector_t *x_cauchy, dyn_vector_t *c) {
+  void GetGeneralizedCauchyPoint(const vector_t& upper_bound,
+                                 const vector_t& lower_bound,
+                                 const function_state_t& current,
+                                 vector_t* x_cauchy, dyn_vector_t* c) {
     constexpr scalar_t max_value = std::numeric_limits<scalar_t>::max();
     constexpr scalar_t epsilon = std::numeric_limits<scalar_t>::epsilon();
 
@@ -229,9 +229,9 @@ class Lbfgsb : public Solver<function_t> {
   /**
    * @brief find alpha* = max {a : a <= 1 and  l_i-xc_i <= a*d_i <= u_i-xc_i}
    */
-  scalar_t FindAlpha(const vector_t &upper_bound, const vector_t &lower_bound,
-                     const vector_t &x_cp, const dyn_vector_t &du,
-                     const std::vector<int> &free_variables) {
+  scalar_t FindAlpha(const vector_t& upper_bound, const vector_t& lower_bound,
+                     const vector_t& x_cp, const dyn_vector_t& du,
+                     const std::vector<int>& free_variables) {
     scalar_t alphastar = 1;
     const unsigned int n = free_variables.size();
     assert(du.rows() == n);
@@ -252,11 +252,11 @@ class Lbfgsb : public Solver<function_t> {
     return alphastar;
   }
 
-  vector_t SubspaceMinimization(const vector_t &upper_bound,
-                                const vector_t &lower_bound,
-                                const function_state_t &current,
-                                const vector_t &x_cauchy,
-                                const dyn_vector_t &c) {
+  vector_t SubspaceMinimization(const vector_t& upper_bound,
+                                const vector_t& lower_bound,
+                                const function_state_t& current,
+                                const vector_t& x_cauchy,
+                                const dyn_vector_t& c) {
     const scalar_t theta_inverse = 1 / theta_;
 
     std::vector<int> free_variables_index;
