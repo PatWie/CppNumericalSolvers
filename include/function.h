@@ -9,19 +9,17 @@ namespace cppoptlib {
 namespace function {
 
 // Specifies a current function state.
-template <class scalar_t, class vector_t, class matrix_t>
+template <typename scalar_t, typename vector_t, typename matrix_t>
 struct State {
-  int dim;
-  int order;
+  int dim = -1;
+  int order = -1;
 
   scalar_t value = 0;  // The objective value.
   vector_t x;          // The current input value in x.
   vector_t gradient;   // The gradient in x.
   matrix_t hessian;    // The Hessian in x;
 
-  // TODO(patwie): There is probably a better way.
-  State() : dim(-1), order(-1) {}
-
+  State() = default;
   State(const int dim, const int order)
       : dim(dim),
         order(order),
@@ -47,10 +45,9 @@ struct State {
 
 template <class TScalar, int TDim = Eigen::Dynamic>
 class Function {
- private:
-  static const int Dim = TDim;
-
  public:
+  static constexpr int Dim = TDim;
+
   using scalar_t = TScalar;
   using vector_t = Eigen::Matrix<TScalar, Dim, 1>;
   using hessian_t = Eigen::Matrix<TScalar, Dim, Dim>;

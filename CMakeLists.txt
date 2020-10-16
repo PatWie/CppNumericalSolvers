@@ -9,7 +9,7 @@ endif()
 set(POSITION_INDEPENDENT_CODE ON)
 
 set(CMAKE_INSTALL_PREFIX "$ENV{HOME}")
-set(ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../")
+set(ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(EXTERNAL_DIR "${ROOT_DIR}/3p")
 set(SRC_DIR "${ROOT_DIR}/src")
 
@@ -67,7 +67,16 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Include folders
 include_directories("${EXTERNAL_DIR}/include")
 include_directories("${EXTERNAL_DIR}/include/eigen3")
-include_directories("${SRC_DIR}")
+include_directories("include")
+
+message("${EXTERNAL_DIR}/include/eigen3")
+
+# Add libraries
+find_library(LIB_FMT libfmt.a "${EXTERNAL_DIR}/lib" NO_DEFAULT_PATH)
+
+# Add sub-directories
+add_subdirectory(examples)
+# add_subdirectory(unittets) add_subdirectory(benchmarks)
 
 # Formating and linting all related files
 file(GLOB_RECURSE SRCS_AND_HDRS *.cpp *.h)
@@ -103,7 +112,7 @@ else()
     VERBATIM)
 endif()
 
-file(GLOB SH_SRCS ../3p/*.sh)
+file(GLOB SH_SRCS 3p/*.sh)
 find_program(SHFMT NAMES shfmt)
 if(${SHFMT} STREQUAL "SHFMT-NOTFOUND")
   add_custom_command(
