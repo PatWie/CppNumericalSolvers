@@ -9,19 +9,17 @@ namespace cppoptlib {
 namespace function {
 
 // Specifies a current function state.
-template <class scalar_t, class vector_t, class matrix_t>
+template <typename scalar_t, typename vector_t, typename matrix_t>
 struct State {
-  int dim;
-  int order;
+  int dim = -1;
+  int order = -1;
 
   scalar_t value = 0;  // The objective value.
   vector_t x;          // The current input value in x.
   vector_t gradient;   // The gradient in x.
   matrix_t hessian;    // The Hessian in x;
 
-  // TODO(patwie): There is probably a better way.
-  State() : dim(-1), order(-1) {}
-
+  State() = default;
   State(const int dim, const int order)
       : dim(dim),
         order(order),
@@ -29,7 +27,7 @@ struct State {
         gradient(vector_t::Zero(dim)),
         hessian(matrix_t::Zero(dim, dim)) {}
 
-  State operator=(const State<scalar_t, vector_t, matrix_t> &rhs) {
+  State operator=(const State<scalar_t, vector_t, matrix_t>& rhs) {
     assert(rhs.order > -1);
     dim = rhs.dim;
     order = rhs.order;
@@ -47,10 +45,9 @@ struct State {
 
 template <class TScalar, int TDim = Eigen::Dynamic>
 class Function {
- private:
-  static const int Dim = TDim;
-
  public:
+  static constexpr int Dim = TDim;
+
   using scalar_t = TScalar;
   using vector_t = Eigen::Matrix<TScalar, Dim, 1>;
   using hessian_t = Eigen::Matrix<TScalar, Dim, Dim>;
@@ -64,14 +61,14 @@ class Function {
   virtual ~Function() = default;
 
   // Computes the value of a function.
-  virtual scalar_t operator()(const vector_t &x) const = 0;
+  virtual scalar_t operator()(const vector_t& x) const = 0;
 
   // Computes the gradient of a function.
-  virtual void Gradient(const vector_t &x, vector_t *grad) const {
+  virtual void Gradient(const vector_t& x, vector_t* grad) const {
     utils::ComputeFiniteGradient(*this, x, grad);
   }
   // Computes the Hessian of a function.
-  virtual void Hessian(const vector_t &x, hessian_t *hessian) const {
+  virtual void Hessian(const vector_t& x, hessian_t* hessian) const {
     utils::ComputeFiniteHessian(*this, x, hessian);
   }
 
@@ -80,7 +77,7 @@ class Function {
   // For improved performance, this function will return the state directly.
   // Override this method if you can compute the objective value, gradient and
   // Hessian simultaneously.
-  virtual State<scalar_t, vector_t, hessian_t> Eval(const vector_t &x,
+  virtual State<scalar_t, vector_t, hessian_t> Eval(const vector_t& x,
                                                     const int order = 2) const {
     State<scalar_t, vector_t, hessian_t> state(x.rows(), order);
     state.value = this->operator()(x);

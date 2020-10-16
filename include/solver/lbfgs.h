@@ -13,7 +13,7 @@ namespace solver {
 
 namespace internal {
 template <int m, class T>
-void ShiftLeft(T *matrix) {
+void ShiftLeft(T* matrix) {
   matrix->leftCols(m - 1) = matrix->rightCols(m - 1).eval();
 }
 };  // namespace internal
@@ -34,7 +34,7 @@ class Lbfgs : public Solver<function_t> {
   using memory_vector_t = Eigen::Matrix<scalar_t, 1, m>;
 
  public:
-  void InitializeSolver(const function_state_t &initial_state) override {
+  void InitializeSolver(const function_state_t& initial_state) override {
     dim_ = initial_state.x.rows();
     x_diff_memory_ = memory_matrix_t::Zero(dim_, m);
     grad_diff_memory_ = memory_matrix_t::Zero(dim_, m);
@@ -43,9 +43,9 @@ class Lbfgs : public Solver<function_t> {
     scaling_factor_ = 1;
   }
 
-  function_state_t OptimizationStep(const function_t &function,
-                                    const function_state_t &current,
-                                    const state_t &state) override {
+  function_state_t OptimizationStep(const function_t& function,
+                                    const function_state_t& current,
+                                    const state_t& state) override {
     vector_t search_direction = current.gradient;
 
     constexpr scalar_t absolute_eps = 0.0001;

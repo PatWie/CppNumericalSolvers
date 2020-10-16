@@ -22,9 +22,9 @@ class GradientDescent : public Solver<function_t> {
   using function_state_t = typename function_t::state_t;
 
  public:
-  function_state_t OptimizationStep(const function_t &function,
-                                    const function_state_t &current,
-                                    const state_t & /*state*/) override {
+  function_state_t OptimizationStep(const function_t& function,
+                                    const function_state_t& current,
+                                    const state_t& /*state*/) override {
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
         current.x, -current.gradient, function);
 

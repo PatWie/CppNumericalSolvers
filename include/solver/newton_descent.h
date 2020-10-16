@@ -24,13 +24,13 @@ class NewtonDescent : public Solver<function_t> {
  public:
   int Order() const override { return 2; }
 
-  void InitializeSolver(const function_state_t &initial_state) override {
+  void InitializeSolver(const function_state_t& initial_state) override {
     dim_ = initial_state.x.rows();
   }
 
-  function_state_t OptimizationStep(const function_t &function,
-                                    const function_state_t &current,
-                                    const state_t & /*state*/) override {
+  function_state_t OptimizationStep(const function_t& function,
+                                    const function_state_t& current,
+                                    const state_t& /*state*/) override {
     function_state_t next = current;
 
     constexpr scalar_t safe_guard = 1e-5;

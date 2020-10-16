@@ -22,15 +22,15 @@ class Bfgs : public Solver<function_t> {
   using function_state_t = typename function_t::state_t;
 
  public:
-  void InitializeSolver(const function_state_t &initial_state) override {
+  void InitializeSolver(const function_state_t& initial_state) override {
     dim_ = initial_state.x.rows();
     inverse_hessian_ =
         hessian_t::Identity(initial_state.x.rows(), initial_state.x.rows());
   }
 
-  function_state_t OptimizationStep(const function_t &function,
-                                    const function_state_t &current,
-                                    const state_t & /*state*/) override {
+  function_state_t OptimizationStep(const function_t& function,
+                                    const function_state_t& current,
+                                    const state_t& /*state*/) override {
     vector_t search_direction = -inverse_hessian_ * current.gradient;
 
     // Check "positive definite".

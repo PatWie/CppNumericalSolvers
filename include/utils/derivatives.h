@@ -13,9 +13,9 @@ namespace utils {
 
 // Approximates the gradient of the given function in x0.
 template <class function_t>
-void ComputeFiniteGradient(const function_t &function,
-                           const typename function_t::vector_t &x0,
-                           typename function_t::vector_t *grad,
+void ComputeFiniteGradient(const function_t& function,
+                           const typename function_t::vector_t& x0,
+                           typename function_t::vector_t* grad,
                            const int accuracy = 0) {
   using scalar_t = typename function_t::scalar_t;
   using vector_t = typename function_t::vector_t;
@@ -35,7 +35,7 @@ void ComputeFiniteGradient(const function_t &function,
   static const std::array<scalar_t, 4> dd = {2, 12, 60, 840};
 
   grad->resize(x0.rows());
-  vector_t &x = const_cast<vector_t &>(x0);
+  vector_t& x = const_cast<vector_t&>(x0);
 
   const int innerSteps = 2 * (accuracy + 1);
   const scalar_t ddVal = dd[accuracy] * eps;
@@ -54,9 +54,9 @@ void ComputeFiniteGradient(const function_t &function,
 
 // Approximates the hessian_t of the given function in x0.
 template <class function_t>
-void ComputeFiniteHessian(const function_t &function,
-                          const typename function_t::vector_t &x0,
-                          typename function_t::hessian_t *hessian,
+void ComputeFiniteHessian(const function_t& function,
+                          const typename function_t::vector_t& x0,
+                          typename function_t::hessian_t* hessian,
                           int accuracy = 0) {
   using scalar_t = typename function_t::scalar_t;
   using vector_t = typename function_t::vector_t;
@@ -65,7 +65,7 @@ void ComputeFiniteHessian(const function_t &function,
   constexpr scalar_t eps = std::numeric_limits<scalar_t>::epsilon() * 10e7;
 
   hessian->resize(x0.rows(), x0.rows());
-  vector_t &x = const_cast<vector_t &>(x0);
+  vector_t& x = const_cast<vector_t&>(x0);
 
   if (accuracy == 0) {
     for (index_t i = 0; i < x0.rows(); i++) {
@@ -203,8 +203,8 @@ void ComputeFiniteHessian(const function_t &function,
 }
 
 template <class function_t>
-bool IsGradientCorrect(const function_t &function,
-                       const typename function_t::vector_t &x0,
+bool IsGradientCorrect(const function_t& function,
+                       const typename function_t::vector_t& x0,
                        int accuracy = 3) {
   constexpr float tolerance = 1e-2;
 
@@ -231,8 +231,8 @@ bool IsGradientCorrect(const function_t &function,
 }
 
 template <class function_t>
-bool IsHessianCorrect(const function_t &function,
-                      const typename function_t::vector_t &x0,
+bool IsHessianCorrect(const function_t& function,
+                      const typename function_t::vector_t& x0,
                       int accuracy = 3) {
   constexpr float tolerance = 1e-1;
 
