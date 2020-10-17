@@ -1,0 +1,16 @@
+[submodule "3p/src/eigen"]
+	path = 3p/src/eigen
+	url = https://gitlab.com/libeigen/eigen.git
+	branch = master
+[submodule "3p/src/doctest"]
+	path = 3p/src/doctest
+	url = https://github.com/onqtam/doctest.git
+	branch = master
+[submodule "3p/src/benchmark"]
+	path = 3p/src/benchmark
+	url = https://github.com/google/benchmark.git
+	branch = master
+[submodule "3p/src/fmt"]
+	path = 3p/src/fmt
+	url = https://github.com/fmtlib/fmt.git
+	branch = master
