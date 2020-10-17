@@ -309,8 +309,8 @@ class MoreThuente {
     return 0;
   }
 };
-};  // namespace linesearch
-};  // namespace solver
+}  // namespace linesearch
+}  // namespace solver
 }  // namespace cppoptlib
 
 #endif  // INCLUDE_CPPOPTLIB_LINESEARCH_MORE_THUENTE_H_

@@ -16,7 +16,7 @@ template <int m, class T>
 void ShiftLeft(T* matrix) {
   matrix->leftCols(m - 1) = matrix->rightCols(m - 1).eval();
 }
-};  // namespace internal
+}  // namespace internal
 
 template <typename function_t, int m = 10>
 class Lbfgs : public Solver<function_t> {

@@ -78,9 +78,8 @@ class Armijo<function_t, 2> {
     return alpha;
   }
 };
-
-};  // namespace linesearch
-};  // namespace solver
+}  // namespace linesearch
+}  // namespace solver
 }  // namespace cppoptlib
 
 #endif  // INCLUDE_CPPOPTLIB_LINESEARCH_ARMIJO_H_

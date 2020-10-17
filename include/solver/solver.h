@@ -242,7 +242,7 @@ class Solver {
   callback_t step_callback_;  // A user-defined callback function.
 };
 
-};  // namespace solver
+}  // namespace solver
 }  // namespace cppoptlib
 
 #endif  // INCLUDE_CPPOPTLIB_SOLVER_SOLVER_H_

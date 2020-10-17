@@ -15,8 +15,6 @@
 namespace cppoptlib {
 namespace solver {
 
-namespace internal {};  // namespace internal
-
 template <typename function_t, int m = 5>
 class Lbfgsb : public Solver<function_t> {
  private:

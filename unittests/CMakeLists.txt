@@ -1,6 +1,7 @@
+enable_testing()
 set(CPP_FILES solver_basic_tests)
-
 foreach(src_file ${CPP_FILES})
   add_executable(${src_file} ${src_file}.cpp)
   target_link_libraries(${src_file} PRIVATE ${LIB_FMT})
+  add_test(${src_file} ./${src_file})
 endforeach(src_file)

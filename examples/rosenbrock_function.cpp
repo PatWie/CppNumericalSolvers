@@ -1,8 +1,5 @@
 // Copyright 2020, https://github.com/PatWie/CppNumericalSolvers
 
-#include <_types/_uint32_t.h>
-#include <sys/_types/_int32_t.h>
-
 #include <cstdlib>
 #include <iostream>
 #include <ostream>

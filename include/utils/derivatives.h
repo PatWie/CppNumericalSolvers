@@ -260,7 +260,7 @@ bool IsHessianCorrect(const function_t& function,
   return true;
 }
 
-};  // namespace utils
-};  // namespace cppoptlib
+}  // namespace utils
+}  // namespace cppoptlib
 
 #endif  // INCLUDE_CPPOPTLIB_UTILS_DERIVATIVES_H_
