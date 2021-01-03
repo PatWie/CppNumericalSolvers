@@ -94,7 +94,7 @@ class LbfgsbTest : public testing::Test {};
       cppoptlib::solver::GetEmptyStepCallback<                            \
           typename Function::scalar_t, typename Function::vector_t,       \
           typename Function::hessian_t>());                               \
-  auto[solution, solver_state] = solver.Minimize(f, x);                   \
+  auto [solution, solver_state] = solver.Minimize(f, x);                  \
   if (solver_state.status == cppoptlib::solver::Status::IterationLimit) { \
     std::cout << solver_state.status << std::endl;                        \
   }                                                                       \
@@ -108,12 +108,11 @@ TYPED_TEST_CASE(BfgsTest, DoublePrecision);
 TYPED_TEST_CASE(LbfgsTest, DoublePrecision);
 TYPED_TEST_CASE(LbfgsbTest, DoublePrecision);
 
-#define SOLVER_SETUP(sol, func)                                 \
-  TYPED_TEST(sol##Test, func##Far) {                            \
-    SOLVE_PROBLEM(cppoptlib::solver::sol, func, 15.0, 8.0, 0.0) \
-  }                                                             \
-  TYPED_TEST(sol##Test, func##Near) {                           \
-    SOLVE_PROBLEM(cppoptlib::solver::sol, func, -1.0, 2.0, 0.0) \
+#define SOLVER_SETUP(sol, func)                                               \
+  TYPED_TEST(sol##Test, func##Far){SOLVE_PROBLEM(                             \
+      cppoptlib::solver::sol, func, 15.0, 8.0, 0.0)} TYPED_TEST(sol##Test,    \
+                                                                func##Near) { \
+    SOLVE_PROBLEM(cppoptlib::solver::sol, func, -1.0, 2.0, 0.0)               \
   }
 
 SOLVER_SETUP(GradientDescent, RosenbrockValue)

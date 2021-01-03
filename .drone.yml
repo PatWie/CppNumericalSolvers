@@ -8,6 +8,12 @@ platform:
 
 steps:
 
+- name: code-format
+  pull: never
+  image: patwie/clang-format:latest
+  commands:
+  - python /run-clang-format.py --clang-format-executable /clang-format/clang-format11 -r . --style Google
+
 - name: build
   pull: never
   image: cppnumericalsolver2
@@ -20,9 +26,8 @@ steps:
   commands:
   - /root/bin/bazel run verify
 
-
 ---
 kind: signature
-hmac: f1d4c1c1842c1b8f69c2083023db3044510eed3a52f716c464b7a2e2950a3063
+hmac: 813cba34379e693f9d5d69e896df19d5a57026a07238e5d770044eab7d1e2aae
 
 ...
