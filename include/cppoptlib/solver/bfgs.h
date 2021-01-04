@@ -31,11 +31,9 @@ class Bfgs : public Solver<function_t> {
                                     const state_t & /*state*/) override {
     vector_t search_direction = -inverse_hessian_ * current.gradient;
 
-    // Check "positive definite".
+    // If not positive definit re-initialize Hessian.
     const scalar_t phi = current.gradient.dot(search_direction);
-
-    // If not positive definit reinitialize Hessian.
-    if ((phi > 0) || (phi != phi)) {
+    if ((phi > 0) || std::isnan(phi)) {
       // no, we reset the hessian approximation
       inverse_hessian_ = hessian_t::Identity(dim_, dim_);
       search_direction = -current.gradient;
