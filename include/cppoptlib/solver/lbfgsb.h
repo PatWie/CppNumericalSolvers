@@ -114,8 +114,7 @@ class Lbfgsb : public Solver<function_t> {
   /**
    * @brief sort pairs (k,v) according v ascending
    */
-  std::vector<int> SortIndexes(
-      const std::vector<std::pair<int, scalar_t> > &v) {
+  std::vector<int> SortIndexes(const std::vector<std::pair<int, scalar_t>> &v) {
     std::vector<int> idx(v.size());
     for (size_t i = 0; i != idx.size(); ++i) idx[i] = v[i].first;
     sort(idx.begin(), idx.end(),
@@ -133,7 +132,7 @@ class Lbfgsb : public Solver<function_t> {
     // Given x,l,u,g, and B = \theta_ I-WMW
     // {all t_i} = { (idx,value), ... }
     // TODO(patwie): use "std::set" ?
-    std::vector<std::pair<int, scalar_t> > set_of_t;
+    std::vector<std::pair<int, scalar_t>> set_of_t;
     // the feasible set is implicitly given by "set_of_t - {t_i==0}"
     vector_t d = -current.gradient;
     // n operations

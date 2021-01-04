@@ -14,8 +14,8 @@ using FunctionXd = cppoptlib::function::Function<double>;
 
 class Function : public FunctionXd {
  public:
-  using FunctionXd::vector_t;
   using FunctionXd::hessian_t;
+  using FunctionXd::vector_t;
 
   scalar_t operator()(const vector_t &x) const override {
     return 5 * x[0] * x[0] + 100 * x[1] * x[1] + 5;
@@ -58,7 +58,7 @@ int main(int argc, char const *argv[]) {
 
   Solver solver;
 
-  auto[solution, solver_state] = solver.Minimize(f, x);
+  auto [solution, solver_state] = solver.Minimize(f, x);
   std::cout << "argmin " << solution.x.transpose() << std::endl;
   std::cout << "f in argmin " << solution.value << std::endl;
   std::cout << "iterations " << solver_state.num_iterations << std::endl;
