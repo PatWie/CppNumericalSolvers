@@ -125,7 +125,6 @@ SOLVER_SETUP(Lbfgs, RosenbrockValue)
 SOLVER_SETUP(Lbfgs, RosenbrockGradient)
 SOLVER_SETUP(Lbfgsb, RosenbrockValue)
 SOLVER_SETUP(Lbfgsb, RosenbrockGradient)
-
 SOLVER_SETUP(NewtonDescent, RosenbrockFull)
 
 // simple function y <- 3*a-b

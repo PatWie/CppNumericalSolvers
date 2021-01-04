@@ -6,17 +6,17 @@
 
 #include "../linesearch/more_thuente.h"
 #include "Eigen/Core"
-#include "solver.h"
+#include "solver.h"  // NOLINT
 
-namespace cppoptlib {
-namespace solver {
-
+namespace cppoptlib::solver {
 namespace internal {
+
 template <int m, class T>
 void ShiftLeft(T *matrix) {
   matrix->leftCols(m - 1) = matrix->rightCols(m - 1).eval();
 }
-};  // namespace internal
+
+}  // namespace internal
 
 template <typename function_t, int m = 10>
 class Lbfgs : public Solver<function_t> {
@@ -132,7 +132,6 @@ class Lbfgs : public Solver<function_t> {
   scalar_t scaling_factor_;
 };
 
-}  // namespace solver
-}  // namespace cppoptlib
+}  // namespace cppoptlib::solver
 
 #endif  // INCLUDE_CPPOPTLIB_SOLVER_LBFGS_H_

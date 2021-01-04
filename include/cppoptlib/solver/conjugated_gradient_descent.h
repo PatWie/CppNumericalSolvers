@@ -4,11 +4,9 @@
 
 #include "../linesearch/armijo.h"
 #include "Eigen/Core"
-#include "solver.h"
+#include "solver.h"  // NOLINT
 
-namespace cppoptlib {
-
-namespace solver {
+namespace cppoptlib::solver {
 template <typename function_t>
 class ConjugatedGradientDescent : public Solver<function_t> {
  private:
@@ -49,7 +47,6 @@ class ConjugatedGradientDescent : public Solver<function_t> {
   vector_t search_direction_;
 };
 
-}  // namespace solver
-}  // namespace cppoptlib
+}  // namespace cppoptlib::solver
 
 #endif  // INCLUDE_CPPOPTLIB_SOLVER_CONJUGATED_GRADIENT_DESCENT_H_

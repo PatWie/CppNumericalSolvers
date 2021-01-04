@@ -29,9 +29,7 @@ class MoreThuente {
   static scalar_t Search(const vector_t &x, const vector_t &search_direction,
                          const Function &function,
                          const scalar_t alpha_init = 1.0) {
-    // Assumed step width.
-    scalar_t ak = alpha_init;
-
+    scalar_t alpha = alpha_init;
     scalar_t fval = function(x);
     vector_t g = x.eval();
     function.Gradient(x, &g);
@@ -39,13 +37,13 @@ class MoreThuente {
     vector_t s = search_direction.eval();
     vector_t xx = x.eval();
 
-    cvsrch(function, xx, fval, g, ak, s);
+    cvsrch(function, &xx, fval, &g, &alpha, s);
 
-    return ak;
+    return alpha;
   }
 
-  static int cvsrch(const Function &function, vector_t &x, scalar_t f,
-                    vector_t &g, scalar_t &stp, vector_t &s) {
+  static int cvsrch(const Function &function, vector_t *x, scalar_t f,
+                    vector_t *g, scalar_t *stp, const vector_t &s) {
     // we rewrite this from MIN-LAPACK and some MATLAB code
     int info = 0;
     int infoc = 1;
@@ -58,10 +56,10 @@ class MoreThuente {
     const int maxfev = 20;
     int nfev = 0;
 
-    scalar_t dginit = g.dot(s);
+    scalar_t dginit = g->dot(s);
     if (dginit >= 0.0) {
-      // no descent direction
-      // TODO: handle this case
+      // There is no descent direction.
+      // TODO(patwie): Handle this case.
       return -1;
     }
 
@@ -72,7 +70,7 @@ class MoreThuente {
     scalar_t dgtest = ftol * dginit;
     scalar_t width = stpmax - stpmin;
     scalar_t width1 = 2 * width;
-    vector_t wa = x.eval();
+    vector_t wa = x->eval();
 
     scalar_t stx = 0.0;
     scalar_t fx = finit;
@@ -85,40 +83,41 @@ class MoreThuente {
     scalar_t stmax;
 
     while (true) {
-      // make sure we stay in the interval when setting min/max-step-width
+      // Make sure we stay in the interval when setting min/max-step-width.
       if (brackt) {
         stmin = std::min<scalar_t>(stx, sty);
         stmax = std::max<scalar_t>(stx, sty);
       } else {
         stmin = stx;
-        stmax = stp + xtrapf * (stp - stx);
+        stmax = *stp + xtrapf * (*stp - stx);
       }
 
       // Force the step to be within the bounds stpmax and stpmin.
-      stp = std::max<scalar_t>(stp, stpmin);
-      stp = std::min<scalar_t>(stp, stpmax);
+      *stp = std::max<scalar_t>(*stp, stpmin);
+      *stp = std::min<scalar_t>(*stp, stpmax);
 
-      // Oops, let us return the last reliable values
-      if ((brackt && ((stp <= stmin) || (stp >= stmax))) ||
+      // Oops, let us return the last reliable values.
+      if ((brackt && ((*stp <= stmin) || (*stp >= stmax))) ||
           (nfev >= maxfev - 1) || (infoc == 0) ||
           (brackt && ((stmax - stmin) <= (xtol * stmax)))) {
-        stp = stx;
+        *stp = stx;
       }
 
-      // test new point
-      x = wa + stp * s;
-      f = function(x);
-      function.Gradient(x, &g);
+      // Test new point.
+      *x = wa + *stp * s;
+      f = function(*x);
+      function.Gradient(*x, g);
       nfev++;
-      scalar_t dg = g.dot(s);
-      scalar_t ftest1 = finit + stp * dgtest;
+      scalar_t dg = g->dot(s);
+      scalar_t ftest1 = finit + *stp * dgtest;
 
-      // all possible convergence tests
-      if ((brackt & ((stp <= stmin) | (stp >= stmax))) | (infoc == 0)) info = 6;
+      // All possible convergence tests.
+      if ((brackt & ((*stp <= stmin) | (*stp >= stmax))) | (infoc == 0))
+        info = 6;
 
-      if ((stp == stpmax) & (f <= ftest1) & (dg <= dgtest)) info = 5;
+      if ((*stp == stpmax) & (f <= ftest1) & (dg <= dgtest)) info = 5;
 
-      if ((stp == stpmin) & ((f > ftest1) | (dg >= dgtest))) info = 4;
+      if ((*stp == stpmin) & ((f > ftest1) | (dg >= dgtest))) info = 4;
 
       if (nfev >= maxfev) info = 3;
 
@@ -126,7 +125,7 @@ class MoreThuente {
 
       if ((f <= ftest1) & (fabs(dg) <= gtol * (-dginit))) info = 1;
 
-      // terminate when convergence reached
+      // Terminate when convergence reached.
       if (info != 0) return -1;
 
       if (stage1 & (f <= ftest1) &
@@ -134,14 +133,14 @@ class MoreThuente {
         stage1 = false;
 
       if (stage1 & (f <= fx) & (f > ftest1)) {
-        scalar_t fm = f - stp * dgtest;
+        scalar_t fm = f - *stp * dgtest;
         scalar_t fxm = fx - stx * dgtest;
         scalar_t fym = fy - sty * dgtest;
         scalar_t dgm = dg - dgtest;
         scalar_t dgxm = dgx - dgtest;
         scalar_t dgym = dgy - dgtest;
 
-        cstep(stx, fxm, dgxm, sty, fym, dgym, stp, fm, dgm, brackt, stmin,
+        cstep(stx, fxm, dgxm, sty, fym, dgym, *stp, fm, dgm, brackt, stmin,
               stmax, infoc);
 
         fx = fxm + stx * dgtest;
@@ -149,13 +148,15 @@ class MoreThuente {
         dgx = dgxm + dgtest;
         dgy = dgym + dgtest;
       } else {
-        // this is ugly and some variables should be moved to the class scope
-        cstep(stx, fx, dgx, sty, fy, dgy, stp, f, dg, brackt, stmin, stmax,
+        // This is ugly and some variables should be moved to the class scope.
+        cstep(stx, fx, dgx, sty, fy, dgy, *stp, f, dg, brackt, stmin, stmax,
               infoc);
       }
 
       if (brackt) {
-        if (fabs(sty - stx) >= 0.66 * width1) stp = stx + 0.5 * (sty - stx);
+        if (fabs(sty - stx) >= 0.66 * width1) {
+          *stp = stx + 0.5 * (sty - stx);
+        }
         width1 = width;
         width = fabs(sty - stx);
       }
@@ -164,10 +165,15 @@ class MoreThuente {
     return 0;
   }
 
-  static int cstep(scalar_t &stx, scalar_t &fx, scalar_t &dx, scalar_t &sty,
-                   scalar_t &fy, scalar_t &dy, scalar_t &stp, scalar_t &fp,
-                   scalar_t &dp, bool &brackt, scalar_t &stpmin,
-                   scalar_t &stpmax, int &info) {
+  // TODO(patwie): cpplint prefers pointers here, but this would make the code
+  // unreadable. As these are all changing values a configuration structure
+  // would be helpful.
+  static int cstep(scalar_t &stx, scalar_t &fx, scalar_t &dx,     // NOLINT
+                   scalar_t &sty,                                 // NOLINT
+                   scalar_t &fy, scalar_t &dy, scalar_t &stp,     // NOLINT
+                   scalar_t &fp,                                  // NOLINT
+                   scalar_t &dp, bool &brackt, scalar_t &stpmin,  // NOLINT
+                   scalar_t &stpmax, int &info) {                 // NOLINT
     info = 0;
     bool bound = false;
 
@@ -269,9 +275,9 @@ class MoreThuente {
         scalar_t r = p / q;
         stpc = stp + r * (sty - stp);
         stpf = stpc;
-      } else if (stp > stx)
+      } else if (stp > stx) {
         stpf = stpmax;
-      else {
+      } else {
         stpf = stpmin;
       }
     }
@@ -309,8 +315,8 @@ class MoreThuente {
     return 0;
   }
 };
-};  // namespace linesearch
-};  // namespace solver
+}  // namespace linesearch
+}  // namespace solver
 }  // namespace cppoptlib
 
 #endif  // INCLUDE_CPPOPTLIB_LINESEARCH_MORE_THUENTE_H_

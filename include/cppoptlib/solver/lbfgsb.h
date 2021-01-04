@@ -10,12 +10,9 @@
 #include "../linesearch/more_thuente.h"
 #include "Eigen/Core"
 #include "Eigen/LU"
-#include "solver.h"
+#include "solver.h"  // NOLINT
 
-namespace cppoptlib {
-namespace solver {
-
-namespace internal {};  // namespace internal
+namespace cppoptlib::solver {
 
 template <typename function_t, int m = 5>
 class Lbfgsb : public Solver<function_t> {
@@ -53,15 +50,15 @@ class Lbfgsb : public Solver<function_t> {
         current.x.array() * 0 + std::numeric_limits<scalar_t>::lowest();
 
     // STEP 2: compute the cauchy point
-    vector_t CauchyPoint = vector_t::Zero(dim_);
+    vector_t cauchy_point = vector_t::Zero(dim_);
     dyn_vector_t c = dyn_vector_t::Zero(W_.cols());
-    GetGeneralizedCauchyPoint(upper_bound, lower_bound, current, &CauchyPoint,
+    GetGeneralizedCauchyPoint(upper_bound, lower_bound, current, &cauchy_point,
                               &c);
 
     // STEP 3: compute a search direction d_k by the primal method for the
     // sub-problem
-    const vector_t subspace_min =
-        SubspaceMinimization(upper_bound, lower_bound, current, CauchyPoint, c);
+    const vector_t subspace_min = SubspaceMinimization(
+        upper_bound, lower_bound, current, cauchy_point, c);
 
     // STEP 4: perform linesearch and STEP 5: compute gradient
     scalar_t alpha_init = 1.0;
@@ -133,7 +130,7 @@ class Lbfgsb : public Solver<function_t> {
     // {all t_i} = { (idx,value), ... }
     // TODO(patwie): use "std::set" ?
     std::vector<std::pair<int, scalar_t>> set_of_t;
-    // the feasible set is implicitly given by "set_of_t - {t_i==0}"
+    // The feasible set is implicitly given by "set_of_t - {t_i==0}".
     vector_t d = -current.gradient;
     // n operations
     for (int j = 0; j < dim_; j++) {
@@ -200,8 +197,8 @@ class Lbfgsb : public Solver<function_t> {
                  theta_ * current.gradient(b) * zb -
                  current.gradient(b) * wbt.transpose() * (M_ * *c);
       f_doubleprime +=
-          scalar_t{-1.0} * theta_ * current.gradient(b) * current.gradient(b) -
-          scalar_t{2.0} * (current.gradient(b) * (wbt.dot(M_ * p))) -
+          scalar_t(-1.0) * theta_ * current.gradient(b) * current.gradient(b) -
+          scalar_t(2.0) * (current.gradient(b) * (wbt.dot(M_ * p))) -
           current.gradient(b) * current.gradient(b) * wbt.transpose() *
               (M_ * wbt);
       f_doubleprime = std::max<scalar_t>(epsilon * f_dp_orig, f_doubleprime);
@@ -312,7 +309,6 @@ class Lbfgsb : public Solver<function_t> {
   matrix_t s_history_;
 };
 
-}  // namespace solver
-}  // namespace cppoptlib
+}  // namespace cppoptlib::solver
 
 #endif  // INCLUDE_CPPOPTLIB_SOLVER_LBFGSB_H_

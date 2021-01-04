@@ -4,11 +4,10 @@
 
 #include "../linesearch/armijo.h"
 #include "Eigen/Dense"
-#include "solver.h"
+#include "solver.h"  // NOLINT
 
-namespace cppoptlib {
+namespace cppoptlib::solver {
 
-namespace solver {
 template <typename function_t>
 class NewtonDescent : public Solver<function_t> {
  private:
@@ -48,7 +47,6 @@ class NewtonDescent : public Solver<function_t> {
   int dim_;
 };
 
-}  // namespace solver
-}  // namespace cppoptlib
+}  // namespace cppoptlib::solver
 
 #endif  // INCLUDE_CPPOPTLIB_SOLVER_NEWTON_DESCENT_H_

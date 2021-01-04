@@ -4,11 +4,9 @@
 
 #include "../linesearch/more_thuente.h"
 #include "Eigen/Core"
-#include "solver.h"
+#include "solver.h"  // NOLINT
 
-namespace cppoptlib {
-
-namespace solver {
+namespace cppoptlib::solver {
 template <typename function_t>
 class Bfgs : public Solver<function_t> {
  private:
@@ -68,7 +66,6 @@ class Bfgs : public Solver<function_t> {
   hessian_t inverse_hessian_;
 };
 
-}  // namespace solver
-}  // namespace cppoptlib
+}  // namespace cppoptlib::solver
 
 #endif  // INCLUDE_CPPOPTLIB_SOLVER_BFGS_H_
