@@ -5,8 +5,7 @@
 #include "Eigen/Core"
 #include "utils/derivatives.h"
 
-namespace cppoptlib {
-namespace function {
+namespace cppoptlib::function {
 
 // Specifies a current function state.
 template <class scalar_t, class vector_t, class matrix_t>
@@ -95,7 +94,6 @@ class Function {
   }
 };
 
-}  // namespace function
-}  // namespace cppoptlib
+}  // namespace cppoptlib::function
 
 #endif  // INCLUDE_CPPOPTLIB_FUNCTION_H_

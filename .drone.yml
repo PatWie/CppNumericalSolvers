@@ -10,9 +10,15 @@ steps:
 
 - name: code-format
   pull: never
-  image: patwie/clang-format:latest
+  image: patwie/lint:latest
   commands:
-  - python /run-clang-format.py --clang-format-executable /clang-format/clang-format11 -r . --style Google
+  - run-clang-format --clang-format-executable /usr/local/bin/clang-format11 -r . --style Google
+
+- name: code-lint
+  pull: never
+  image: patwie/lint:latest
+  commands:
+  - 'cpplint --extensions=h,hpp,c,cpp,cc,cu,hh,ipp --filter="-build/include_order" --recursive include > reviewdog -efm="%f:%l: %m" -name="cpplint" -reporter="local"'
 
 - name: build
   pull: never
@@ -28,6 +34,6 @@ steps:
 
 ---
 kind: signature
-hmac: 813cba34379e693f9d5d69e896df19d5a57026a07238e5d770044eab7d1e2aae
+hmac: 07789a1cc8328b0bba26d1b64a6ffa246cee4395e163a5a5f1b77c738f31cb8a
 
 ...

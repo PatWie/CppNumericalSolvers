@@ -8,8 +8,7 @@
 #include <limits>
 #include <vector>
 
-namespace cppoptlib {
-namespace utils {
+namespace cppoptlib::utils {
 
 // Approximates the gradient of the given function in x0.
 template <class function_t>
@@ -260,7 +259,6 @@ bool IsHessianCorrect(const function_t &function,
   return true;
 }
 
-};  // namespace utils
-};  // namespace cppoptlib
+}  // namespace cppoptlib::utils
 
 #endif  // INCLUDE_CPPOPTLIB_UTILS_DERIVATIVES_H_

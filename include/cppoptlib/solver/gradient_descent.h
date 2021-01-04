@@ -4,11 +4,9 @@
 
 #include "../linesearch/more_thuente.h"
 #include "Eigen/Core"
-#include "solver.h"
+#include "solver.h"  // NOLINT
 
-namespace cppoptlib {
-
-namespace solver {
+namespace cppoptlib::solver {
 template <typename function_t>
 class GradientDescent : public Solver<function_t> {
  private:
@@ -32,7 +30,6 @@ class GradientDescent : public Solver<function_t> {
   }
 };
 
-}  // namespace solver
-}  // namespace cppoptlib
+}  // namespace cppoptlib::solver
 
 #endif  // INCLUDE_CPPOPTLIB_SOLVER_GRADIENT_DESCENT_H_

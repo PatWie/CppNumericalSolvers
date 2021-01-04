@@ -8,8 +8,7 @@
 
 #include "../function.h"
 
-namespace cppoptlib {
-namespace solver {
+namespace cppoptlib::solver {
 
 // Status of the solver state.
 enum class Status {
@@ -242,7 +241,6 @@ class Solver {
   callback_t step_callback_;  // A user-defined callback function.
 };
 
-};  // namespace solver
-}  // namespace cppoptlib
+}  // namespace cppoptlib::solver
 
 #endif  // INCLUDE_CPPOPTLIB_SOLVER_SOLVER_H_
