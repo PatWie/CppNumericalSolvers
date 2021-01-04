@@ -29,6 +29,8 @@ class Lbfgsb : public Solver<function_t> {
   using dyn_vector_t = Eigen::Matrix<scalar_t, Eigen::Dynamic, 1>;
 
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   void InitializeSolver(const function_state_t &initial_state) override {
     dim_ = initial_state.x.rows();
 

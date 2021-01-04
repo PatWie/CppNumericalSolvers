@@ -19,6 +19,8 @@
 template <typename scalar_t>
 class RosenbrockValue : public cppoptlib::function::Function<scalar_t> {
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   using vector_t = typename cppoptlib::function::Function<scalar_t>::vector_t;
 
   scalar_t operator()(const vector_t &x) const override {
@@ -31,6 +33,8 @@ class RosenbrockValue : public cppoptlib::function::Function<scalar_t> {
 template <typename scalar_t>
 class RosenbrockGradient : public cppoptlib::function::Function<scalar_t> {
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   using vector_t = typename cppoptlib::function::Function<scalar_t>::vector_t;
 
   scalar_t operator()(const vector_t &x) const override {
@@ -48,6 +52,8 @@ class RosenbrockGradient : public cppoptlib::function::Function<scalar_t> {
 template <typename scalar_t>
 class RosenbrockFull : public cppoptlib::function::Function<scalar_t> {
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   using vector_t = typename cppoptlib::function::Function<scalar_t>::vector_t;
   using hessian_t = typename cppoptlib::function::Function<scalar_t>::hessian_t;
 
@@ -131,6 +137,8 @@ SOLVER_SETUP(NewtonDescent, RosenbrockFull)
 template <class scalar_t>
 class SimpleFunction : public cppoptlib::function::Function<scalar_t> {
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   using vector_t = typename cppoptlib::function::Function<scalar_t>::vector_t;
   using hessian_t = typename cppoptlib::function::Function<scalar_t>::hessian_t;
 

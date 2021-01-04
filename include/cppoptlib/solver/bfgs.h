@@ -20,6 +20,8 @@ class Bfgs : public Solver<function_t> {
   using function_state_t = typename function_t::state_t;
 
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   void InitializeSolver(const function_state_t &initial_state) override {
     dim_ = initial_state.x.rows();
     inverse_hessian_ =

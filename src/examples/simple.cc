@@ -14,6 +14,8 @@ using FunctionXd = cppoptlib::function::Function<double>;
 
 class Function : public FunctionXd {
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   using FunctionXd::hessian_t;
   using FunctionXd::vector_t;
 

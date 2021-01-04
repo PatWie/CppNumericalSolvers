@@ -19,6 +19,7 @@ Want a full example?
 
     class Rosenbrock : public FunctionXd {
       public:
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
         double operator()(const Eigen::VectorXd &x) {
             const double t1 = (1 - x[0]);
@@ -40,13 +41,12 @@ Want a full example?
         std::cout << state.gradient << std::endl;
         std::cout << state.hessian << std::endl;
 
-
         std::cout << cppoptlib::utils::IsGradientCorrect(f, x) << std::endl;
         std::cout << cppoptlib::utils::IsHessianCorrect(f, x) << std::endl;
 
         Solver solver;
 
-        auto[solution, solver_state] = solver.Minimize(f, x);
+        auto [solution, solver_state] = solver.Minimize(f, x);
         std::cout << "argmin " << solution.x.transpose() << std::endl;
         std::cout << "f in argmin " << solution.value << std::endl;
         std::cout << "iterations " << solver_state.num_iterations << std::endl;

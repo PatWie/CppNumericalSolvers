@@ -34,6 +34,8 @@ class Lbfgs : public Solver<function_t> {
   using memory_vector_t = Eigen::Matrix<scalar_t, 1, m>;
 
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   void InitializeSolver(const function_state_t &initial_state) override {
     dim_ = initial_state.x.rows();
     x_diff_memory_ = memory_matrix_t::Zero(dim_, m);

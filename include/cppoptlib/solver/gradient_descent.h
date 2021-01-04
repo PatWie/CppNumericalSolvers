@@ -20,6 +20,8 @@ class GradientDescent : public Solver<function_t> {
   using function_state_t = typename function_t::state_t;
 
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   function_state_t OptimizationStep(const function_t &function,
                                     const function_state_t &current,
                                     const state_t & /*state*/) override {
