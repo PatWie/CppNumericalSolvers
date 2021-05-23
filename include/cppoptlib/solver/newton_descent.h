@@ -36,7 +36,7 @@ class NewtonDescent : public Solver<function_t> {
 
     constexpr scalar_t safe_guard = 1e-5;
     const hessian_t hessian =
-        next.hessian + safe_guard * hessian_t::Identity(dim_, dim_);
+        *(next.hessian) + safe_guard * hessian_t::Identity(dim_, dim_);
 
     const vector_t delta_x = hessian.lu().solve(-next.gradient);
     const scalar_t rate =

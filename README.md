@@ -39,7 +39,9 @@ Want a full example?
         std::cout << f(x) << " = " << state.value << std::endl;
         std::cout << state.x << std::endl;
         std::cout << state.gradient << std::endl;
-        std::cout << state.hessian << std::endl;
+        if (state.hessian) {
+          std::cout << *(state.hessian) << std::endl;
+        }
 
         std::cout << cppoptlib::utils::IsGradientCorrect(f, x) << std::endl;
         std::cout << cppoptlib::utils::IsHessianCorrect(f, x) << std::endl;

@@ -193,10 +193,10 @@ TYPED_TEST(CentralDifference, Hessian) {
   SimpleFunction<TypeParam> f;
   auto state = f.Eval(x0);
 
-  EXPECT_NEAR(state.hessian(0, 0), 6, PRECISION);
-  EXPECT_NEAR(state.hessian(1, 0), -1, PRECISION);
-  EXPECT_NEAR(state.hessian(0, 1), -1, PRECISION);
-  EXPECT_NEAR(state.hessian(1, 1), 0, PRECISION);
+  EXPECT_NEAR((*state.hessian)(0, 0), 6, PRECISION);
+  EXPECT_NEAR((*state.hessian)(1, 0), -1, PRECISION);
+  EXPECT_NEAR((*state.hessian)(0, 1), -1, PRECISION);
+  EXPECT_NEAR((*state.hessian)(1, 1), 0, PRECISION);
 }
 
 int main(int argc, char **argv) {
