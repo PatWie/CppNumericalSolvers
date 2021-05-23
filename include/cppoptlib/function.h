@@ -2,6 +2,8 @@
 #ifndef INCLUDE_CPPOPTLIB_FUNCTION_H_
 #define INCLUDE_CPPOPTLIB_FUNCTION_H_
 
+#include <optional>
+
 #include "Eigen/Core"
 #include "utils/derivatives.h"
 
@@ -13,10 +15,10 @@ struct State {
   int dim;
   int order;
 
-  scalar_t value = 0;  // The objective value.
-  vector_t x;          // The current input value in x.
-  vector_t gradient;   // The gradient in x.
-  matrix_t hessian;    // The Hessian in x;
+  scalar_t value = 0;               // The objective value.
+  vector_t x;                       // The current input value in x.
+  vector_t gradient;                // The gradient in x.
+  std::optional<matrix_t> hessian;  // The Hessian in x;
 
   // TODO(patwie): There is probably a better way.
   State() : dim(-1), order(-1) {}
@@ -25,10 +27,20 @@ struct State {
       : dim(dim),
         order(order),
         x(vector_t::Zero(dim)),
-        gradient(vector_t::Zero(dim)),
-        hessian(matrix_t::Zero(dim, dim)) {}
+        gradient(vector_t::Zero(dim)) {
+    if (order > 1) {
+      hessian = std::optional<matrix_t>(matrix_t::Zero(dim, dim));
+    }
+  }
+
+  State(const State<scalar_t, vector_t, matrix_t> &rhs) { CopyState(rhs); }
 
   State operator=(const State<scalar_t, vector_t, matrix_t> &rhs) {
+    CopyState(rhs);
+    return *this;
+  }
+
+  void CopyState(const State<scalar_t, vector_t, matrix_t> &rhs) {
     assert(rhs.order > -1);
     dim = rhs.dim;
     order = rhs.order;
@@ -37,10 +49,9 @@ struct State {
     if (order >= 1) {
       gradient = rhs.gradient.eval();
     }
-    if (order >= 2) {
-      hessian = rhs.hessian.eval();
+    if ((order >= 2) && rhs.hessian) {
+      hessian = std::optional<matrix_t>(rhs.hessian->eval());
     }
-    return *this;
   }
 };
 
@@ -87,8 +98,8 @@ class Function {
     if (order >= 1) {
       this->Gradient(x, &state.gradient);
     }
-    if (order >= 2) {
-      this->Hessian(x, &state.hessian);
+    if ((order >= 2) && (state.hessian)) {
+      this->Hessian(x, &*(state.hessian));
     }
     return state;
   }
