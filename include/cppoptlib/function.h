@@ -57,10 +57,8 @@ struct State {
 
 template <class TScalar, int TDim = Eigen::Dynamic>
 class Function {
- private:
-  static const int Dim = TDim;
-
  public:
+  static constexpr int Dim = TDim;
   using scalar_t = TScalar;
   using vector_t = Eigen::Matrix<TScalar, Dim, 1>;
   using hessian_t = Eigen::Matrix<TScalar, Dim, Dim>;
