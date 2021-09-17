@@ -2,6 +2,8 @@
 #ifndef INCLUDE_CPPOPTLIB_SOLVER_BFGS_H_
 #define INCLUDE_CPPOPTLIB_SOLVER_BFGS_H_
 
+#include <utility>
+
 #include "../linesearch/more_thuente.h"
 #include "Eigen/Core"
 #include "solver.h"  // NOLINT
@@ -21,6 +23,12 @@ class Bfgs : public Solver<function_t> {
 
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  explicit Bfgs(const State<scalar_t> &stopping_state =
+                    DefaultStoppingSolverState<scalar_t>(),
+                typename Superclass::callback_t step_callback =
+                    GetDefaultStepCallback<scalar_t, vector_t, hessian_t>())
+      : Solver<function_t>{stopping_state, std::move(step_callback)} {}
 
   void InitializeSolver(const function_state_t &initial_state) override {
     dim_ = initial_state.x.rows();
