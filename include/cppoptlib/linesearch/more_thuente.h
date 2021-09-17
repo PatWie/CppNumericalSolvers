@@ -6,9 +6,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace cppoptlib {
-namespace solver {
-namespace linesearch {
+namespace cppoptlib::solver::linesearch {
 
 template <typename Function, int Ord>
 class MoreThuente {
@@ -315,8 +313,6 @@ class MoreThuente {
     return 0;
   }
 };
-}  // namespace linesearch
-}  // namespace solver
-}  // namespace cppoptlib
+}  // namespace cppoptlib::solver::linesearch
 
 #endif  // INCLUDE_CPPOPTLIB_LINESEARCH_MORE_THUENTE_H_
