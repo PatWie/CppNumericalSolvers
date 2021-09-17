@@ -99,9 +99,9 @@ struct State {
       if (f_delta_violations >= stop_state.f_delta_violations) {
         status = Status::FDeltaViolation;
         return;
-      } else {
-        f_delta_violations = 0;
       }
+    } else {
+      f_delta_violations = 0;
     }
     if ((stop_state.gradient_norm > 0) &&
         (gradient_norm < stop_state.gradient_norm)) {
