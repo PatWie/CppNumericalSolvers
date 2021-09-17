@@ -2,6 +2,8 @@
 #ifndef INCLUDE_CPPOPTLIB_SOLVER_GRADIENT_DESCENT_H_
 #define INCLUDE_CPPOPTLIB_SOLVER_GRADIENT_DESCENT_H_
 
+#include <utility>
+
 #include "../linesearch/more_thuente.h"
 #include "Eigen/Core"
 #include "solver.h"  // NOLINT
@@ -21,6 +23,13 @@ class GradientDescent : public Solver<function_t> {
 
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  explicit GradientDescent(
+      const State<scalar_t> &stopping_state =
+          DefaultStoppingSolverState<scalar_t>(),
+      typename Superclass::callback_t step_callback =
+          GetDefaultStepCallback<scalar_t, vector_t, hessian_t>())
+      : Solver<function_t>{stopping_state, std::move(step_callback)} {}
 
   function_state_t OptimizationStep(const function_t &function,
                                     const function_state_t &current,

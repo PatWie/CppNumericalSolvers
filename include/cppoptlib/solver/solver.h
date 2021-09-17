@@ -5,6 +5,7 @@
 #include <functional>
 #include <iostream>
 #include <tuple>
+#include <utility>
 
 #include "../function.h"
 
@@ -167,6 +168,8 @@ template <typename function_t>
 class Solver {
  public:
   using state_t = State<typename function_t::scalar_t>;
+  using callback_t = std::function<void(const typename function_t::state_t &,
+                                        const state_t &)>;
 
  private:
   static const int Dim = function_t::Dim;
@@ -176,15 +179,14 @@ class Solver {
   using hessian_t = typename function_t::hessian_t;
 
   using function_state_t = typename function_t::state_t;
-  using callback_t =
-      std::function<void(const function_state_t &, const state_t &)>;
 
  public:
   explicit Solver(const State<scalar_t> &stopping_state =
-                      DefaultStoppingSolverState<scalar_t>())
+                      DefaultStoppingSolverState<scalar_t>(),
+                  callback_t step_callback =
+                      GetDefaultStepCallback<scalar_t, vector_t, hessian_t>())
       : stopping_state_(stopping_state),
-        step_callback_(
-            GetDefaultStepCallback<scalar_t, vector_t, hessian_t>()) {}
+        step_callback_(std::move(step_callback)) {}
 
   virtual ~Solver() = default;
 

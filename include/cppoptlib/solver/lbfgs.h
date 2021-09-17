@@ -3,6 +3,7 @@
 #define INCLUDE_CPPOPTLIB_SOLVER_LBFGS_H_
 
 #include <algorithm>
+#include <utility>
 
 #include "../linesearch/more_thuente.h"
 #include "Eigen/Core"
@@ -35,6 +36,12 @@ class Lbfgs : public Solver<function_t> {
 
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  explicit Lbfgs(const State<scalar_t> &stopping_state =
+                     DefaultStoppingSolverState<scalar_t>(),
+                 typename Superclass::callback_t step_callback =
+                     GetDefaultStepCallback<scalar_t, vector_t, hessian_t>())
+      : Solver<function_t>{stopping_state, std::move(step_callback)} {}
 
   void InitializeSolver(const function_state_t &initial_state) override {
     dim_ = initial_state.x.rows();

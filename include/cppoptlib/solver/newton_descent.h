@@ -2,6 +2,8 @@
 #ifndef INCLUDE_CPPOPTLIB_SOLVER_NEWTON_DESCENT_H_
 #define INCLUDE_CPPOPTLIB_SOLVER_NEWTON_DESCENT_H_
 
+#include <utility>
+
 #include "../linesearch/armijo.h"
 #include "Eigen/Dense"
 #include "solver.h"  // NOLINT
@@ -22,6 +24,13 @@ class NewtonDescent : public Solver<function_t> {
 
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  explicit NewtonDescent(
+      const State<scalar_t> &stopping_state =
+          DefaultStoppingSolverState<scalar_t>(),
+      typename Superclass::callback_t step_callback =
+          GetDefaultStepCallback<scalar_t, vector_t, hessian_t>())
+      : Solver<function_t>{stopping_state, std::move(step_callback)} {}
 
   int Order() const override { return 2; }
 
