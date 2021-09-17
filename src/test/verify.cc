@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <list>
 
 #include "gtest/gtest.h"
@@ -13,8 +14,8 @@
 #include "include/cppoptlib/solver/lbfgsb.h"
 #include "include/cppoptlib/solver/newton_descent.h"
 
-// constexpr double PRECISION 1e-4;
-#define PRECISION 1e-4
+constexpr double PRECISION = 1e-4;
+constexpr auto FUNCTION_DIM = 2;
 
 template <typename scalar_t>
 class RosenbrockValue : public cppoptlib::function::Function<scalar_t> {
@@ -93,9 +94,32 @@ class LbfgsbTest : public testing::Test {};
   using Function = func<TypeParam>;                                       \
   using Solver = sol<Function>;                                           \
   Function f;                                                             \
-  typename Function::vector_t x(2);                                       \
+  typename Function::vector_t x(FUNCTION_DIM);                            \
   x << a, b;                                                              \
   Solver solver;                                                          \
+  solver.SetStepCallback(                                                 \
+      cppoptlib::solver::GetEmptyStepCallback<                            \
+          typename Function::scalar_t, typename Function::vector_t,       \
+          typename Function::hessian_t>());                               \
+  auto [solution, solver_state] = solver.Minimize(f, x);                  \
+  if (solver_state.status == cppoptlib::solver::Status::IterationLimit) { \
+    std::cout << solver_state.status << std::endl;                        \
+  }                                                                       \
+  EXPECT_NEAR(fx, f(solution.x), PRECISION);
+
+#define LBFGSB_SOLVE_PROBLEM(sol, func, a, b, fx)                         \
+  using Function = func<TypeParam>;                                       \
+  using Solver = sol<Function>;                                           \
+  Function f;                                                             \
+  typename Function::vector_t x(FUNCTION_DIM);                            \
+  x << a, b;                                                              \
+  Solver solver{                                                          \
+      Function::vector_t::Constant(                                       \
+          FUNCTION_DIM,                                                   \
+          std::numeric_limits<typename Function::scalar_t>::lowest()),    \
+      Function::vector_t::Constant(                                       \
+          FUNCTION_DIM,                                                   \
+          std::numeric_limits<typename Function::scalar_t>::max())};      \
   solver.SetStepCallback(                                                 \
       cppoptlib::solver::GetEmptyStepCallback<                            \
           typename Function::scalar_t, typename Function::vector_t,       \
@@ -121,6 +145,13 @@ TYPED_TEST_CASE(LbfgsbTest, DoublePrecision);
     SOLVE_PROBLEM(cppoptlib::solver::sol, func, -1.0, 2.0, 0.0)               \
   }
 
+#define LBFGSB_SOLVER_SETUP(sol, func)                                        \
+  TYPED_TEST(sol##Test, func##Far){LBFGSB_SOLVE_PROBLEM(                      \
+      cppoptlib::solver::sol, func, 15.0, 8.0, 0.0)} TYPED_TEST(sol##Test,    \
+                                                                func##Near) { \
+    LBFGSB_SOLVE_PROBLEM(cppoptlib::solver::sol, func, -1.0, 2.0, 0.0)        \
+  }
+
 SOLVER_SETUP(GradientDescent, RosenbrockValue)
 SOLVER_SETUP(GradientDescent, RosenbrockGradient)
 SOLVER_SETUP(ConjugatedGradientDescent, RosenbrockValue)
@@ -129,8 +160,8 @@ SOLVER_SETUP(Bfgs, RosenbrockValue)
 SOLVER_SETUP(Bfgs, RosenbrockGradient)
 SOLVER_SETUP(Lbfgs, RosenbrockValue)
 SOLVER_SETUP(Lbfgs, RosenbrockGradient)
-SOLVER_SETUP(Lbfgsb, RosenbrockValue)
-SOLVER_SETUP(Lbfgsb, RosenbrockGradient)
+LBFGSB_SOLVER_SETUP(Lbfgsb, RosenbrockValue)
+LBFGSB_SOLVER_SETUP(Lbfgsb, RosenbrockGradient)
 SOLVER_SETUP(NewtonDescent, RosenbrockFull)
 
 // simple function y <- 3*a-b
@@ -169,8 +200,8 @@ class CentralDifference : public testing::Test {};
 TYPED_TEST_CASE(CentralDifference, DoublePrecision);
 
 TYPED_TEST(CentralDifference, Gradient) {
-  typename SimpleFunction<TypeParam>::vector_t x0(2);
-  typename SimpleFunction<TypeParam>::vector_t gradient(2);
+  typename SimpleFunction<TypeParam>::vector_t x0(FUNCTION_DIM);
+  typename SimpleFunction<TypeParam>::vector_t gradient(FUNCTION_DIM);
   x0(0) = 0;
   x0(1) = 0;
 
@@ -186,7 +217,7 @@ TYPED_TEST(CentralDifference, Gradient) {
 }
 
 TYPED_TEST(CentralDifference, Hessian) {
-  typename SimpleFunction<TypeParam>::vector_t x0(2);
+  typename SimpleFunction<TypeParam>::vector_t x0(FUNCTION_DIM);
   x0(0) = 0;
   x0(1) = 0;
 

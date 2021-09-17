@@ -31,11 +31,14 @@ class Lbfgsb : public Solver<function_t> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  explicit Lbfgsb(const State<scalar_t> &stopping_state =
-                      DefaultStoppingSolverState<scalar_t>(),
-                  typename Superclass::callback_t step_callback =
-                      GetDefaultStepCallback<scalar_t, vector_t, hessian_t>())
-      : Solver<function_t>{stopping_state, std::move(step_callback)} {}
+  Lbfgsb(const vector_t &lower_bound, const vector_t &upper_bound,
+         const State<scalar_t> &stopping_state =
+             DefaultStoppingSolverState<scalar_t>(),
+         typename Superclass::callback_t step_callback =
+             GetDefaultStepCallback<scalar_t, vector_t, hessian_t>())
+      : Solver<function_t>{stopping_state, std::move(step_callback)},
+        lower_bound_{lower_bound},
+        upper_bound_{upper_bound} {}
 
   void InitializeSolver(const function_state_t &initial_state) override {
     dim_ = initial_state.x.rows();
@@ -52,21 +55,15 @@ class Lbfgsb : public Solver<function_t> {
   function_state_t OptimizationStep(const function_t &function,
                                     const function_state_t &current,
                                     const state_t & /*state*/) override {
-    const vector_t upper_bound =
-        current.x.array() * 0 + std::numeric_limits<scalar_t>::max();
-    const vector_t lower_bound =
-        current.x.array() * 0 + std::numeric_limits<scalar_t>::lowest();
-
     // STEP 2: compute the cauchy point
     vector_t cauchy_point = vector_t::Zero(dim_);
     dyn_vector_t c = dyn_vector_t::Zero(W_.cols());
-    GetGeneralizedCauchyPoint(upper_bound, lower_bound, current, &cauchy_point,
-                              &c);
+    GetGeneralizedCauchyPoint(current, &cauchy_point, &c);
 
     // STEP 3: compute a search direction d_k by the primal method for the
     // sub-problem
-    const vector_t subspace_min = SubspaceMinimization(
-        upper_bound, lower_bound, current, cauchy_point, c);
+    const vector_t subspace_min =
+        SubspaceMinimization(current, cauchy_point, c);
 
     // STEP 4: perform linesearch and STEP 5: compute gradient
     scalar_t alpha_init = 1.0;
@@ -77,7 +74,7 @@ class Lbfgsb : public Solver<function_t> {
     const vector_t x_next = current.x - rate * (current.x - subspace_min);
     // if current solution is out of bound, we clip it
     const vector_t clipped_x_next =
-        x_next.cwiseMin(upper_bound).cwiseMax(lower_bound);
+        x_next.cwiseMin(upper_bound_).cwiseMax(lower_bound_);
 
     const function_state_t next = function.Eval(clipped_x_next, 1);
 
@@ -119,7 +116,8 @@ class Lbfgsb : public Solver<function_t> {
   /**
    * @brief sort pairs (k,v) according v ascending
    */
-  std::vector<int> SortIndexes(const std::vector<std::pair<int, scalar_t>> &v) {
+  static std::vector<int> SortIndexes(
+      const std::vector<std::pair<int, scalar_t>> &v) {
     std::vector<int> idx(v.size());
     for (size_t i = 0; i != idx.size(); ++i) idx[i] = v[i].first;
     sort(idx.begin(), idx.end(),
@@ -127,10 +125,8 @@ class Lbfgsb : public Solver<function_t> {
     return idx;
   }
 
-  void GetGeneralizedCauchyPoint(const vector_t &upper_bound,
-                                 const vector_t &lower_bound,
-                                 const function_state_t &current,
-                                 vector_t *x_cauchy, dyn_vector_t *c) {
+  void GetGeneralizedCauchyPoint(const function_state_t &current,
+                                 vector_t *x_cauchy, dyn_vector_t *c) const {
     constexpr scalar_t max_value = std::numeric_limits<scalar_t>::max();
     constexpr scalar_t epsilon = std::numeric_limits<scalar_t>::epsilon();
 
@@ -138,20 +134,21 @@ class Lbfgsb : public Solver<function_t> {
     // {all t_i} = { (idx,value), ... }
     // TODO(patwie): use "std::set" ?
     std::vector<std::pair<int, scalar_t>> set_of_t;
+    set_of_t.reserve(dim_);
     // The feasible set is implicitly given by "set_of_t - {t_i==0}".
     vector_t d = -current.gradient;
     // n operations
     for (int j = 0; j < dim_; j++) {
       if (current.gradient(j) == 0) {
-        set_of_t.push_back(std::make_pair(j, max_value));
+        set_of_t.emplace_back(j, max_value);
       } else {
         scalar_t tmp = 0;
         if (current.gradient(j) < 0) {
-          tmp = (current.x(j) - upper_bound(j)) / current.gradient(j);
+          tmp = (current.x(j) - upper_bound_(j)) / current.gradient(j);
         } else {
-          tmp = (current.x(j) - lower_bound(j)) / current.gradient(j);
+          tmp = (current.x(j) - lower_bound_(j)) / current.gradient(j);
         }
-        set_of_t.push_back(std::make_pair(j, tmp));
+        set_of_t.emplace_back(j, tmp);
         if (tmp == 0) d(j) = 0;
       }
     }
@@ -191,9 +188,9 @@ class Lbfgsb : public Solver<function_t> {
     // examination of subsequent segments
     while ((dt_min >= dt) && (i < dim_)) {
       if (d(b) > 0)
-        (*x_cauchy)(b) = upper_bound(b);
+        (*x_cauchy)(b) = upper_bound_(b);
       else if (d(b) < 0)
-        (*x_cauchy)(b) = lower_bound(b);
+        (*x_cauchy)(b) = lower_bound_(b);
       // z_b = x_p^{cp} - x_b
       const scalar_t zb = (*x_cauchy)(b)-current.x(b);
       // c   :=  c +\delta t*p
@@ -233,9 +230,8 @@ class Lbfgsb : public Solver<function_t> {
   /**
    * @brief find alpha* = max {a : a <= 1 and  l_i-xc_i <= a*d_i <= u_i-xc_i}
    */
-  scalar_t FindAlpha(const vector_t &upper_bound, const vector_t &lower_bound,
-                     const vector_t &x_cp, const dyn_vector_t &du,
-                     const std::vector<int> &free_variables) {
+  scalar_t FindAlpha(const vector_t &x_cp, const dyn_vector_t &du,
+                     const std::vector<int> &free_variables) const {
     scalar_t alphastar = 1;
     const unsigned int n = free_variables.size();
     assert(du.rows() == n);
@@ -244,28 +240,27 @@ class Lbfgsb : public Solver<function_t> {
       if (du(i) > 0) {
         alphastar = std::min<scalar_t>(
             alphastar,
-            (upper_bound(free_variables.at(i)) - x_cp(free_variables.at(i))) /
+            (upper_bound_(free_variables.at(i)) - x_cp(free_variables.at(i))) /
                 du(i));
       } else {
         alphastar = std::min<scalar_t>(
             alphastar,
-            (lower_bound(free_variables.at(i)) - x_cp(free_variables.at(i))) /
+            (lower_bound_(free_variables.at(i)) - x_cp(free_variables.at(i))) /
                 du(i));
       }
     }
     return alphastar;
   }
 
-  vector_t SubspaceMinimization(const vector_t &upper_bound,
-                                const vector_t &lower_bound,
-                                const function_state_t &current,
+  vector_t SubspaceMinimization(const function_state_t &current,
                                 const vector_t &x_cauchy,
-                                const dyn_vector_t &c) {
+                                const dyn_vector_t &c) const {
     const scalar_t theta_inverse = 1 / theta_;
 
     std::vector<int> free_variables_index;
     for (int i = 0; i < x_cauchy.rows(); i++) {
-      if ((x_cauchy(i) != upper_bound(i)) && (x_cauchy(i) != lower_bound(i))) {
+      if ((x_cauchy(i) != upper_bound_(i)) &&
+          (x_cauchy(i) != lower_bound_(i))) {
         free_variables_index.push_back(i);
       }
     }
@@ -294,8 +289,7 @@ class Lbfgsb : public Solver<function_t> {
     const dyn_vector_t du =
         -theta_inverse * r - theta_inverse * theta_inverse * WZ.transpose() * v;
     // STEP: 7
-    const scalar_t alpha_star =
-        FindAlpha(upper_bound, lower_bound, x_cauchy, du, free_variables_index);
+    const scalar_t alpha_star = FindAlpha(x_cauchy, du, free_variables_index);
     // STEP: 8
     dyn_vector_t dStar = alpha_star * du;
     vector_t subspace_min = x_cauchy.eval();
@@ -308,6 +302,8 @@ class Lbfgsb : public Solver<function_t> {
 
  private:
   int dim_;
+  vector_t lower_bound_;
+  vector_t upper_bound_;
 
   matrix_t M_;
   matrix_t W_;
