@@ -2,9 +2,7 @@
 #ifndef INCLUDE_CPPOPTLIB_LINESEARCH_ARMIJO_H_
 #define INCLUDE_CPPOPTLIB_LINESEARCH_ARMIJO_H_
 
-namespace cppoptlib {
-namespace solver {
-namespace linesearch {
+namespace cppoptlib::solver::linesearch {
 template <typename function_t, int Ord>
 class Armijo {
  public:
@@ -78,9 +76,6 @@ class Armijo<function_t, 2> {
     return alpha;
   }
 };
-
-};  // namespace linesearch
-};  // namespace solver
-}  // namespace cppoptlib
+}  // namespace cppoptlib::solver::linesearch
 
 #endif  // INCLUDE_CPPOPTLIB_LINESEARCH_ARMIJO_H_
