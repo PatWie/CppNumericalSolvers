@@ -1,6 +1,7 @@
 // Copyright 2020, https://github.com/PatWie/CppNumericalSolvers
 
 #include <iostream>
+#include <limits>
 
 #include "include/cppoptlib/function.h"
 #include "include/cppoptlib/solver/bfgs.h"
@@ -44,8 +45,9 @@ int main(int argc, char const *argv[]) {
   // using Solver = cppoptlib::solver::Lbfgs<Function>;
   using Solver = cppoptlib::solver::Lbfgsb<Function>;
 
+  constexpr auto dim = 2;
   Function f;
-  Function::vector_t x(2);
+  Function::vector_t x(dim);
   x << -1, 2;
 
   auto state = f.Eval(x);
@@ -60,7 +62,11 @@ int main(int argc, char const *argv[]) {
   std::cout << cppoptlib::utils::IsGradientCorrect(f, x) << std::endl;
   std::cout << cppoptlib::utils::IsHessianCorrect(f, x) << std::endl;
 
-  Solver solver;
+  Solver solver{
+      Function::vector_t::Constant(
+          dim, std::numeric_limits<typename Function::scalar_t>::lowest()),
+      Function::vector_t::Constant(
+          dim, std::numeric_limits<typename Function::scalar_t>::max())};
 
   auto [solution, solver_state] = solver.Minimize(f, x);
   std::cout << "argmin " << solution.x.transpose() << std::endl;
