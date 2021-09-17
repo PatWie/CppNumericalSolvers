@@ -40,7 +40,7 @@ CppNumericalSolvers.config
 /eigen
 /local
 
-# Matlab 
+# Matlab
 *.m~
 *.mexa64
 *.mexa32
@@ -59,6 +59,7 @@ CppNumericalSolvers.config
 /.idea/
 /.project
 /.settings
+/.vscode/
 /WORKSPACE.user.bzl
 /bazel.iml
 # Ignore all bazel-* symlinks. There is no full list since this can change
@@ -70,3 +71,4 @@ CppNumericalSolvers.config
 /test
 /tester.tar
 tensorflow/solve
+compile_commands.json
