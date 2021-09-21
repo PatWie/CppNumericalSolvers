@@ -48,7 +48,7 @@ class ConjugatedGradientDescent : public Solver<function_t> {
     previous_ = current;
 
     const scalar_t rate = linesearch::Armijo<function_t, 1>::Search(
-        current.x, search_direction_, function);
+        current, search_direction_, function);
 
     return function.Eval(current.x + rate * search_direction_, 1);
   }
