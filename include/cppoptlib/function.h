@@ -83,8 +83,6 @@ class Function {
     utils::ComputeFiniteHessian(*this, x, hessian);
   }
 
-  virtual int Order() const { return 1; }
-
   // For improved performance, this function will return the state directly.
   // Override this method if you can compute the objective value, gradient and
   // Hessian simultaneously.
