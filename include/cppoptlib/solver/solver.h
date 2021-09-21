@@ -164,7 +164,7 @@ auto GetEmptyStepCallback() {
 }
 
 // Specifies a solver implementation (of a given order) for a given function
-template <typename function_t>
+template <typename function_t, int Ord = 1>
 class Solver {
  public:
   using state_t = State<typename function_t::scalar_t>;
@@ -172,13 +172,16 @@ class Solver {
                                         const state_t &)>;
 
  private:
-  static const int Dim = function_t::Dim;
+  static constexpr int Dim = function_t::Dim;
   using scalar_t = typename function_t::scalar_t;
   using vector_t = typename function_t::vector_t;
   using matrix_t = typename function_t::matrix_t;
   using hessian_t = typename function_t::hessian_t;
 
   using function_state_t = typename function_t::state_t;
+
+ protected:
+  static constexpr int Order = Ord;
 
  public:
   explicit Solver(const State<scalar_t> &stopping_state =
@@ -190,8 +193,6 @@ class Solver {
 
   virtual ~Solver() = default;
 
-  virtual int Order() const { return 1; }
-
   // Sets a Callback function which is triggered after each update step.
   void SetStepCallback(callback_t step_callback) {
     step_callback_ = step_callback;
@@ -202,7 +203,7 @@ class Solver {
   // Minimizes a given function and returns the function state
   virtual std::tuple<function_state_t, state_t> Minimize(
       const function_t &function, const vector_t &x0) {
-    return this->Minimize(function, function.Eval(x0, this->Order()));
+    return this->Minimize(function, function.Eval(x0, Order));
   }
 
   virtual std::tuple<function_state_t, state_t> Minimize(

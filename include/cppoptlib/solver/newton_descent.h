@@ -11,9 +11,9 @@
 namespace cppoptlib::solver {
 
 template <typename function_t>
-class NewtonDescent : public Solver<function_t> {
+class NewtonDescent : public Solver<function_t, 2> {
  private:
-  using Superclass = Solver<function_t>;
+  using Superclass = Solver<function_t, 2>;
   using state_t = typename Superclass::state_t;
 
   using scalar_t = typename function_t::scalar_t;
@@ -30,9 +30,7 @@ class NewtonDescent : public Solver<function_t> {
           DefaultStoppingSolverState<scalar_t>(),
       typename Superclass::callback_t step_callback =
           GetDefaultStepCallback<scalar_t, vector_t, hessian_t>())
-      : Solver<function_t>{stopping_state, std::move(step_callback)} {}
-
-  int Order() const override { return 2; }
+      : Superclass{stopping_state, std::move(step_callback)} {}
 
   void InitializeSolver(const function_state_t &initial_state) override {
     dim_ = initial_state.x.rows();
@@ -47,9 +45,10 @@ class NewtonDescent : public Solver<function_t> {
 
     const vector_t delta_x = hessian.lu().solve(-current.gradient);
     const scalar_t rate =
-        linesearch::Armijo<function_t, 2>::Search(current, delta_x, function);
+        linesearch::Armijo<function_t, Superclass::Order>::Search(
+            current, delta_x, function);
 
-    return function.Eval(current.x + rate * delta_x, 2);
+    return function.Eval(current.x + rate * delta_x, Superclass::Order);
   }
 
  private:
