@@ -13,6 +13,7 @@ class MoreThuente {
  public:
   using scalar_t = typename Function::scalar_t;
   using vector_t = typename Function::vector_t;
+  using state_t = typename Function::state_t;
 
   /**
    * @brief use MoreThuente Rule for (strong) Wolfe conditiions
@@ -24,18 +25,16 @@ class MoreThuente {
    * @return step-width
    */
 
-  static scalar_t Search(const vector_t &x, const vector_t &search_direction,
+  static scalar_t Search(const state_t &state, const vector_t &search_direction,
                          const Function &function,
                          const scalar_t alpha_init = 1.0) {
     scalar_t alpha = alpha_init;
-    scalar_t fval = function(x);
-    vector_t g = x.eval();
-    function.Gradient(x, &g);
+    vector_t g = state.gradient;
 
     vector_t s = search_direction.eval();
-    vector_t xx = x.eval();
+    vector_t xx = state.x;
 
-    cvsrch(function, &xx, fval, &g, &alpha, s);
+    cvsrch(function, &xx, state.value, &g, &alpha, s);
 
     return alpha;
   }

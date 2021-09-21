@@ -41,17 +41,15 @@ class NewtonDescent : public Solver<function_t> {
   function_state_t OptimizationStep(const function_t &function,
                                     const function_state_t &current,
                                     const state_t & /*state*/) override {
-    function_state_t next = current;
-
     constexpr scalar_t safe_guard = 1e-5;
     const hessian_t hessian =
-        *(next.hessian) + safe_guard * hessian_t::Identity(dim_, dim_);
+        *(current.hessian) + safe_guard * hessian_t::Identity(dim_, dim_);
 
-    const vector_t delta_x = hessian.lu().solve(-next.gradient);
+    const vector_t delta_x = hessian.lu().solve(-current.gradient);
     const scalar_t rate =
-        linesearch::Armijo<function_t, 2>::Search(next.x, delta_x, function);
+        linesearch::Armijo<function_t, 2>::Search(current, delta_x, function);
 
-    return function.Eval(next.x + rate * delta_x, 2);
+    return function.Eval(current.x + rate * delta_x, 2);
   }
 
  private:

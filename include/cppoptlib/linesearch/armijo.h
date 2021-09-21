@@ -8,6 +8,7 @@ class Armijo {
  public:
   using scalar_t = typename function_t::scalar_t;
   using vector_t = typename function_t::vector_t;
+  using state_t = typename function_t::state_t;
   /**
    * @brief use Armijo Rule for (weak) Wolfe conditiions
    * @details [long description]
@@ -17,21 +18,19 @@ class Armijo {
    *
    * @return step-width
    */
-  static scalar_t Search(const vector_t &x, const vector_t &search_direction,
+  static scalar_t Search(const state_t &state, const vector_t &search_direction,
                          const function_t &function,
                          const scalar_t alpha_init = 1.0) {
-    const scalar_t c = 0.2;
-    const scalar_t rho = 0.9;
+    constexpr scalar_t c = 0.2;
+    constexpr scalar_t rho = 0.9;
     scalar_t alpha = alpha_init;
-    scalar_t f = function(x + alpha * search_direction);
-    const scalar_t f_in = function(x);
-    vector_t grad(x.rows());
-    function.Gradient(x, &grad);
-    const scalar_t Cache = c * grad.dot(search_direction);
+    scalar_t f = function(state.x + alpha * search_direction);
+    const scalar_t f_in = state.value;
+    const scalar_t cache = c * state.gradient.dot(search_direction);
 
-    while (f > f_in + alpha * Cache) {
+    while (f > f_in + alpha * cache) {
       alpha *= rho;
-      f = function(x + alpha * search_direction);
+      f = function(state.x + alpha * search_direction);
     }
 
     return alpha;
@@ -44,6 +43,7 @@ class Armijo<function_t, 2> {
   using scalar_t = typename function_t::scalar_t;
   using vector_t = typename function_t::vector_t;
   using hessian_t = typename function_t::hessian_t;
+  using state_t = typename function_t::state_t;
   /**
    * @brief use Armijo Rule for (weak) Wolfe conditiions
    * @details [long description]
@@ -53,25 +53,20 @@ class Armijo<function_t, 2> {
    *
    * @return step-width
    */
-  static scalar_t Search(const vector_t &x, const vector_t &search_direction,
+  static scalar_t Search(const state_t &state, const vector_t &search_direction,
                          const function_t &function) {
-    const scalar_t c = 0.2;
-    const scalar_t rho = 0.9;
+    constexpr scalar_t c = 0.2;
+    constexpr scalar_t rho = 0.9;
     scalar_t alpha = 1.0;
-
-    scalar_t f = function(x + alpha * search_direction);
-    const scalar_t f_in = function(x);
-    hessian_t hessian(x.rows(), x.rows());
-    function.Hessian(x, &hessian);
-    vector_t grad(x.rows());
-    function.Gradient(x, &grad);
-    const scalar_t Cache = c * grad.dot(search_direction) +
+    scalar_t f = function(state.x + alpha * search_direction);
+    const scalar_t f_in = state.value;
+    const scalar_t cache = c * state.gradient.dot(search_direction) +
                            0.5 * c * c * search_direction.transpose() *
-                               (hessian * search_direction);
+                               ((*state.hessian) * search_direction);
 
-    while (f > f_in + alpha * Cache) {
+    while (f > f_in + alpha * cache) {
       alpha *= rho;
-      f = function(x + alpha * search_direction);
+      f = function(state.x + alpha * search_direction);
     }
     return alpha;
   }

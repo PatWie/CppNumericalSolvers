@@ -103,7 +103,7 @@ class Lbfgs : public Solver<function_t> {
     }
 
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
-        current.x, -search_direction, function, alpha_init);
+        current, -search_direction, function, alpha_init);
 
     const function_state_t next =
         function.Eval(current.x - rate * search_direction, 1);

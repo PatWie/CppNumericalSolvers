@@ -68,7 +68,7 @@ class Lbfgsb : public Solver<function_t> {
     // STEP 4: perform linesearch and STEP 5: compute gradient
     scalar_t alpha_init = 1.0;
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
-        current.x, subspace_min - current.x, function, alpha_init);
+        current, subspace_min - current.x, function, alpha_init);
 
     // update current guess and function information
     const vector_t x_next = current.x - rate * (current.x - subspace_min);
