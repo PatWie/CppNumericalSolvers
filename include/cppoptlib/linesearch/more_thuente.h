@@ -45,13 +45,13 @@ class MoreThuente {
     // we rewrite this from MIN-LAPACK and some MATLAB code
     int info = 0;
     int infoc = 1;
-    const scalar_t xtol = 1e-15;
-    const scalar_t ftol = 1e-4;
-    const scalar_t gtol = 1e-2;
-    const scalar_t stpmin = 1e-15;
-    const scalar_t stpmax = 1e15;
-    const scalar_t xtrapf = 4;
-    const int maxfev = 20;
+    constexpr scalar_t xtol = 1e-15;
+    constexpr scalar_t ftol = 1e-4;
+    constexpr scalar_t gtol = 1e-2;
+    constexpr scalar_t stpmin = 1e-15;
+    constexpr scalar_t stpmax = 1e15;
+    constexpr scalar_t xtrapf = 4;
+    constexpr int maxfev = 20;
     int nfev = 0;
 
     scalar_t dginit = g->dot(s);
@@ -91,8 +91,7 @@ class MoreThuente {
       }
 
       // Force the step to be within the bounds stpmax and stpmin.
-      *stp = std::max<scalar_t>(*stp, stpmin);
-      *stp = std::min<scalar_t>(*stp, stpmax);
+      *stp = std::clamp(*stp, stpmin, stpmax);
 
       // Oops, let us return the last reliable values.
       if ((brackt && ((*stp <= stmin) || (*stp >= stmax))) ||
@@ -192,7 +191,7 @@ class MoreThuente {
       info = 1;
       bound = true;
       scalar_t theta = 3. * (fx - fp) / (stp - stx) + dx + dp;
-      scalar_t s = std::max<scalar_t>(theta, std::max<scalar_t>(dx, dp));
+      scalar_t s = max_abs(theta, dx, dp);
       scalar_t gamma =
           s * sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
       if (stp < stx) gamma = -gamma;
@@ -210,7 +209,7 @@ class MoreThuente {
       info = 2;
       bound = false;
       scalar_t theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
-      scalar_t s = std::max<scalar_t>(theta, std::max<scalar_t>(dx, dp));
+      scalar_t s = max_abs(theta, dx, dp);
       scalar_t gamma =
           s * sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
       if (stp > stx) gamma = -gamma;
@@ -227,9 +226,9 @@ class MoreThuente {
       brackt = true;
     } else if (fabs(dp) < fabs(dx)) {
       info = 3;
-      bound = 1;
+      bound = true;
       scalar_t theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
-      scalar_t s = std::max<scalar_t>(theta, std::max<scalar_t>(dx, dp));
+      scalar_t s = max_abs(theta, dx, dp);
       scalar_t gamma = s * sqrt(std::max<scalar_t>(static_cast<scalar_t>(0.),
                                                    (theta / s) * (theta / s) -
                                                        (dx / s) * (dp / s)));
@@ -263,7 +262,7 @@ class MoreThuente {
       bound = false;
       if (brackt) {
         scalar_t theta = 3 * (fp - fy) / (sty - stp) + dy + dp;
-        scalar_t s = std::max<scalar_t>(theta, std::max<scalar_t>(dy, dp));
+        scalar_t s = max_abs(theta, dy, dp);
         scalar_t gamma =
             s * sqrt((theta / s) * (theta / s) - (dy / s) * (dp / s));
         if (stp > sty) gamma = -gamma;
@@ -296,8 +295,7 @@ class MoreThuente {
       dx = dp;
     }
 
-    stpf = std::min<scalar_t>(stpmax, stpf);
-    stpf = std::max<scalar_t>(stpmin, stpf);
+    stpf = std::clamp(stpf, stpmin, stpmax);
     stp = stpf;
 
     if (brackt & bound) {
@@ -311,6 +309,10 @@ class MoreThuente {
     }
 
     return 0;
+  }
+
+  static scalar_t max_abs(scalar_t x, scalar_t y, scalar_t z) {
+    return std::max(std::abs(x), std::max(std::abs(y), std::abs(z)));
   }
 };
 }  // namespace cppoptlib::solver::linesearch
