@@ -21,7 +21,7 @@ Want a full example?
       public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-        double operator()(const Eigen::VectorXd &x) {
+        double operator()(const Eigen::VectorXd &x) const {
             const double t1 = (1 - x[0]);
             const double t2 = (x[1] - x[0] * x[0]);
             return   t1 * t1 + 100 * t2 * t2;
