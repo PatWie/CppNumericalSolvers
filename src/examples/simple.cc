@@ -30,9 +30,9 @@ class Function : public FunctionXd {
   }
 
   void Hessian(const vector_t &x, hessian_t *hessian) const override {
-    (*hessian)(0, 0) = 1200 * x[0] * x[0] - 400 * x[1] + 2;
-    (*hessian)(0, 1) = -400 * x[0];
-    (*hessian)(1, 0) = -400 * x[0];
+    (*hessian)(0, 0) = 10;
+    (*hessian)(0, 1) = 0;
+    (*hessian)(1, 0) = 0;
     (*hessian)(1, 1) = 200;
   }
 };
