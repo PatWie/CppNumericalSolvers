@@ -19,7 +19,7 @@ public:
     using typename Super::TVector;
     using typename Super::THessian;
     using typename Super::TCriteria;
-    using TMatrix = Eigen::Matrix<Scalar, TProblem::Dim, Eigen::Dynamic>;
+    using TMatrix = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
     using TVarVector = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
 
 protected:
@@ -96,9 +96,9 @@ public:
 
         TVector pc = TVector::Zero(n);
         TVector ps = TVector::Zero(n);
-        THessian B = THessian::Identity();
-        THessian D = THessian::Identity();
-        THessian C = THessian::Zero();
+        THessian B = THessian::Identity(n, n);
+        THessian D = THessian::Identity(n, n);
+        THessian C = THessian::Zero(n; n);
         C.diagonal() = (objFunc.upperBound() - objFunc.lowerBound()) / 2;
         Eigen::SelfAdjointEigenSolver<THessian> eigenSolver(C);
         B = eigenSolver.eigenvectors();
@@ -112,7 +112,7 @@ public:
         TVarVector costs(la);
         Scalar prevCost = objFunc.value(x0);
         // Constraint handling
-        TVector gamma = TVector::Ones();
+        TVector gamma = TVector::Ones(n);
 
         // CMA-ES Main Loop
         int eigen_last_eval = 0;
