@@ -98,7 +98,7 @@ public:
         TVector ps = TVector::Zero(n);
         THessian B = THessian::Identity(n, n);
         THessian D = THessian::Identity(n, n);
-        THessian C = THessian::Zero(n; n);
+        THessian C = THessian::Zero(n, n);
         C.diagonal() = (objFunc.upperBound() - objFunc.lowerBound()) / 2;
         Eigen::SelfAdjointEigenSolver<THessian> eigenSolver(C);
         B = eigenSolver.eigenvectors();
