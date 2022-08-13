@@ -242,8 +242,7 @@ class Lbfgsb : public Solver<function_t> {
             alphastar,
             (upper_bound_(free_variables.at(i)) - x_cp(free_variables.at(i))) /
                 du(i));
-      }
-      else if (du(i) < 0) {
+      } else if (du(i) < 0) {
         alphastar = std::min<scalar_t>(
             alphastar,
             (lower_bound_(free_variables.at(i)) - x_cp(free_variables.at(i))) /
