@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git \
+            wget \
+            pkg-config \
+            g++ \
+            zip \
+            zlib1g-dev \
+            unzip \
+            python3 \
+            ca-certificates \
+            clang-format-19 \
+            cpplint
+
+      - name: Set up Bazel 8
+        uses: bazel-contrib/setup-bazel@0.14.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
+
+      - name: Code Format Check
+        uses: jidicula/clang-format-action@v4.14.0
+        with:
+          clang-format-version: '19'
+          check-path: '.'
+          fallback-style: 'Google'
+
+      - name: Code Lint
+        uses: reviewdog/action-cpplint@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-review
+          flags: '--extensions=h,hpp,c,cpp,cc,cu,hh,ipp --filter=-build/include_order --recursive include'
+
+      - name: Verify
+        run: |
+          bazel run verify
+
+      - name: Build
+        run: |
+          bazel run simple

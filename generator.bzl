@@ -5,7 +5,7 @@ def build_example(name, visibility=None):
     copts = ["-std=c++17", "-Wall", "-Wextra"],
     deps = [
         "//include/cppoptlib:cppoptlib",
-        "@eigen_archive//:eigen3"
+        "@eigen//:eigen",
     ]
   )
 
@@ -16,7 +16,7 @@ def build_test(name, visibility=None):
     copts = ["-Iexternal/gtest/include", "-std=c++17", " -Wall", "-Wextra"],
     deps = [
         "//include/cppoptlib:cppoptlib",
-        "@eigen_archive//:eigen3",
-        "@gtest//:main"
+        "@eigen//:eigen",
+        "@googletest//:gtest_main",
     ]
   )
