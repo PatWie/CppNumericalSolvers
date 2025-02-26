@@ -10,15 +10,17 @@
 #include "include/cppoptlib/solver/lbfgs.h"
 #include "include/cppoptlib/solver/lbfgsb.h"
 #include "include/cppoptlib/solver/newton_descent.h"
+#include "include/cppoptlib/utils/derivatives.h"
 
-using FunctionXd = cppoptlib::function::Function<double>;
+using FunctionXd = cppoptlib::function::Function<
+    double, Eigen::Dynamic, cppoptlib::function::Differentiability::Second>;
+// Or be more specific.
+using Function2d = cppoptlib::function::Function<
+    double, 2, cppoptlib::function::Differentiability::First>;
 
 class Function : public FunctionXd {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-  using FunctionXd::hessian_t;
-  using FunctionXd::vector_t;
 
   scalar_t operator()(const vector_t &x) const override {
     return 5 * x[0] * x[0] + 100 * x[1] * x[1] + 5;
@@ -29,7 +31,7 @@ class Function : public FunctionXd {
     (*grad)[1] = 2 * 100 * x[1];
   }
 
-  void Hessian(const vector_t &x, hessian_t *hessian) const override {
+  void Hessian(const vector_t & /*x*/, matrix_t *hessian) const override {
     (*hessian)(0, 0) = 10;
     (*hessian)(0, 1) = 0;
     (*hessian)(1, 0) = 0;
@@ -37,10 +39,10 @@ class Function : public FunctionXd {
   }
 };
 
-int main(int argc, char const *argv[]) {
-  // using Solver = cppoptlib::solver::NewtonDescent<Function>;
+int main() {
   // using Solver = cppoptlib::solver::GradientDescent<Function>;
   // using Solver = cppoptlib::solver::ConjugatedGradientDescent<Function>;
+  // using Solver = cppoptlib::solver::NewtonDescent<Function>;
   // using Solver = cppoptlib::solver::Bfgs<Function>;
   // using Solver = cppoptlib::solver::Lbfgs<Function>;
   using Solver = cppoptlib::solver::Lbfgsb<Function>;
@@ -50,23 +52,17 @@ int main(int argc, char const *argv[]) {
   Function::vector_t x(dim);
   x << -1, 2;
 
-  auto state = f.Eval(x);
-  std::cout << "this" << std::endl;
+  Function::state_t state(f, x);
 
   std::cout << f(x) << std::endl;
   std::cout << state.gradient << std::endl;
-  if (state.hessian) {
-    std::cout << *(state.hessian) << std::endl;
-  }
 
   std::cout << cppoptlib::utils::IsGradientCorrect(f, x) << std::endl;
   std::cout << cppoptlib::utils::IsHessianCorrect(f, x) << std::endl;
 
-  Solver solver{
-      Function::vector_t::Constant(
-          dim, std::numeric_limits<typename Function::scalar_t>::lowest()),
-      Function::vector_t::Constant(
-          dim, std::numeric_limits<typename Function::scalar_t>::max())};
+  // Solver solver;
+  Solver solver(cppoptlib::solver::DefaultStoppingSolverProgress<Function>(),
+                cppoptlib::solver::PrintCallback<Function>());
 
   auto [solution, solver_state] = solver.Minimize(f, x);
   std::cout << "argmin " << solution.x.transpose() << std::endl;

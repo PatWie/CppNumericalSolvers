@@ -49,7 +49,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-review
-          flags: '--extensions=h,hpp,c,cpp,cc,cu,hh,ipp --filter=-build/include_order --recursive include'
+          flags: '--extensions=h,hpp,c,cpp,cc,cu,hh,ipp --filter=-build/include_order,-whitespace/indent_namespace --recursive include'
 
       - name: Verify
         run: |

@@ -42,7 +42,6 @@ class Armijo<function_t, 2> {
  public:
   using scalar_t = typename function_t::scalar_t;
   using vector_t = typename function_t::vector_t;
-  using hessian_t = typename function_t::hessian_t;
   using state_t = typename function_t::state_t;
   /**
    * @brief use Armijo Rule for (weak) Wolfe conditiions
@@ -62,7 +61,7 @@ class Armijo<function_t, 2> {
     const scalar_t f_in = state.value;
     const scalar_t cache = c * state.gradient.dot(search_direction) +
                            0.5 * c * c * search_direction.transpose() *
-                               ((*state.hessian) * search_direction);
+                               state.hessian * search_direction;
 
     while (f > f_in + alpha * cache) {
       alpha *= rho;

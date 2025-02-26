@@ -2,103 +2,167 @@
 #ifndef INCLUDE_CPPOPTLIB_FUNCTION_H_
 #define INCLUDE_CPPOPTLIB_FUNCTION_H_
 
-#include <optional>
-
 #include "Eigen/Core"
-#include "utils/derivatives.h"
 
 namespace cppoptlib::function {
 
-// Specifies a current function state.
-template <class scalar_t, class vector_t, class matrix_t>
+enum class Differentiability {
+  None,   // Only function evaluation.
+  First,  // Evaluation and gradient available.
+  Second  // Evaluation, gradient, and Hessian available.
+};
+
+template <typename TFunc>
 struct State {
-  int dim;
-  int order;
+  using function_t = TFunc;
+};
 
-  scalar_t value = 0;               // The objective value.
-  vector_t x;                       // The current input value in x.
-  vector_t gradient;                // The gradient in x.
-  std::optional<matrix_t> hessian;  // The Hessian in x;
+template <class TScalar, int TDim>
+class FunctionBase {
+ public:
+  using scalar_t = TScalar;
+  using vector_t = Eigen::Matrix<TScalar, TDim, 1>;
+  using matrix_t = Eigen::Matrix<TScalar, TDim, TDim>;
+};
 
-  // TODO(patwie): There is probably a better way.
-  State() : dim(-1), order(-1) {}
+template <class TScalar, int TDim, Differentiability TDifferentiability>
+class Function : public FunctionBase<TScalar, TDim> {
+ public:
+  using types = FunctionBase<TScalar, TDim>;
+  using state_t = State<Function<TScalar, TDim, TDifferentiability>>;
+};
 
-  State(const int dim, const int order)
-      : dim(dim),
-        order(order),
-        x(vector_t::Zero(dim)),
-        gradient(vector_t::Zero(dim)) {
-    if (order > 1) {
-      hessian = std::optional<matrix_t>(matrix_t::Zero(dim, dim));
-    }
+template <class TScalar, int TDim>
+struct State<Function<TScalar, TDim, Differentiability::None>> {
+  using function_t = Function<TScalar, TDim, Differentiability::None>;
+  using state_t = State<function_t>;
+
+  typename function_t::scalar_t value = 0;
+  typename function_t::vector_t x;
+
+  State(const function_t &func, const typename function_t::vector_t &x_input)
+      : x(x_input) {
+    value = func(x_input);
   }
 
-  State(const State<scalar_t, vector_t, matrix_t> &rhs) { CopyState(rhs); }
+  State() {}
 
-  State operator=(const State<scalar_t, vector_t, matrix_t> &rhs) {
+  State(const state_t &rhs) { CopyState(rhs); }  // nolint
+
+  State operator=(const state_t &rhs) {
     CopyState(rhs);
     return *this;
   }
 
-  void CopyState(const State<scalar_t, vector_t, matrix_t> &rhs) {
-    assert(rhs.order > -1);
-    dim = rhs.dim;
-    order = rhs.order;
+  void CopyState(const state_t &rhs) {
     value = rhs.value;
     x = rhs.x.eval();
-    if (order >= 1) {
-      gradient = rhs.gradient.eval();
-    }
-    if ((order >= 2) && rhs.hessian) {
-      hessian = std::optional<matrix_t>(rhs.hessian->eval());
-    }
   }
 };
 
-template <class TScalar, int TDim = Eigen::Dynamic>
-class Function {
+template <class TScalar, int TDim>
+struct State<Function<TScalar, TDim, Differentiability::First>> {
+  using function_t = Function<TScalar, TDim, Differentiability::First>;
+  using state_t = State<function_t>;
+
+  typename function_t::scalar_t value = 0;
+  typename function_t::vector_t x;
+  typename function_t::vector_t gradient;
+
+  State(const function_t &func, const typename function_t::vector_t &x_input)
+      : x(x_input), gradient(function_t::vector_t::Zero(x_input.rows())) {
+    value = func(x_input);
+    func.Gradient(x_input, &gradient);
+  }
+
+  State() {}
+
+  State(const state_t &rhs) { CopyState(rhs); }  // nolint
+
+  State operator=(const state_t &rhs) {
+    CopyState(rhs);
+    return *this;
+  }
+
+  void CopyState(const state_t &rhs) {
+    value = rhs.value;
+    x = rhs.x.eval();
+    gradient = rhs.gradient.eval();
+  }
+};
+
+template <class TScalar, int TDim>
+struct State<Function<TScalar, TDim, Differentiability::Second>> {
+  using function_t = Function<TScalar, TDim, Differentiability::Second>;
+  using state_t = State<function_t>;
+
+  typename function_t::scalar_t value = 0;
+  typename function_t::vector_t x;
+  typename function_t::vector_t gradient;
+  typename function_t::matrix_t hessian;
+
+  State(const function_t &func, const typename function_t::vector_t &x_input)
+      : x(x_input),
+        gradient(function_t::vector_t::Zero(x_input.rows())),
+        hessian(function_t::matrix_t::Zero(x_input.rows(), x_input.rows())) {
+    value = func(x_input);
+    func.Gradient(x_input, &gradient);
+    func.Hessian(x_input, &hessian);
+  }
+
+  State() {}
+
+  State(const state_t &rhs) { CopyState(rhs); }  // nolint
+
+  State operator=(const state_t &rhs) {
+    CopyState(rhs);
+    return *this;
+  }
+
+  void CopyState(const state_t &rhs) {
+    value = rhs.value;
+    x = rhs.x.eval();
+    gradient = rhs.gradient.eval();
+    hessian = rhs.hessian.eval();
+  }
+};
+
+template <class TScalar, int TDim>
+class Function<TScalar, TDim, Differentiability::None>
+    : public FunctionBase<TScalar, TDim> {
  public:
-  static constexpr int Dim = TDim;
-  using scalar_t = TScalar;
-  using vector_t = Eigen::Matrix<TScalar, Dim, 1>;
-  using hessian_t = Eigen::Matrix<TScalar, Dim, Dim>;
-  using matrix_t = Eigen::Matrix<TScalar, Eigen::Dynamic, Eigen::Dynamic>;
-  using index_t = typename vector_t::Index;
+  using types = FunctionBase<TScalar, TDim>;
+  using state_t = State<Function<TScalar, TDim, Differentiability::None>>;
+  static constexpr Differentiability diff_level = Differentiability::None;
 
-  using state_t = function::State<scalar_t, vector_t, hessian_t>;
+  virtual typename types::scalar_t operator()(
+      const typename types::vector_t &x) const = 0;
+};
 
+template <class TScalar, int TDim>
+class Function<TScalar, TDim, Differentiability::First>
+    : public Function<TScalar, TDim, Differentiability::None> {
  public:
-  Function() = default;
-  virtual ~Function() = default;
+  using types =
+      typename Function<TScalar, TDim, Differentiability::None>::types;
+  using state_t = State<Function<TScalar, TDim, Differentiability::First>>;
+  static constexpr Differentiability diff_level = Differentiability::First;
 
-  // Computes the value of a function.
-  virtual scalar_t operator()(const vector_t &x) const = 0;
+  virtual void Gradient(const typename types::vector_t &x,
+                        typename types::vector_t *grad) const = 0;
+};
 
-  // Computes the gradient of a function.
-  virtual void Gradient(const vector_t &x, vector_t *grad) const {
-    utils::ComputeFiniteGradient(*this, x, grad);
-  }
-  // Computes the Hessian of a function.
-  virtual void Hessian(const vector_t &x, hessian_t *hessian) const {
-    utils::ComputeFiniteHessian(*this, x, hessian);
-  }
+template <class TScalar, int TDim>
+class Function<TScalar, TDim, Differentiability::Second>
+    : public Function<TScalar, TDim, Differentiability::First> {
+ public:
+  using types =
+      typename Function<TScalar, TDim, Differentiability::First>::types;
+  using state_t = State<Function<TScalar, TDim, Differentiability::Second>>;
+  static constexpr Differentiability diff_level = Differentiability::Second;
 
-  // For improved performance, this function will return the state directly.
-  // Override this method if you can compute the objective value, gradient and
-  // Hessian simultaneously.
-  virtual State<scalar_t, vector_t, hessian_t> Eval(const vector_t &x,
-                                                    const int order = 2) const {
-    State<scalar_t, vector_t, hessian_t> state(x.rows(), order);
-    state.value = this->operator()(x);
-    state.x = x;
-    if (order >= 1) {
-      this->Gradient(x, &state.gradient);
-    }
-    if ((order >= 2) && (state.hessian)) {
-      this->Hessian(x, &*(state.hessian));
-    }
-    return state;
-  }
+  virtual void Hessian(const typename types::vector_t &x,
+                       typename types::matrix_t *hessian) const = 0;
 };
 
 }  // namespace cppoptlib::function

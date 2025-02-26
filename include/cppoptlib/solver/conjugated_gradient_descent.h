@@ -11,34 +11,34 @@
 namespace cppoptlib::solver {
 template <typename function_t>
 class ConjugatedGradientDescent : public Solver<function_t> {
+  static_assert(function_t::diff_level ==
+                        cppoptlib::function::Differentiability::First ||
+                    function_t::diff_level ==
+                        cppoptlib::function::Differentiability::Second,
+                "GradientDescent only supports first- or second-order "
+                "differentiable functions");
+
  private:
   using Superclass = Solver<function_t>;
-  using state_t = typename Superclass::state_t;
+  using progress_t = typename Superclass::progress_t;
+  using state_t = typename function_t::state_t;
 
   using scalar_t = typename function_t::scalar_t;
-  using hessian_t = typename function_t::hessian_t;
-  using matrix_t = typename function_t::matrix_t;
   using vector_t = typename function_t::vector_t;
-  using function_state_t = typename function_t::state_t;
+  using matrix_t = typename function_t::matrix_t;
 
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  explicit ConjugatedGradientDescent(
-      const State<scalar_t> &stopping_state =
-          DefaultStoppingSolverState<scalar_t>(),
-      typename Superclass::callback_t step_callback =
-          GetDefaultStepCallback<scalar_t, vector_t, hessian_t>())
-      : Solver<function_t>{stopping_state, std::move(step_callback)} {}
+  using Superclass::Superclass;
 
-  void InitializeSolver(const function_state_t &initial_state) override {
+  void InitializeSolver(const state_t &initial_state) override {
     previous_ = initial_state;
   }
 
-  function_state_t OptimizationStep(const function_t &function,
-                                    const function_state_t &current,
-                                    const state_t &state) override {
-    if (state.num_iterations == 0) {
+  state_t OptimizationStep(const function_t &function, const state_t &current,
+                           const progress_t &progress) override {
+    if (progress.num_iterations == 0) {
       search_direction_ = -current.gradient;
     } else {
       const double beta = current.gradient.dot(current.gradient) /
@@ -50,11 +50,11 @@ class ConjugatedGradientDescent : public Solver<function_t> {
     const scalar_t rate = linesearch::Armijo<function_t, 1>::Search(
         current, search_direction_, function);
 
-    return function.Eval(current.x + rate * search_direction_, 1);
+    return state_t(function, current.x + rate * search_direction_);
   }
 
  private:
-  function_state_t previous_;
+  state_t previous_;
   vector_t search_direction_;
 };
 

@@ -16,47 +16,60 @@ namespace cppoptlib::solver {
 
 template <typename function_t, int m = 5>
 class Lbfgsb : public Solver<function_t> {
+  static_assert(function_t::diff_level ==
+                        cppoptlib::function::Differentiability::First ||
+                    function_t::diff_level ==
+                        cppoptlib::function::Differentiability::Second,
+                "GradientDescent only supports first- or second-order "
+                "differentiable functions");
+
  private:
   using Superclass = Solver<function_t>;
-  using state_t = typename Superclass::state_t;
+  using progress_t = typename Superclass::progress_t;
+  using state_t = typename function_t::state_t;
+  using callback_t = typename Superclass::callback_t;
 
   using scalar_t = typename function_t::scalar_t;
-  using hessian_t = typename function_t::hessian_t;
   using matrix_t = typename function_t::matrix_t;
   using vector_t = typename function_t::vector_t;
-  using function_state_t = typename function_t::state_t;
 
+  using dyn_matrix_t = Eigen::Matrix<scalar_t, Eigen::Dynamic, Eigen::Dynamic>;
   using dyn_vector_t = Eigen::Matrix<scalar_t, Eigen::Dynamic, 1>;
 
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  Lbfgsb(const vector_t &lower_bound, const vector_t &upper_bound,
-         const State<scalar_t> &stopping_state =
-             DefaultStoppingSolverState<scalar_t>(),
-         typename Superclass::callback_t step_callback =
-             GetDefaultStepCallback<scalar_t, vector_t, hessian_t>())
-      : Solver<function_t>{stopping_state, std::move(step_callback)},
-        lower_bound_{lower_bound},
-        upper_bound_{upper_bound} {}
+  using Superclass::Superclass;
 
-  void InitializeSolver(const function_state_t &initial_state) override {
+  void SetBounds(const vector_t &lower_bound, const vector_t &upper_bound) {
+    lower_bound_ = lower_bound;
+    upper_bound_ = upper_bound;
+  }
+
+  void InitializeSolver(const state_t &initial_state) override {
     dim_ = initial_state.x.rows();
+
+    if (!bounds_initialized_) {
+      lower_bound_ =
+          vector_t::Constant(dim_, std::numeric_limits<scalar_t>::lowest());
+      upper_bound_ =
+          vector_t::Constant(dim_, std::numeric_limits<scalar_t>::max());
+      bounds_initialized_ = true;
+    }
 
     theta_ = 1.0;
 
-    W_ = matrix_t::Zero(dim_, 0);
-    M_ = matrix_t::Zero(0, 0);
+    W_ = dyn_matrix_t::Zero(dim_, 0);
+    M_ = dyn_matrix_t::Zero(0, 0);
 
-    y_history_ = matrix_t::Zero(dim_, 0);
-    s_history_ = matrix_t::Zero(dim_, 0);
+    y_history_ = dyn_matrix_t::Zero(dim_, 0);
+    s_history_ = dyn_matrix_t::Zero(dim_, 0);
   }
 
-  function_state_t OptimizationStep(const function_t &function,
-                                    const function_state_t &current,
-                                    const state_t & /*state*/) override {
+  state_t OptimizationStep(const function_t &function, const state_t &current,
+                           const progress_t & /*progress*/) override {
     // STEP 2: compute the cauchy point
-    vector_t cauchy_point = vector_t::Zero(dim_);
+    vector_t cauchy_point = vector_t::Zero(current.x.rows());
     dyn_vector_t c = dyn_vector_t::Zero(W_.cols());
     GetGeneralizedCauchyPoint(current, &cauchy_point, &c);
 
@@ -76,7 +89,7 @@ class Lbfgsb : public Solver<function_t> {
     const vector_t clipped_x_next =
         x_next.cwiseMin(upper_bound_).cwiseMax(lower_bound_);
 
-    const function_state_t next = function.Eval(clipped_x_next, 1);
+    const state_t next(function, clipped_x_next);
 
     // prepare for next iteration
     const vector_t new_y = next.gradient - current.gradient;
@@ -97,13 +110,13 @@ class Lbfgsb : public Solver<function_t> {
       // STEP 7:
       theta_ =
           (scalar_t)(new_y.transpose() * new_y) / (new_y.transpose() * new_s);
-      W_ = matrix_t::Zero(y_history_.rows(),
-                          y_history_.cols() + s_history_.cols());
+      W_ = dyn_matrix_t::Zero(y_history_.rows(),
+                              y_history_.cols() + s_history_.cols());
       W_ << y_history_, (theta_ * s_history_);
-      matrix_t A = s_history_.transpose() * y_history_;
-      matrix_t L = A.template triangularView<Eigen::StrictlyLower>();
-      matrix_t MM(A.rows() + L.rows(), A.rows() + L.cols());
-      matrix_t D = -1 * A.diagonal().asDiagonal();
+      dyn_matrix_t A = s_history_.transpose() * y_history_;
+      dyn_matrix_t L = A.template triangularView<Eigen::StrictlyLower>();
+      dyn_matrix_t MM(A.rows() + L.rows(), A.rows() + L.cols());
+      dyn_matrix_t D = -1 * A.diagonal().asDiagonal();
       MM << D, L.transpose(), L,
           ((s_history_.transpose() * s_history_) * theta_);
       M_ = MM.inverse();
@@ -125,8 +138,8 @@ class Lbfgsb : public Solver<function_t> {
     return idx;
   }
 
-  void GetGeneralizedCauchyPoint(const function_state_t &current,
-                                 vector_t *x_cauchy, dyn_vector_t *c) const {
+  void GetGeneralizedCauchyPoint(const state_t &current, vector_t *x_cauchy,
+                                 dyn_vector_t *c) const {
     constexpr scalar_t max_value = std::numeric_limits<scalar_t>::max();
     constexpr scalar_t epsilon = std::numeric_limits<scalar_t>::epsilon();
 
@@ -252,7 +265,7 @@ class Lbfgsb : public Solver<function_t> {
     return alphastar;
   }
 
-  vector_t SubspaceMinimization(const function_state_t &current,
+  vector_t SubspaceMinimization(const state_t &current,
                                 const vector_t &x_cauchy,
                                 const dyn_vector_t &c) const {
     const scalar_t theta_inverse = 1 / theta_;
@@ -265,20 +278,20 @@ class Lbfgsb : public Solver<function_t> {
       }
     }
     const int free_var_count = free_variables_index.size();
-    const matrix_t WZ =
+    const dyn_matrix_t WZ =
         W_(free_variables_index, Eigen::indexing::all).transpose();
 
     const vector_t rr =
         (current.gradient + theta_ * (x_cauchy - current.x) - W_ * (M_ * c));
     // r=r(free_variables);
-    const matrix_t r = rr(free_variables_index);
+    const dyn_vector_t r = rr(free_variables_index);
 
     // STEP 2: "v = w^T*Z*r" and STEP 3: "v = M*v"
     dyn_vector_t v = M_ * (WZ * r);
     // STEP 4: N = 1/theta*W^T*Z*(W^T*Z)^T
-    matrix_t N = theta_inverse * WZ * WZ.transpose();
+    dyn_matrix_t N = theta_inverse * WZ * WZ.transpose();
     // N = I - MN
-    N = matrix_t::Identity(N.rows(), N.rows()) - M_ * N;
+    N = dyn_matrix_t::Identity(N.rows(), N.rows()) - M_ * N;
     // STEP: 5
     // v = N^{-1}*v
     if (v.size() > 0) {
@@ -304,13 +317,14 @@ class Lbfgsb : public Solver<function_t> {
   int dim_;
   vector_t lower_bound_;
   vector_t upper_bound_;
+  bool bounds_initialized_ = false;
 
-  matrix_t M_;
-  matrix_t W_;
+  dyn_matrix_t M_;
+  dyn_matrix_t W_;
   scalar_t theta_;
 
-  matrix_t y_history_;
-  matrix_t s_history_;
+  dyn_matrix_t y_history_;
+  dyn_matrix_t s_history_;
 };
 
 }  // namespace cppoptlib::solver

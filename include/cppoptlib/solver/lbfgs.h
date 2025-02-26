@@ -21,15 +21,22 @@ void ShiftLeft(T *matrix) {
 
 template <typename function_t, int m = 10>
 class Lbfgs : public Solver<function_t> {
+  static_assert(function_t::diff_level ==
+                        cppoptlib::function::Differentiability::First ||
+                    function_t::diff_level ==
+                        cppoptlib::function::Differentiability::Second,
+                "GradientDescent only supports first- or second-order "
+                "differentiable functions");
+
  private:
   using Superclass = Solver<function_t>;
-  using state_t = typename Superclass::state_t;
+  using progress_t = typename Superclass::progress_t;
+  using state_t = typename function_t::state_t;
 
   using scalar_t = typename function_t::scalar_t;
-  using hessian_t = typename function_t::hessian_t;
+  using hessian_t = typename function_t::matrix_t;
   using matrix_t = typename function_t::matrix_t;
   using vector_t = typename function_t::vector_t;
-  using function_state_t = typename function_t::state_t;
 
   using memory_matrix_t = Eigen::Matrix<scalar_t, Eigen::Dynamic, m>;
   using memory_vector_t = Eigen::Matrix<scalar_t, 1, m>;
@@ -37,13 +44,9 @@ class Lbfgs : public Solver<function_t> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  explicit Lbfgs(const State<scalar_t> &stopping_state =
-                     DefaultStoppingSolverState<scalar_t>(),
-                 typename Superclass::callback_t step_callback =
-                     GetDefaultStepCallback<scalar_t, vector_t, hessian_t>())
-      : Solver<function_t>{stopping_state, std::move(step_callback)} {}
+  using Superclass::Superclass;
 
-  void InitializeSolver(const function_state_t &initial_state) override {
+  void InitializeSolver(const state_t &initial_state) override {
     dim_ = initial_state.x.rows();
     x_diff_memory_ = memory_matrix_t::Zero(dim_, m);
     grad_diff_memory_ = memory_matrix_t::Zero(dim_, m);
@@ -52,9 +55,8 @@ class Lbfgs : public Solver<function_t> {
     scaling_factor_ = 1;
   }
 
-  function_state_t OptimizationStep(const function_t &function,
-                                    const function_state_t &current,
-                                    const state_t &state) override {
+  state_t OptimizationStep(const function_t &function, const state_t &current,
+                           const progress_t &progress) override {
     vector_t search_direction = current.gradient;
 
     constexpr scalar_t absolute_eps = 0.0001;
@@ -64,7 +66,7 @@ class Lbfgs : public Solver<function_t> {
 
     // Algorithm 7.4 (L-BFGS two-loop recursion)
     int k = 0;
-    if (state.num_iterations > 0) {
+    if (progress.num_iterations > 0) {
       k = std::min<int>(m, memory_idx_ - 1);
     }
 
@@ -105,8 +107,7 @@ class Lbfgs : public Solver<function_t> {
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
         current, -search_direction, function, alpha_init);
 
-    const function_state_t next =
-        function.Eval(current.x - rate * search_direction, 1);
+    const state_t next(function, current.x - rate * search_direction);
 
     const vector_t x_diff = next.x - current.x;
     const vector_t grad_diff = next.gradient - current.gradient;
