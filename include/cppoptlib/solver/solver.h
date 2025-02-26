@@ -80,9 +80,11 @@ struct Progress {
         fabs(current_function_state.value - previous_function_state.value);
     x_delta = (current_function_state.x - previous_function_state.x)
                   .template lpNorm<Eigen::Infinity>();
-    gradient_norm =
-        current_function_state.gradient.template lpNorm<Eigen::Infinity>();
-
+    if constexpr (function_t::diff_level >=
+                  cppoptlib::function::Differentiability::First) {
+      gradient_norm =
+          current_function_state.gradient.template lpNorm<Eigen::Infinity>();
+    }
     if ((stop_progress.num_iterations > 0) &&
         (num_iterations > stop_progress.num_iterations)) {
       status = Status::IterationLimit;
@@ -106,10 +108,13 @@ struct Progress {
     } else {
       f_delta_violations = 0;
     }
-    if ((stop_progress.gradient_norm > 0) &&
-        (gradient_norm < stop_progress.gradient_norm)) {
-      status = Status::GradientNormViolation;
-      return;
+    if constexpr (function_t::diff_level >=
+                  cppoptlib::function::Differentiability::First) {
+      if ((stop_progress.gradient_norm > 0) &&
+          (gradient_norm < stop_progress.gradient_norm)) {
+        status = Status::GradientNormViolation;
+        return;
+      }
     }
     // if (previous_function_state.order == 2) {
     //   if ((stop_state.condition_hessian > 0) &&

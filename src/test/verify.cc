@@ -13,6 +13,7 @@
 #include "include/cppoptlib/solver/gradient_descent.h"
 #include "include/cppoptlib/solver/lbfgs.h"
 #include "include/cppoptlib/solver/lbfgsb.h"
+#include "include/cppoptlib/solver/nelder_mead.h"
 #include "include/cppoptlib/solver/newton_descent.h"
 #include "include/cppoptlib/utils/derivatives.h"
 
@@ -28,6 +29,21 @@ using FunctionX2_dx = cppoptlib::function::Function<
 template <class T>
 using FunctionX2_dxx = cppoptlib::function::Function<
     T, 2, cppoptlib::function::Differentiability::Second>;
+
+template <class T>
+class RosenbrockValue : public FunctionX2<T> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  using typename FunctionX2<T>::scalar_t;
+  using typename FunctionX2<T>::vector_t;
+
+  scalar_t operator()(const vector_t &x) const override {
+    const T t1 = (1 - x[0]);
+    const T t2 = (x[1] - x[0] * x[0]);
+    return t1 * t1 + 100 * t2 * t2;
+  }
+};
 
 template <class T>
 class RosenbrockGradient : public FunctionX2_dx<T> {
@@ -88,6 +104,8 @@ template <class T>
 class LbfgsTest : public testing::Test {};
 template <class T>
 class LbfgsbTest : public testing::Test {};
+template <class T>
+class NelderMeadTest : public testing::Test {};
 
 #define SOLVE_PROBLEM(sol, func, a, b, fx)                                \
   using Function = func<TypeParam>;                                       \
@@ -109,6 +127,7 @@ TYPED_TEST_CASE(NewtonDescentTest, DoublePrecision);
 TYPED_TEST_CASE(BfgsTest, DoublePrecision);
 TYPED_TEST_CASE(LbfgsTest, DoublePrecision);
 TYPED_TEST_CASE(LbfgsbTest, DoublePrecision);
+TYPED_TEST_CASE(NelderMeadTest, DoublePrecision);
 
 #define SOLVER_SETUP(sol, func)                                               \
   TYPED_TEST(sol##Test, func##Far){SOLVE_PROBLEM(                             \
@@ -123,6 +142,7 @@ SOLVER_SETUP(Bfgs, RosenbrockGradient)
 SOLVER_SETUP(Lbfgs, RosenbrockGradient)
 SOLVER_SETUP(Lbfgsb, RosenbrockGradient)
 SOLVER_SETUP(NewtonDescent, RosenbrockFull)
+// SOLVER_SETUP(NelderMead, RosenbrockValue)
 
 // simple function y <- 3*a-b
 template <class T>

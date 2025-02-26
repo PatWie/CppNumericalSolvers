@@ -9,6 +9,7 @@
 #include "include/cppoptlib/solver/gradient_descent.h"
 #include "include/cppoptlib/solver/lbfgs.h"
 #include "include/cppoptlib/solver/lbfgsb.h"
+#include "include/cppoptlib/solver/nelder_mead.h"
 #include "include/cppoptlib/solver/newton_descent.h"
 #include "include/cppoptlib/utils/derivatives.h"
 
@@ -45,7 +46,8 @@ int main() {
   // using Solver = cppoptlib::solver::NewtonDescent<Function>;
   // using Solver = cppoptlib::solver::Bfgs<Function>;
   // using Solver = cppoptlib::solver::Lbfgs<Function>;
-  using Solver = cppoptlib::solver::Lbfgsb<Function>;
+  // using Solver = cppoptlib::solver::Lbfgsb<Function>;
+  using Solver = cppoptlib::solver::NelderMead<Function>;
 
   constexpr auto dim = 2;
   Function f;
