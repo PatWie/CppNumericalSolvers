@@ -101,8 +101,9 @@ class MoreThuente {
 
       // Test new point.
       *x = wa + *stp * s;
-      f = function(*x);
-      function.Gradient(*x, g);
+      const auto state = function(*x);
+      f = state.value;
+      *g = state.gradient;
       nfev++;
       scalar_t dg = g->dot(s);
       scalar_t ftest1 = finit + *stp * dgtest;
