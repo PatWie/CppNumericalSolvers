@@ -38,7 +38,7 @@ class GradientDescent : public Solver<function_t> {
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
         current, -current.gradient, function);
 
-    return state_t(function, current.x - rate * current.gradient);
+    return state_t(function(current.x - rate * current.gradient));
   }
 };
 

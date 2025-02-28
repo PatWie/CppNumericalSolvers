@@ -1,43 +1,75 @@
 # CppNumericalSolvers (A header-only C++17 optimization library)
 
-CppNumericalSolvers stands as a robust and efficient header-only C++17
-optimization library, meticulously crafted to address numerical optimization
-challenges. This library offers a suite of powerful solvers for optimization
-problems, placing a strong emphasis on simplicity, adherence to modern C++
-standards, and seamless integration into projects.
+CppNumericalSolvers is a header-only C++17 optimization library providing a
+suite of solvers for both unconstrained and constrained optimization problems.
+The library is designed for efficiency, modern C++ compliance, and easy
+integration into existing projects. It is distributed under a permissive
+license, making it suitable for commercial use.
 
 ### Example Usage: Minimizing the Rosenbrock Function
 
-Let's delve into a straightforward example that illustrates the ease of
-utilizing CppNumericalSolvers for numerical optimization. In this instance, we
-will showcase the minimization of the classic Rosenbrock function using the
-BFGS solver.
+Let minimize the classic Rosenbrock function using the BFGS solver.
 
 ```cpp
-using FunctionXd = cppoptlib::function::Function<double>;
+/**
+ * @brief Alias for a 2D function with first-order differentiability in cppoptlib.
+ *
+ * This defines a function template that supports differentiation, specialized for
+ * a 2-dimensional input vector.
+ */
+using Functiond2_dx = cppoptlib::function::Function<
+    double, 2, cppoptlib::function::Differentiability::First>;
 
 /**
- * @brief Definition of the Rosenbrock function for optimization.
+ * @brief Implementation of the Rosenbrock function with gradient computation.
  *
- * This class represents the Rosenbrock function, a classic optimization problem.
+ * This class represents the Rosenbrock function:
+ *
+ *     f(x) = (1 - x₁)² + 100 * (x₂ - x₁²)²
+ *
+ * It includes both function evaluation and its gradient for optimization algorithms.
+ * The function has a global minimum at (x₁, x₂) = (1, 1), where f(x) = 0.
+ *
+ * @tparam T The scalar type (e.g., double or float).
  */
-class Rosenbrock : public FunctionXd {
-  public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+class RosenbrockGradient : public Functiond2_dx {
+public:
+  /// Eigen macro for proper memory alignment.
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    /**
-     * @brief Computes the value of the Rosenbrock function at a given point.
-     *
-     * @param x The input vector.
-     * @return The value of the Rosenbrock function at the given point.
-     */
-    double operator()(const Eigen::VectorXd &x) const {
-        const double t1 = (1 - x[0]);
-        const double t2 = (x[1] - x[0] * x[0]);
-        return   t1 * t1 + 100 * t2 * t2;
-    }
+  // Import necessary typedefs from the base class.
+  using typename FunctionX2_dx::state_t;
+  using typename FunctionX2_dx::scalar_t;
+  using typename FunctionX2_dx::vector_t;
 
-    // Gradient and Hessian implementation can be omitted.
+  /**
+   * @brief Computes the Rosenbrock function value and its gradient at a given point.
+   *
+   * @param x A 2D Eigen vector representing the input point.
+   * @return A state_t object containing the function value, input vector, and gradient.
+   */
+  state_t operator()(const vector_t &x) const override {
+    state_t state;
+
+    // Compute function value: f(x) = (1 - x₁)² + 100 * (x₂ - x₁²)²
+    const scalar_t t1 = (1 - x[0]);             // First term: (1 - x₁)
+    const scalar_t t2 = (x[1] - x[0] * x[0]);   // Second term: (x₂ - x₁²)
+
+    state.value = t1 * t1 + 100 * t2 * t2;
+    state.x = x;  // Store the input vector for reference.
+
+    // Initialize gradient vector (∇f)
+    state.gradient = vector_t::Zero(2);
+
+    // Compute partial derivatives:
+    // ∂f/∂x₁ = -2(1 - x₁) + 200(x₂ - x₁²)(-2x₁)
+    state.gradient[0] = -2 * t1 + 200 * t2 * (-2 * x[0]);
+
+    // ∂f/∂x₂ = 200(x₂ - x₁²)
+    state.gradient[1] = 200 * t2;
+
+    return state;
+  }
 };
 
 int main(int argc, char const *argv[]) {
@@ -47,40 +79,35 @@ int main(int argc, char const *argv[]) {
     // Initial guess for the solution.
     Eigen::VectorXd x(2);
     x << -1, 2;
-    std::cout << "Initial point: " << x << std::endl;
-    std::cout << "Function value at initial point: " << f(x) << std::endl;
-
-    // Check the correctness of the gradient and Hessian (against numerical implementation).
-    std::cout << "Is Gradient correctly implemented? " << cppoptlib::utils::IsGradientCorrect(f, x) << std::endl;
-    std::cout << "Is Hessian correctly implemented? " << cppoptlib::utils::IsHessianCorrect(f, x) << std::endl;
+    std::cout << "Initial point: " << x.transpose() << std::endl;
 
     // Evaluate
-    auto state = f.Eval(x);
+    auto state = f(x);
+    std::cout << "Function value at initial point: " << state.value << std::endl;
     std::cout << "Gradient at initial point: " << state.gradient << std::endl;
-    if (state.hessian) {
-        std::cout << "Hessian at initial point: " << *(state.hessian) << std::endl;
-    }
 
     // Minimize the Rosenbrock function using the BFGS solver.
     using Solver = cppoptlib::solver::Bfgs<Rosenbrock>;
     Solver solver;
-    auto [solution, solver_state] = solver.Minimize(f, x);
+    auto [solution, solver_progress] = solver.Minimize(f, x);
 
     // Display the results of the optimization.
     std::cout << "Optimal solution: " << solution.x.transpose() << std::endl;
     std::cout << "Optimal function value: " << solution.value << std::endl;
-    std::cout << "Number of iterations: " << solver_state.num_iterations << std::endl;
-    std::cout << "Solver status: " << solver_state.status << std::endl;
+    std::cout << "Number of iterations: " << solver_progress.num_iterations << std::endl;
+    std::cout << "Solver status: " << solver_progress.status << std::endl;
 
     return 0;
 }
 ```
 
-This example demonstrates the usage of the BFGS solver to minimize the
-Rosenbrock function. You can easily adapt this code for your specific
-optimization problem by defining your objective function and selecting an
-appropriate solver from CppNumericalSolvers. Dive into the implementation for
-more details on available solvers and advanced usage.
+You can easily adapt this code for your specific optimization problem by
+defining your objective function and selecting an appropriate solver from
+CppNumericalSolvers. Dive into the implementation for more details on available
+solvers and advanced usage.
+
+
+See the examples for a constrained problem.
 
 ### References
 

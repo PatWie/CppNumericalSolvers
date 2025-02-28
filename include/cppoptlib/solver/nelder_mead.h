@@ -52,7 +52,7 @@ class NelderMead : public Solver<function_t> {
     std::vector<scalar_t> f(numVertices);
     std::vector<int> idx(numVertices);
     for (int i = 0; i < numVertices; ++i) {
-      f[i] = function(simplex_.col(i));
+      f[i] = function(simplex_.col(i)).value;
       idx[i] = i;
     }
 
@@ -74,7 +74,7 @@ class NelderMead : public Solver<function_t> {
       simplex_ = makeInitialSimplex(simplex_.col(idx[0]));
       // Recompute function values and re-sort indices.
       for (int i = 0; i < numVertices; ++i) {
-        f[i] = function(simplex_.col(i));
+        f[i] = function(simplex_.col(i)).value;
         idx[i] = i;
       }
       std::sort(idx.begin(), idx.end(),
@@ -90,13 +90,13 @@ class NelderMead : public Solver<function_t> {
 
     // Reflection: compute the reflected point.
     vector_t x_r = (1 + rho_) * x_bar - rho_ * simplex_.col(idx[DIM]);
-    scalar_t f_r = function(x_r);
+    scalar_t f_r = function(x_r).value;
 
     if (f_r < f[idx[0]]) {
       // Expansion: if the reflection is the best so far, try to expand further.
       vector_t x_e =
           (1 + rho_ * xi_) * x_bar - rho_ * xi_ * simplex_.col(idx[DIM]);
-      scalar_t f_e = function(x_e);
+      scalar_t f_e = function(x_e).value;
       if (f_e < f_r) {
         simplex_.col(idx[DIM]) = x_e;
       } else {
@@ -111,7 +111,7 @@ class NelderMead : public Solver<function_t> {
         // Outside contraction.
         vector_t x_c = (1 + rho_ * gamma_) * x_bar -
                        rho_ * gamma_ * simplex_.col(idx[DIM]);
-        scalar_t f_c = function(x_c);
+        scalar_t f_c = function(x_c).value;
         if (f_c <= f_r) {
           simplex_.col(idx[DIM]) = x_c;
         } else {
@@ -120,7 +120,7 @@ class NelderMead : public Solver<function_t> {
       } else {
         // Inside contraction.
         vector_t x_c = (1 - gamma_) * x_bar + gamma_ * simplex_.col(idx[DIM]);
-        scalar_t f_c = function(x_c);
+        scalar_t f_c = function(x_c).value;
         if (f_c < f[idx[DIM]]) {
           simplex_.col(idx[DIM]) = x_c;
         } else {
@@ -130,7 +130,7 @@ class NelderMead : public Solver<function_t> {
     }
 
     // Return the current best vertex.
-    return state_t(function, simplex_.col(idx[0]));
+    return state_t(function(simplex_.col(idx[0])));
   }
 
  private:
@@ -160,10 +160,10 @@ class NelderMead : public Solver<function_t> {
               const function_t &function) {
     const size_t DIM = s.rows();
     // Re-evaluate the best vertex.
-    f[idx[0]] = function(s.col(idx[0]));
+    f[idx[0]] = function(s.col(idx[0])).value;
     for (size_t i = 1; i < DIM + 1; ++i) {
       s.col(idx[i]) = sigma_ * s.col(idx[i]) + (1 - sigma_) * s.col(idx[0]);
-      f[idx[i]] = function(s.col(idx[i]));
+      f[idx[i]] = function(s.col(idx[i])).value;
     }
   }
 };

@@ -45,7 +45,7 @@ class NewtonDescent : public Solver<function_t> {
     const scalar_t rate =
         linesearch::Armijo<function_t, 2>::Search(current, delta_x, function);
 
-    return state_t(function, current.x + rate * delta_x);
+    return state_t(function(current.x + rate * delta_x));
   }
 
  private:
