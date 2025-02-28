@@ -37,13 +37,10 @@ struct State<Function<TScalar, TDim, Differentiability::None>> {
   using function_t = Function<TScalar, TDim, Differentiability::None>;
   using state_t = State<function_t>;
 
+  static constexpr bool constrained = false;
+
   typename function_t::scalar_t value = 0;
   typename function_t::vector_t x;
-
-  State(const function_t &func, const typename function_t::vector_t &x_input)
-      : x(x_input) {
-    value = func(x_input);
-  }
 
   State() {}
 
@@ -68,12 +65,6 @@ struct State<Function<TScalar, TDim, Differentiability::First>> {
   typename function_t::scalar_t value = 0;
   typename function_t::vector_t x;
   typename function_t::vector_t gradient;
-
-  State(const function_t &func, const typename function_t::vector_t &x_input)
-      : x(x_input), gradient(function_t::vector_t::Zero(x_input.rows())) {
-    value = func(x_input);
-    func.Gradient(x_input, &gradient);
-  }
 
   State() {}
 
@@ -101,15 +92,6 @@ struct State<Function<TScalar, TDim, Differentiability::Second>> {
   typename function_t::vector_t gradient;
   typename function_t::matrix_t hessian;
 
-  State(const function_t &func, const typename function_t::vector_t &x_input)
-      : x(x_input),
-        gradient(function_t::vector_t::Zero(x_input.rows())),
-        hessian(function_t::matrix_t::Zero(x_input.rows(), x_input.rows())) {
-    value = func(x_input);
-    func.Gradient(x_input, &gradient);
-    func.Hessian(x_input, &hessian);
-  }
-
   State() {}
 
   State(const state_t &rhs) { CopyState(rhs); }  // nolint
@@ -131,38 +113,36 @@ template <class TScalar, int TDim>
 class Function<TScalar, TDim, Differentiability::None>
     : public FunctionBase<TScalar, TDim> {
  public:
+  static constexpr int NumConstraints = 0;
+  static constexpr int Dim = TDim;
   using types = FunctionBase<TScalar, TDim>;
   using state_t = State<Function<TScalar, TDim, Differentiability::None>>;
   static constexpr Differentiability diff_level = Differentiability::None;
-
-  virtual typename types::scalar_t operator()(
-      const typename types::vector_t &x) const = 0;
+  virtual state_t operator()(const typename types::vector_t &x) const = 0;
 };
 
 template <class TScalar, int TDim>
 class Function<TScalar, TDim, Differentiability::First>
-    : public Function<TScalar, TDim, Differentiability::None> {
+    : public FunctionBase<TScalar, TDim> {
  public:
-  using types =
-      typename Function<TScalar, TDim, Differentiability::None>::types;
+  static constexpr int NumConstraints = 0;
+  static constexpr int Dim = TDim;
+  using types = FunctionBase<TScalar, TDim>;
   using state_t = State<Function<TScalar, TDim, Differentiability::First>>;
   static constexpr Differentiability diff_level = Differentiability::First;
-
-  virtual void Gradient(const typename types::vector_t &x,
-                        typename types::vector_t *grad) const = 0;
+  virtual state_t operator()(const typename types::vector_t &x) const = 0;
 };
 
 template <class TScalar, int TDim>
 class Function<TScalar, TDim, Differentiability::Second>
-    : public Function<TScalar, TDim, Differentiability::First> {
+    : public FunctionBase<TScalar, TDim> {
  public:
-  using types =
-      typename Function<TScalar, TDim, Differentiability::First>::types;
+  static constexpr int NumConstraints = 0;
+  static constexpr int Dim = TDim;
+  using types = FunctionBase<TScalar, TDim>;
   using state_t = State<Function<TScalar, TDim, Differentiability::Second>>;
   static constexpr Differentiability diff_level = Differentiability::Second;
-
-  virtual void Hessian(const typename types::vector_t &x,
-                       typename types::matrix_t *hessian) const = 0;
+  virtual state_t operator()(const typename types::vector_t &x) const = 0;
 };
 
 }  // namespace cppoptlib::function

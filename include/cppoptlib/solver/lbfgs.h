@@ -3,6 +3,7 @@
 #define INCLUDE_CPPOPTLIB_SOLVER_LBFGS_H_
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 #include "../linesearch/more_thuente.h"
@@ -25,7 +26,7 @@ class Lbfgs : public Solver<function_t> {
                         cppoptlib::function::Differentiability::First ||
                     function_t::diff_level ==
                         cppoptlib::function::Differentiability::Second,
-                "GradientDescent only supports first- or second-order "
+                "L-BFGS only supports first- or second-order "
                 "differentiable functions");
 
  private:
@@ -59,34 +60,45 @@ class Lbfgs : public Solver<function_t> {
                            const progress_t &progress) override {
     vector_t search_direction = current.gradient;
 
-    constexpr scalar_t absolute_eps = 0.0001;
+    constexpr scalar_t eps = std::numeric_limits<scalar_t>::epsilon();
     const scalar_t relative_eps =
-        static_cast<scalar_t>(absolute_eps) *
+        static_cast<scalar_t>(eps) *
         std::max<scalar_t>(scalar_t{1.0}, current.x.norm());
 
     // Algorithm 7.4 (L-BFGS two-loop recursion)
+    // // Determine how many stored corrections to use (up to m but not more
+    // than available).
     int k = 0;
     if (progress.num_iterations > 0) {
       k = std::min<int>(m, memory_idx_ - 1);
     }
 
-    // for i = k − 1, k − 2, . . . , k − m
+    // First loop (backward pass) for the L-BFGS two-loop recursion.
     for (int i = k - 1; i >= 0; i--) {
       // alpha_i <- rho_i*s_i^T*q
-      const scalar_t rho =
-          1.0 / x_diff_memory_.col(i).dot(grad_diff_memory_.col(i));
+      const scalar_t denom =
+          x_diff_memory_.col(i).dot(grad_diff_memory_.col(i));
+      if (std::abs(denom) < eps) {
+        continue;
+      }
+      const scalar_t rho = 1.0 / denom;
       alpha(i) = rho * x_diff_memory_.col(i).dot(search_direction);
       // q <- q - alpha_i*y_i
       search_direction -= alpha(i) * grad_diff_memory_.col(i);
     }
 
-    // r <- H_k^0*q
-    search_direction = scaling_factor_ * search_direction;
-    // for i k − m, k − m + 1, . . . , k − 1
+    // apply initial Hessian approximation: r <- H_k^0*q
+    search_direction *= scaling_factor_;
+
+    // Second loop (forward pass).
     for (int i = 0; i < k; i++) {
       // beta <- rho_i * y_i^T * r
-      const scalar_t rho =
-          1.0 / x_diff_memory_.col(i).dot(grad_diff_memory_.col(i));
+      const scalar_t denom =
+          x_diff_memory_.col(i).dot(grad_diff_memory_.col(i));
+      if (std::abs(denom) < eps) {
+        continue;
+      }
+      const scalar_t rho = 1.0 / denom;
       const scalar_t beta =
           rho * grad_diff_memory_.col(i).dot(search_direction);
       // r <- r + s_i * ( alpha_i - beta)
@@ -96,9 +108,14 @@ class Lbfgs : public Solver<function_t> {
     // stop with result "H_k*f_f'=q"
 
     // any issues with the descent direction ?
+    // Check the descent direction for validity.
     scalar_t descent_direction = -current.gradient.dot(search_direction);
-    scalar_t alpha_init = 1.0 / current.gradient.norm();
-    if (descent_direction > -absolute_eps * relative_eps) {
+    scalar_t alpha_init =
+        (current.gradient.norm() > eps) ? 1.0 / current.gradient.norm() : 1.0;
+    if (!std::isfinite(descent_direction) ||
+        descent_direction > -eps * relative_eps) {
+      // If the descent direction is invalid or not a descent, revert to
+      // steepest descent.
       search_direction = -current.gradient.eval();
       memory_idx_ = 0;
       alpha_init = 1.0;
@@ -107,27 +124,42 @@ class Lbfgs : public Solver<function_t> {
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
         current, -search_direction, function, alpha_init);
 
-    const state_t next(function, current.x - rate * search_direction);
+    const state_t next(function(current.x - rate * search_direction));
 
     const vector_t x_diff = next.x - current.x;
     const vector_t grad_diff = next.gradient - current.gradient;
 
     // Update the history
-    if (memory_idx_ < m) {
-      x_diff_memory_.col(memory_idx_) = x_diff.eval();
-      grad_diff_memory_.col(memory_idx_) = grad_diff.eval();
-    } else {
-      internal::ShiftLeft<m>(&x_diff_memory_);
-      internal::ShiftLeft<m>(&grad_diff_memory_);
+    if (x_diff.dot(grad_diff) > eps * grad_diff.squaredNorm()) {
+      if (memory_idx_ < m) {
+        x_diff_memory_.col(memory_idx_) = x_diff.eval();
+        grad_diff_memory_.col(memory_idx_) = grad_diff.eval();
+      } else {
+        internal::ShiftLeft<m>(&x_diff_memory_);
+        internal::ShiftLeft<m>(&grad_diff_memory_);
 
-      x_diff_memory_.rightCols(1) = x_diff;
-      grad_diff_memory_.rightCols(1) = grad_diff;
+        x_diff_memory_.rightCols(1) = x_diff;
+        grad_diff_memory_.rightCols(1) = grad_diff;
+      }
+
+      memory_idx_++;
     }
-
-    memory_idx_++;
-
-    // Update the scaling factor.
-    scaling_factor_ = grad_diff.dot(x_diff) / grad_diff.dot(grad_diff);
+    // Adaptive damping in Hessian approximation: update the scaling factor.
+    constexpr scalar_t fallback_value =
+        scalar_t(1e7);  // Fallback value if update is unstable.
+    const scalar_t grad_diff_norm_sq = grad_diff.dot(grad_diff);
+    if (std::abs(grad_diff_norm_sq) > eps) {
+      scalar_t temp_scaling = grad_diff.dot(x_diff) / grad_diff_norm_sq;
+      // If temp_scaling is non-finite or excessively large, use fallback.
+      if (!std::isfinite(temp_scaling) ||
+          std::abs(temp_scaling) > fallback_value) {
+        scaling_factor_ = fallback_value;
+      } else {
+        scaling_factor_ = std::max(temp_scaling, eps);
+      }
+    } else {
+      scaling_factor_ = fallback_value;
+    }
 
     return next;
   }

@@ -53,7 +53,7 @@ class Bfgs : public Solver<function_t> {
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
         current, search_direction, function);
 
-    const state_t next(function, current.x + rate * search_direction);
+    const state_t next(function(current.x + rate * search_direction));
 
     // Update inverse Hessian estimate.
     const vector_t s = rate * search_direction;

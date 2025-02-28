@@ -21,8 +21,9 @@ enum class Status {
   XDeltaViolation,  // Minimum change in parameter vector has been reached.
   FDeltaViolation,  // Minimum chnage in cost function has been reached.
   GradientNormViolation,  // Minimum norm in gradient vector has been reached.
-  HessianConditionViolation  // Maximum condition number of hessian_t has been
-                             // reached.
+  HessianConditionViolation,  // Maximum condition number of hessian_t has been
+                              // reached.
+  Finished                    // Successfull finished
 };
 
 inline std::ostream &operator<<(std::ostream &stream, const Status &status) {
@@ -48,6 +49,9 @@ inline std::ostream &operator<<(std::ostream &stream, const Status &status) {
     case Status::HessianConditionViolation:
       stream << "Condition of Hessian/Covariance matrix too large.";
       break;
+    case Status::Finished:
+      stream << "Finished";
+      break;
   }
   return stream;
 }
@@ -66,7 +70,9 @@ struct Progress {
   int f_delta_violations = 0;      // Number of violations in cost function.
   scalar_t gradient_norm = scalar_t{0};  // Minimum norm of gradient vector.
   scalar_t condition_hessian =
-      scalar_t{0};                     // Maximum condition number of hessian_t.
+      scalar_t{0};  // Maximum condition number of hessian_t.
+  scalar_t constraint_threshold =
+      scalar_t{0};                     // Minimum norm of constraint violations.
   Status status = Status::NotStarted;  // Status of state.
 
   Progress() = default;
@@ -77,17 +83,38 @@ struct Progress {
               const Progress<function_t> &stop_progress) {
     num_iterations++;
     f_delta =
-        fabs(current_function_state.value - previous_function_state.value);
+        std::abs(current_function_state.value - previous_function_state.value);
     x_delta = (current_function_state.x - previous_function_state.x)
                   .template lpNorm<Eigen::Infinity>();
+
+    // Compute gradient norm if the function supports differentiation
     if constexpr (function_t::diff_level >=
                   cppoptlib::function::Differentiability::First) {
       gradient_norm =
           current_function_state.gradient.template lpNorm<Eigen::Infinity>();
     }
+    // Compute Hessian condition number if the function supports second-order
+    // derivatives
+    if constexpr (function_t::diff_level ==
+                  cppoptlib::function::Differentiability::Second) {
+      condition_hessian = current_function_state.hessian.norm() *
+                          current_function_state.hessian.inverse().norm();
+    }
+
     if ((stop_progress.num_iterations > 0) &&
         (num_iterations > stop_progress.num_iterations)) {
       status = Status::IterationLimit;
+      return;
+    }
+    if constexpr (function_t::NumConstraints > 0) {
+      for (size_t i = 0; i < function_t::NumConstraints; i++) {
+        if (std::abs(current_function_state.violations[i]) >
+            stop_progress.constraint_threshold) {
+          status = Status::Continue;
+          return;
+        }
+      }
+      status = Status::Finished;  // All constraints satisfied
       return;
     }
     if ((stop_progress.x_delta > 0) && (x_delta < stop_progress.x_delta)) {
@@ -116,13 +143,14 @@ struct Progress {
         return;
       }
     }
-    // if (previous_function_state.order == 2) {
-    //   if ((stop_state.condition_hessian > 0) &&
-    //       (condition_hessian > stop_state.condition_hessian)) {
-    //     status = Status::HessianConditionViolation;
-    //     return;
-    //   }
-    // }
+    if constexpr (state_t::function_t::diff_level ==
+                  function::Differentiability::Second) {
+      if ((stop_progress.condition_hessian > 0) &&
+          (condition_hessian > stop_progress.condition_hessian)) {
+        status = Status::HessianConditionViolation;
+        return;
+      }
+    }
     status = Status::Continue;
   }
 };
@@ -130,17 +158,18 @@ struct Progress {
 // Returns the default stopping solver state.
 template <class TFunc>
 Progress<TFunc> DefaultStoppingSolverProgress() {
-  Progress<TFunc> state;
+  Progress<TFunc> progress;
   using T = typename Progress<TFunc>::scalar_t;
-  state.num_iterations = 10000;
-  state.x_delta = T{1e-9};
-  state.x_delta_violations = 5;
-  state.f_delta = T{1e-9};
-  state.f_delta_violations = 5;
-  state.gradient_norm = T{1e-4};
-  state.condition_hessian = T{0};
-  state.status = Status::NotStarted;
-  return state;
+  progress.num_iterations = 10000;
+  progress.x_delta = T{1e-9};
+  progress.x_delta_violations = 5;
+  progress.f_delta = T{1e-9};
+  progress.f_delta_violations = 5;
+  progress.gradient_norm = T{1e-6};
+  progress.condition_hessian = T{0};
+  progress.constraint_threshold = T{1e-5};
+  progress.status = Status::NotStarted;
+  return progress;
 }
 
 // Returns the defaul callback function.
@@ -153,7 +182,7 @@ auto PrintCallback() {
     std::cout << "  value    " << state.value << "\t";
     std::cout << "  x    " << state.x.transpose() << "\t";
     std::cout << "  gradient    " << state.gradient.transpose() << std::endl;
-    std::cout << "Solver-State"
+    std::cout << "Solver-Progress"
               << "\t";
     std::cout << "  iterations " << progress.num_iterations << "\t";
     std::cout << "  x_delta " << progress.x_delta << "\t";
@@ -189,18 +218,12 @@ class Solver {
   explicit Solver(const Progress<function_t> &stopping_progress =
                       DefaultStoppingSolverProgress<function_t>(),
                   callback_t step_callback = NoOpCallback<function_t>())
-      : stopping_progress_(stopping_progress),
+      : stopping_progress(stopping_progress),
         step_callback_(std::move(step_callback)) {}
 
   virtual ~Solver() = default;
 
   virtual void InitializeSolver(const state_t & /*initial_state*/) = 0;
-
-  // Minimizes a given function and returns the function state
-  virtual std::tuple<state_t, progress_t> Minimize(const function_t &function,
-                                                   const vector_t &x0) {
-    return this->Minimize(function, state_t(function, x0));
-  }
 
   virtual std::tuple<state_t, progress_t> Minimize(
       const function_t &function, const state_t &initial_state) {
@@ -222,7 +245,7 @@ class Solver {
 
       // Update current solver state.
       solver_state.Update(previous_function_state, function_state,
-                          stopping_progress_);
+                          stopping_progress);
     } while (solver_state.status == Status::Continue);
 
     // Final Trigger of a user-defined callback.
@@ -235,9 +258,9 @@ class Solver {
                                    const state_t &current,
                                    const progress_t &state) = 0;
 
+  progress_t stopping_progress;  // Specifies when to stop.
  protected:
-  progress_t stopping_progress_;  // Specifies when to stop.
-  callback_t step_callback_;      // A user-defined callback function.
+  callback_t step_callback_;  // A user-defined callback function.
 };
 
 }  // namespace cppoptlib::solver

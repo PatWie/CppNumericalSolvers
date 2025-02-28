@@ -89,7 +89,7 @@ class Lbfgsb : public Solver<function_t> {
     const vector_t clipped_x_next =
         x_next.cwiseMin(upper_bound_).cwiseMax(lower_bound_);
 
-    const state_t next(function, clipped_x_next);
+    const state_t next(function(clipped_x_next));
 
     // prepare for next iteration
     const vector_t new_y = next.gradient - current.gradient;
