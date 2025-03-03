@@ -16,9 +16,9 @@ namespace cppoptlib::solver {
 
 template <typename function_t, int m = 5>
 class Lbfgsb : public Solver<function_t> {
-  static_assert(function_t::diff_level ==
+  static_assert(function_t::DiffLevel ==
                         cppoptlib::function::Differentiability::First ||
-                    function_t::diff_level ==
+                    function_t::DiffLevel ==
                         cppoptlib::function::Differentiability::Second,
                 "GradientDescent only supports first- or second-order "
                 "differentiable functions");
@@ -81,7 +81,7 @@ class Lbfgsb : public Solver<function_t> {
     // STEP 4: perform linesearch and STEP 5: compute gradient
     scalar_t alpha_init = 1.0;
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
-        current, subspace_min - current.x, function, alpha_init);
+        current.x, subspace_min - current.x, function, alpha_init);
 
     // update current guess and function information
     const vector_t x_next = current.x - rate * (current.x - subspace_min);
@@ -89,7 +89,7 @@ class Lbfgsb : public Solver<function_t> {
     const vector_t clipped_x_next =
         x_next.cwiseMin(upper_bound_).cwiseMax(lower_bound_);
 
-    const state_t next(function(clipped_x_next));
+    const state_t next = function.GetState(clipped_x_next);
 
     // prepare for next iteration
     const vector_t new_y = next.gradient - current.gradient;

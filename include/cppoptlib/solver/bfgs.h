@@ -11,9 +11,9 @@
 namespace cppoptlib::solver {
 template <typename function_t>
 class Bfgs : public Solver<function_t> {
-  static_assert(function_t::diff_level ==
+  static_assert(function_t::DiffLevel ==
                         cppoptlib::function::Differentiability::First ||
-                    function_t::diff_level ==
+                    function_t::DiffLevel ==
                         cppoptlib::function::Differentiability::Second,
                 "GradientDescent only supports first- or second-order "
                 "differentiable functions");
@@ -51,9 +51,9 @@ class Bfgs : public Solver<function_t> {
     }
 
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
-        current, search_direction, function);
+        current.x, search_direction, function);
 
-    const state_t next(function(current.x + rate * search_direction));
+    const state_t next = function.GetState(current.x + rate * search_direction);
 
     // Update inverse Hessian estimate.
     const vector_t s = rate * search_direction;
