@@ -25,16 +25,17 @@ class MoreThuente {
    * @return step-width
    */
 
-  static scalar_t Search(const state_t &state, const vector_t &search_direction,
+  static scalar_t Search(const vector_t &x, const vector_t &search_direction,
                          const Function &function,
                          const scalar_t alpha_init = 1.0) {
     scalar_t alpha = alpha_init;
-    vector_t g = state.gradient;
+    vector_t g;
+    const scalar_t v = function(x, &g);
 
     vector_t s = search_direction.eval();
-    vector_t xx = state.x;
+    vector_t xx = x;
 
-    cvsrch(function, &xx, state.value, &g, &alpha, s);
+    cvsrch(function, &xx, v, &g, &alpha, s);
 
     return alpha;
   }
@@ -101,9 +102,7 @@ class MoreThuente {
 
       // Test new point.
       *x = wa + *stp * s;
-      const auto state = function(*x);
-      f = state.value;
-      *g = state.gradient;
+      f = function(*x, g);
       nfev++;
       scalar_t dg = g->dot(s);
       scalar_t ftest1 = finit + *stp * dgtest;

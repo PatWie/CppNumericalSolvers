@@ -11,9 +11,9 @@
 namespace cppoptlib::solver {
 template <typename function_t>
 class ConjugatedGradientDescent : public Solver<function_t> {
-  static_assert(function_t::diff_level ==
+  static_assert(function_t::DiffLevel ==
                         cppoptlib::function::Differentiability::First ||
-                    function_t::diff_level ==
+                    function_t::DiffLevel ==
                         cppoptlib::function::Differentiability::Second,
                 "GradientDescent only supports first- or second-order "
                 "differentiable functions");
@@ -33,7 +33,7 @@ class ConjugatedGradientDescent : public Solver<function_t> {
   using Superclass::Superclass;
 
   void InitializeSolver(const state_t &initial_state) override {
-    previous_ = initial_state;
+    previous_gradient_ = initial_state.gradient;
   }
 
   state_t OptimizationStep(const function_t &function, const state_t &current,
@@ -42,19 +42,19 @@ class ConjugatedGradientDescent : public Solver<function_t> {
       search_direction_ = -current.gradient;
     } else {
       const double beta = current.gradient.dot(current.gradient) /
-                          (previous_.gradient.dot(previous_.gradient));
+                          (previous_gradient_.dot(previous_gradient_));
       search_direction_ = -current.gradient + beta * search_direction_;
     }
-    previous_ = current;
+    previous_gradient_ = current.gradient;
 
     const scalar_t rate = linesearch::Armijo<function_t, 1>::Search(
-        current, search_direction_, function);
+        current.x, search_direction_, function);
 
-    return state_t(function(current.x + rate * search_direction_));
+    return function.GetState(current.x + rate * search_direction_);
   }
 
  private:
-  state_t previous_;
+  vector_t previous_gradient_;
   vector_t search_direction_;
 };
 

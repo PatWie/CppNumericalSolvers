@@ -12,9 +12,9 @@ namespace cppoptlib::solver {
 
 template <typename function_t, typename solver_t>
 class AugmentedLagrangian : public Solver<function_t> {
-  static_assert(function_t::diff_level ==
+  static_assert(function_t::DiffLevel ==
                         cppoptlib::function::Differentiability::First ||
-                    function_t::diff_level ==
+                    function_t::DiffLevel ==
                         cppoptlib::function::Differentiability::Second,
                 "AugmentedLagrangian only supports first- or second-order "
                 "differentiable functions");
@@ -31,6 +31,9 @@ class AugmentedLagrangian : public Solver<function_t> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
+  AugmentedLagrangian(const solver_t &inner_solver)
+      : inner_solver_(inner_solver) {}
+
   void InitializeSolver(const state_t & /*initial_state*/) override {}
 
   state_t OptimizationStep(const function_t &function, const state_t &state,
@@ -42,8 +45,8 @@ class AugmentedLagrangian : public Solver<function_t> {
     const auto [solved_inner_state, inner_progress] =
         inner_solver_.Minimize(unconstrained_function, inner_state);
 
-    state_t next_state = function(solved_inner_state.x,
-                                  state.lagrange_multipliers, state.penalty);
+    state_t next_state = function.GetState(
+        solved_inner_state.x, state.lagrange_multipliers, state.penalty);
 
     float max_violation = 0.0f;
     for (std::size_t i = 0; i < function_t::NumConstraints; ++i) {

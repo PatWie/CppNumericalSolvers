@@ -37,17 +37,13 @@ class RosenbrockValue : public FunctionX2<T> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  using typename FunctionX2<T>::state_t;
   using typename FunctionX2<T>::scalar_t;
   using typename FunctionX2<T>::vector_t;
 
-  state_t operator()(const vector_t &x) const override {
-    state_t state;
+  scalar_t operator()(const vector_t &x) const override {
     const T t1 = (1 - x[0]);
     const T t2 = (x[1] - x[0] * x[0]);
-    state.value = t1 * t1 + 100 * t2 * t2;
-    state.x = x;
-    return state;
+    return t1 * t1 + 100 * t2 * t2;
   }
 };
 
@@ -56,21 +52,20 @@ class RosenbrockGradient : public FunctionX2_dx<T> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  using typename FunctionX2_dx<T>::state_t;
   using typename FunctionX2_dx<T>::scalar_t;
   using typename FunctionX2_dx<T>::vector_t;
 
-  state_t operator()(const vector_t &x) const override {
-    state_t state;
+  scalar_t operator()(const vector_t &x,
+                      vector_t *gradient = nullptr) const override {
     const T t1 = (1 - x[0]);
     const T t2 = (x[1] - x[0] * x[0]);
-    state.value = t1 * t1 + 100 * t2 * t2;
-    state.x = x;
-    state.gradient = vector_t::Zero(2);
-    state.gradient[0] =
-        -2 * (1 - x[0]) + 200 * (x[1] - x[0] * x[0]) * (-2 * x[0]);
-    state.gradient[1] = 200 * (x[1] - x[0] * x[0]);
-    return state;
+    if (gradient) {
+      *gradient = vector_t::Zero(2);
+      (*gradient)[0] =
+          -2 * (1 - x[0]) + 200 * (x[1] - x[0] * x[0]) * (-2 * x[0]);
+      (*gradient)[1] = 200 * (x[1] - x[0] * x[0]);
+    }
+    return t1 * t1 + 100 * t2 * t2;
   }
 };
 
@@ -79,27 +74,28 @@ class RosenbrockFull : public FunctionX2_dxx<T> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  using typename FunctionX2_dxx<T>::state_t;
   using typename FunctionX2_dxx<T>::scalar_t;
   using typename FunctionX2_dxx<T>::vector_t;
   using typename FunctionX2_dxx<T>::matrix_t;
 
-  state_t operator()(const vector_t &x) const override {
-    state_t state;
+  scalar_t operator()(const vector_t &x, vector_t *gradient = nullptr,
+                      matrix_t *hessian = nullptr) const override {
     const T t1 = (1 - x[0]);
     const T t2 = (x[1] - x[0] * x[0]);
-    state.value = t1 * t1 + 100 * t2 * t2;
-    state.x = x;
-    state.gradient = vector_t::Zero(2);
-    state.gradient[0] =
-        -2 * (1 - x[0]) + 200 * (x[1] - x[0] * x[0]) * (-2 * x[0]);
-    state.gradient[1] = 200 * (x[1] - x[0] * x[0]);
-    state.hessian = matrix_t::Zero(2, 2);
-    state.hessian(0, 0) = 1200 * x[0] * x[0] - 400 * x[1] + 1;
-    state.hessian(0, 1) = -400 * x[0];
-    state.hessian(1, 0) = -400 * x[0];
-    state.hessian(1, 1) = 200;
-    return state;
+    if (gradient) {
+      *gradient = vector_t::Zero(2);
+      (*gradient)[0] =
+          -2 * (1 - x[0]) + 200 * (x[1] - x[0] * x[0]) * (-2 * x[0]);
+      (*gradient)[1] = 200 * (x[1] - x[0] * x[0]);
+    }
+    if (hessian) {
+      (*hessian) = matrix_t::Zero(2, 2);
+      (*hessian)(0, 0) = 1200 * x[0] * x[0] - 400 * x[1] + 1;
+      (*hessian)(0, 1) = -400 * x[0];
+      (*hessian)(1, 0) = -400 * x[0];
+      (*hessian)(1, 1) = 200;
+    }
+    return t1 * t1 + 100 * t2 * t2;
   }
 };
 
@@ -124,8 +120,9 @@ class NelderMeadTest : public testing::Test {};
   Function f;                                                             \
   typename Function::vector_t x(2);                                       \
   x << a, b;                                                              \
+  auto initial_state = f.GetState(x);                                     \
   Solver solver;                                                          \
-  auto [solution, solver_state] = solver.Minimize(f, f(x));               \
+  auto [solution, solver_state] = solver.Minimize(f, initial_state);      \
   if (solver_state.status == cppoptlib::solver::Status::IterationLimit) { \
     std::cout << solver_state.status << std::endl;                        \
   }                                                                       \
@@ -163,12 +160,9 @@ class SimpleFunction : public FunctionX2<T> {
 
   using typename FunctionX2<T>::scalar_t;
   using typename FunctionX2<T>::vector_t;
-  using typename FunctionX2<T>::state_t;
 
-  state_t operator()(const vector_t &x) const override {
-    state_t state;
-    state.value = 3 * x[0] * x[0] - x[1] * x[0];
-    return state;
+  scalar_t operator()(const vector_t &x) const override {
+    return 3 * x[0] * x[0] - x[1] * x[0];
   }
 };
 
@@ -216,30 +210,16 @@ using Function2d = cppoptlib::function::Function<
     double, 2, cppoptlib::function::Differentiability::First>;
 using Function2dC = cppoptlib::function::ConstrainedFunction<Function2d, 2>;
 
-class Objective : public Function2d {
+class SumObjective : public Function2d {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  state_t operator()(const vector_t &x) const override {
-    state_t state;
-    state.x = x;
-    state.value = x.sum();
-    state.gradient = vector_t::Ones(2);
-    return state;
-  }
-};
-
-class CircleBoundaryConstraint : public Function2d {
- public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-  // Enforces x[0]^2+x[1]^2 == 2 (on the circle boundary)
-  state_t operator()(const vector_t &x) const override {
-    state_t state;
-    state.x = x;
-    state.value = x.squaredNorm() - 2;
-    state.gradient = 2 * x;
-    return state;
+  scalar_t operator()(const vector_t &x,
+                      vector_t *gradient = nullptr) const override {
+    if (gradient) {
+      *gradient = vector_t::Ones(2);
+    }
+    return x.sum();
   }
 };
 
@@ -248,12 +228,26 @@ class InsideCircleConstraint : public Function2d {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   // Enforces x[0]^2+x[1]^2 <= 2 (inside the circle)
-  state_t operator()(const vector_t &x) const override {
-    state_t state;
-    state.x = x;
-    state.value = 2 - x.squaredNorm();
-    state.gradient = -2 * x;
-    return state;
+  scalar_t operator()(const vector_t &x,
+                      vector_t *gradient = nullptr) const override {
+    if (gradient) {
+      *gradient = -2 * x;
+    }
+    return 2 - x.squaredNorm();
+  }
+};
+
+class CircleBoundaryConstraint : public Function2d {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  // Enforces x[0]^2+x[1]^2 == 2 (on the circle boundary)
+  scalar_t operator()(const vector_t &x,
+                      vector_t *gradient = nullptr) const override {
+    if (gradient) {
+      *gradient = 2 * x;
+    }
+    return x.squaredNorm() - 2;
   }
 };
 
@@ -264,23 +258,24 @@ TYPED_TEST(Constrained, Simple) {
   using InnerSolver = cppoptlib::solver::Lbfgs<Function2d>;
 
   constexpr auto dim = 2;
-  Objective::vector_t x(dim);
+  SumObjective::vector_t x(dim);
   x << 7, -4;
   // We have to start with one negative point. Otherwise, we would walk around
   // the boundary, which causes function values that might become bigger
   // (consider [0, 1] walking to [-1, -1] is almost impossible).
 
-  Objective f;
+  SumObjective f;
   cppoptlib::function::NonNegativeConstraint<InsideCircleConstraint> c1;
   cppoptlib::function::ZeroConstraint<CircleBoundaryConstraint> c2;
 
-  Function2dC L(&f, {&c1, &c2});
-  cppoptlib::function::ConstrainedState<Function2dC> state =
-      L(x, {0.0, 0.0}, 10.);
+  const auto L = cppoptlib::function::BuildConstrainedProblem(&f, &c1, &c2);
 
-  cppoptlib::solver::AugmentedLagrangian<Function2dC, InnerSolver> solver;
+  cppoptlib::solver::Lbfgs<Function2d> inner_solver;
+  cppoptlib::solver::AugmentedLagrangian<decltype(L), decltype(inner_solver)>
+      solver(inner_solver);
 
-  auto [solution, solver_state] = solver.Minimize(L, state);
+  const auto initial_state = L.GetState(x, {0.0, 0.0}, 10.);
+  auto [solution, solver_state] = solver.Minimize(L, initial_state);
   EXPECT_NEAR(solution.x[0], -1, 1e-3);
   EXPECT_NEAR(solution.x[1], -1, 1e-3);
 }

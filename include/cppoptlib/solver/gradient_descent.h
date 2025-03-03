@@ -11,9 +11,9 @@
 namespace cppoptlib::solver {
 template <typename function_t>
 class GradientDescent : public Solver<function_t> {
-  static_assert(function_t::diff_level ==
+  static_assert(function_t::DiffLevel ==
                         cppoptlib::function::Differentiability::First ||
-                    function_t::diff_level ==
+                    function_t::DiffLevel ==
                         cppoptlib::function::Differentiability::Second,
                 "GradientDescent only supports first- or second-order "
                 "differentiable functions");
@@ -36,9 +36,9 @@ class GradientDescent : public Solver<function_t> {
   state_t OptimizationStep(const function_t &function, const state_t &current,
                            const progress_t & /*progress*/) override {
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
-        current, -current.gradient, function);
+        current.x, -current.gradient, function);
 
-    return state_t(function(current.x - rate * current.gradient));
+    return function.GetState(current.x - rate * current.gradient);
   }
 };
 

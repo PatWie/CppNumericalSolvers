@@ -22,9 +22,9 @@ void ShiftLeft(T *matrix) {
 
 template <typename function_t, int m = 10>
 class Lbfgs : public Solver<function_t> {
-  static_assert(function_t::diff_level ==
+  static_assert(function_t::DiffLevel ==
                         cppoptlib::function::Differentiability::First ||
-                    function_t::diff_level ==
+                    function_t::DiffLevel ==
                         cppoptlib::function::Differentiability::Second,
                 "L-BFGS only supports first- or second-order "
                 "differentiable functions");
@@ -48,7 +48,7 @@ class Lbfgs : public Solver<function_t> {
   using Superclass::Superclass;
 
   void InitializeSolver(const state_t &initial_state) override {
-    dim_ = initial_state.x.rows();
+    const size_t dim_ = initial_state.x.rows();
     x_diff_memory_ = memory_matrix_t::Zero(dim_, m);
     grad_diff_memory_ = memory_matrix_t::Zero(dim_, m);
     alpha = memory_vector_t::Zero(m);
@@ -122,9 +122,9 @@ class Lbfgs : public Solver<function_t> {
     }
 
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
-        current, -search_direction, function, alpha_init);
+        current.x, -search_direction, function, alpha_init);
 
-    const state_t next(function(current.x - rate * search_direction));
+    const state_t next = function.GetState(current.x - rate * search_direction);
 
     const vector_t x_diff = next.x - current.x;
     const vector_t grad_diff = next.gradient - current.gradient;
@@ -165,13 +165,12 @@ class Lbfgs : public Solver<function_t> {
   }
 
  private:
-  int dim_;
   memory_matrix_t x_diff_memory_;
   memory_matrix_t grad_diff_memory_;
-  size_t memory_idx_;
+  size_t memory_idx_ = 0;
 
   memory_vector_t alpha;
-  scalar_t scaling_factor_;
+  scalar_t scaling_factor_ = 1;
 };
 
 }  // namespace cppoptlib::solver

@@ -88,14 +88,14 @@ struct Progress {
                   .template lpNorm<Eigen::Infinity>();
 
     // Compute gradient norm if the function supports differentiation
-    if constexpr (function_t::diff_level >=
+    if constexpr (function_t::base_t::DiffLevel >=
                   cppoptlib::function::Differentiability::First) {
       gradient_norm =
           current_function_state.gradient.template lpNorm<Eigen::Infinity>();
     }
     // Compute Hessian condition number if the function supports second-order
     // derivatives
-    if constexpr (function_t::diff_level ==
+    if constexpr (function_t::base_t::DiffLevel ==
                   cppoptlib::function::Differentiability::Second) {
       condition_hessian = current_function_state.hessian.norm() *
                           current_function_state.hessian.inverse().norm();
@@ -106,7 +106,7 @@ struct Progress {
       status = Status::IterationLimit;
       return;
     }
-    if constexpr (function_t::NumConstraints > 0) {
+    if constexpr (function_t::base_t::NumConstraints > 0) {
       for (size_t i = 0; i < function_t::NumConstraints; i++) {
         if (std::abs(current_function_state.violations[i]) >
             stop_progress.constraint_threshold) {
@@ -135,7 +135,7 @@ struct Progress {
     } else {
       f_delta_violations = 0;
     }
-    if constexpr (function_t::diff_level >=
+    if constexpr (function_t::base_t::DiffLevel >=
                   cppoptlib::function::Differentiability::First) {
       if ((stop_progress.gradient_norm > 0) &&
           (gradient_norm < stop_progress.gradient_norm)) {
@@ -143,7 +143,7 @@ struct Progress {
         return;
       }
     }
-    if constexpr (state_t::function_t::diff_level ==
+    if constexpr (function_t::base_t::DiffLevel ==
                   function::Differentiability::Second) {
       if ((stop_progress.condition_hessian > 0) &&
           (condition_hessian > stop_progress.condition_hessian)) {
@@ -226,32 +226,33 @@ class Solver {
   virtual void InitializeSolver(const state_t & /*initial_state*/) = 0;
 
   virtual std::tuple<state_t, progress_t> Minimize(
-      const function_t &function, const state_t &initial_state) {
+      const function_t &function, const state_t &function_state) {
     // Solver state during the optimization.
     progress_t solver_state;
-    // Function state during the optimization.
-    state_t function_state(initial_state);
+    // // Function state during the optimization.
+    // state_t function_state = function.GetState(x);
 
-    this->InitializeSolver(initial_state);
+    state_t current_function_state(function_state);
+    this->InitializeSolver(function_state);
 
     do {
       // Trigger a user-defined callback.
-      this->step_callback_(function_state, solver_state);
+      this->step_callback_(current_function_state, solver_state);
 
       // Find next function state.
-      state_t previous_function_state(function_state);
-      function_state = this->OptimizationStep(function, previous_function_state,
-                                              solver_state);
+      state_t previous_function_state(current_function_state);
+      current_function_state = this->OptimizationStep(
+          function, previous_function_state, solver_state);
 
       // Update current solver state.
-      solver_state.Update(previous_function_state, function_state,
+      solver_state.Update(previous_function_state, current_function_state,
                           stopping_progress);
     } while (solver_state.status == Status::Continue);
 
     // Final Trigger of a user-defined callback.
-    this->step_callback_(function_state, solver_state);
+    this->step_callback_(current_function_state, solver_state);
 
-    return {function_state, solver_state};
+    return {current_function_state, solver_state};
   }
 
   virtual state_t OptimizationStep(const function_t &function,
