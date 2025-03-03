@@ -250,7 +250,9 @@ class Lbfgsb : public Solver<function_t> {
     assert(du.rows() == n);
 
     for (unsigned int i = 0; i < n; i++) {
-      if (du(i) > 0) {
+      if (std::abs(du(i)) < 1e-7) {
+        continue;
+      } else if (du(i) > 0) {
         alphastar = std::min<scalar_t>(
             alphastar,
             (upper_bound_(free_variables.at(i)) - x_cp(free_variables.at(i))) /

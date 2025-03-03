@@ -110,11 +110,11 @@ int main(int argc, char const *argv[]) {
     // Minimize the Rosenbrock function using the BFGS solver.
     using Solver = cppoptlib::solver::Bfgs<Rosenbrock>;
     Solver solver;
-    auto [solution, solver_progress] = solver.Minimize(f, x);
+    auto [solution_state, solver_progress] = solver.Minimize(f, x);
 
     // Display the results of the optimization.
-    std::cout << "Optimal solution: " << solution.x.transpose() << std::endl;
-    std::cout << "Optimal function value: " << solution.value << std::endl;
+    std::cout << "Optimal solution: " << solution_state.x.transpose() << std::endl;
+    std::cout << "Optimal function value: " << solution_state.value << std::endl;
     std::cout << "Number of iterations: " << solver_progress.num_iterations << std::endl;
     std::cout << "Solver status: " << solver_progress.status << std::endl;
 
