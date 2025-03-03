@@ -12,65 +12,86 @@ Let minimize the classic Rosenbrock function using the BFGS solver.
 
 ```cpp
 /**
- * @brief Alias for a 2D function with first-order differentiability in cppoptlib.
+ * @brief Alias for a 2D function supporting second-order differentiability in cppoptlib.
  *
- * This defines a function template that supports differentiation, specialized for
- * a 2-dimensional input vector.
+ * This defines a function template specialized for a 2-dimensional input vector,
+ * which supports evaluation of the function value and its derivatives.
+ *
+ * The differentiability level is determined by the Differentiability enum:
+ *  - Differentiability::First: Supports first-order derivatives (i.e., the gradient)
+ *    without computing the Hessian. This is useful for optimization methods that do not
+ *    require second-order information, saving computational effort.
+ *  - Differentiability::Second: Supports second-order derivatives, meaning that both the
+ *    gradient and Hessian are computed. This level is needed for methods that rely on curvature
+ *    information.
+ *
+ * In this alias, Differentiability::Second is used, so both the gradient and Hessian are
+ * assumed to be implemented.
  */
-using Functiond2_dx = cppoptlib::function::Function<
-    double, 2, cppoptlib::function::Differentiability::First>;
+using Function2D = cppoptlib::function::Function<double, 2, cppoptlib::function::Differentiability::Second>;
 
 /**
- * @brief Implementation of the Rosenbrock function with gradient computation.
+ * @brief Implementation of a quadratic function with optional gradient and Hessian computation.
  *
- * This class represents the Rosenbrock function:
+ * The function is defined as:
  *
- *     f(x) = (1 - x₁)² + 100 * (x₂ - x₁²)²
+ *     f(x) = 5 * x₀² + 100 * x₁² + 5
  *
- * It includes both function evaluation and its gradient for optimization algorithms.
- * The function has a global minimum at (x₁, x₂) = (1, 1), where f(x) = 0.
+ * Its gradient is given by:
  *
- * @tparam T The scalar type (e.g., double or float).
+ *     ∇f(x) = [10 * x₀, 200 * x₁]ᵀ
+ *
+ * And its Hessian is:
+ *
+ *     ∇²f(x) = [ [10,   0],
+ *                 [ 0, 200] ]
+ *
+ * This implementation computes the gradient and Hessian only if the corresponding pointers
+ * are provided by the caller.
  */
-class RosenbrockGradient : public Functiond2_dx {
+class Function : public Function2D {
 public:
-  /// Eigen macro for proper memory alignment.
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  // Import necessary typedefs from the base class.
-  using typename FunctionX2_dx::state_t;
-  using typename FunctionX2_dx::scalar_t;
-  using typename FunctionX2_dx::vector_t;
-
   /**
-   * @brief Computes the Rosenbrock function value and its gradient at a given point.
+   * @brief Evaluates the function and optionally its gradient and Hessian.
    *
-   * @param x A 2D Eigen vector representing the input point.
-   * @return A state_t object containing the function value, input vector, and gradient.
+   * @param x Input vector.
+   * @param gradient (Optional) Pointer to store the computed gradient.
+   * @param hessian  (Optional) Pointer to store the computed Hessian.
+   * @return The function value f(x).
    */
-  state_t operator()(const vector_t &x) const override {
-    state_t state;
+  scalar_t operator()(const vector_t &x, vector_t *gradient = nullptr,
+                        matrix_t *hessian = nullptr) const override {
 
-    // Compute function value: f(x) = (1 - x₁)² + 100 * (x₂ - x₁²)²
-    const scalar_t t1 = (1 - x[0]);             // First term: (1 - x₁)
-    const scalar_t t2 = (x[1] - x[0] * x[0]);   // Second term: (x₂ - x₁²)
+    // Even for functions declared as Differentiability::First, the gradient is not always required.
+    // To save computation, we only calculate and store the gradient if a non-null pointer is provided.
+    if (gradient) {
+      gradient->resize(x.size());
+      // The gradient components:
+      // ∂f/∂x₀ = 2 * 5 * x₀ = 10 * x₀
+      // ∂f/∂x₁ = 2 * 100 * x₁ = 200 * x₁
+      (*gradient)[0] = 2 * 5 * x[0];
+      (*gradient)[1] = 2 * 100 * x[1];
+    }
 
-    state.value = t1 * t1 + 100 * t2 * t2;
-    state.x = x;  // Store the input vector for reference.
+    // If the Hessian is requested, compute and store it.
+    // (This is applicable only for Differentiability::Second)
+    if (hessian) {
+      hessian->resize(x.size(), x.size());
+      // Set the Hessian components:
+      // ∂²f/∂x₀² = 10, ∂²f/∂x₁² = 200, and the off-diagonals are 0.
+      (*hessian)(0, 0) = 10;
+      (*hessian)(0, 1) = 0;
+      (*hessian)(1, 0) = 0;
+      (*hessian)(1, 1) = 200;
+    }
 
-    // Initialize gradient vector (∇f)
-    state.gradient = vector_t::Zero(2);
-
-    // Compute partial derivatives:
-    // ∂f/∂x₁ = -2(1 - x₁) + 200(x₂ - x₁²)(-2x₁)
-    state.gradient[0] = -2 * t1 + 200 * t2 * (-2 * x[0]);
-
-    // ∂f/∂x₂ = 200(x₂ - x₁²)
-    state.gradient[1] = 200 * t2;
-
-    return state;
+    // Return the function value: f(x) = 5*x₀² + 100*x₁² + 5.
+    return 5 * x[0] * x[0] + 100 * x[1] * x[1] + 5;
   }
 };
+
 
 int main(int argc, char const *argv[]) {
     // Create an instance of the Rosenbrock function.
@@ -82,8 +103,8 @@ int main(int argc, char const *argv[]) {
     std::cout << "Initial point: " << x.transpose() << std::endl;
 
     // Evaluate
-    auto state = f(x);
-    std::cout << "Function value at initial point: " << state.value << std::endl;
+    auto state = f.GetState(x);
+    std::cout << "Function value at initial point: " << f(x) << std::endl;
     std::cout << "Gradient at initial point: " << state.gradient << std::endl;
 
     // Minimize the Rosenbrock function using the BFGS solver.

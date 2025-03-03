@@ -47,10 +47,9 @@ void ComputeFiniteGradient(
     scalar_t ddVal = dd[accuracy] * h;
     (*grad)[d] = 0;
     for (int s = 0; s < innerSteps; ++s) {
-      const auto state = function(x);
       scalar_t tmp = x[d];
       x[d] += coeff2[accuracy][s] * h;
-      (*grad)[d] += coeff[accuracy][s] * state.value;
+      (*grad)[d] += coeff[accuracy][s] * function(x);
       x[d] = tmp;
     }
     (*grad)[d] /= ddVal;
@@ -75,7 +74,7 @@ void ComputeFiniteHessian(
 
   // Make a local copy so we can safely modify it.
   vector_t x = x0;
-  scalar_t f0 = function(x0).value;
+  scalar_t f0 = function(x0);
 
   if (accuracy == 0) {
     // Basic central difference approximation.
@@ -86,10 +85,10 @@ void ComputeFiniteHessian(
       // Diagonal: standard second derivative.
       x = x0;
       x[i] += hi;
-      scalar_t f_plus = function(x).value;
+      scalar_t f_plus = function(x);
       x = x0;
       x[i] -= hi;
-      scalar_t f_minus = function(x).value;
+      scalar_t f_minus = function(x);
       (*hessian)(i, i) = (f_plus - 2 * f0 + f_minus) / (hi * hi);
 
       for (index_t j = i + 1; j < n; j++) {
@@ -99,19 +98,19 @@ void ComputeFiniteHessian(
         x = x0;
         x[i] += hi;
         x[j] += hj;
-        scalar_t f_pp = function(x).value;
+        scalar_t f_pp = function(x);
         x = x0;
         x[i] += hi;
         x[j] -= hj;
-        scalar_t f_pm = function(x).value;
+        scalar_t f_pm = function(x);
         x = x0;
         x[i] -= hi;
         x[j] += hj;
-        scalar_t f_mp = function(x).value;
+        scalar_t f_mp = function(x);
         x = x0;
         x[i] -= hi;
         x[j] -= hj;
-        scalar_t f_mm = function(x).value;
+        scalar_t f_mm = function(x);
         scalar_t d2f = (f_pp - f_pm - f_mp + f_mm) / (4 * hi * hj);
         (*hessian)(i, j) = d2f;
         (*hessian)(j, i) = d2f;
@@ -124,10 +123,10 @@ void ComputeFiniteHessian(
           std::sqrt(machine_eps) * std::max(std::abs(x0[i]), scalar_t(1));
       x = x0;
       x[i] += hi;
-      scalar_t f_plus = function(x).value;
+      scalar_t f_plus = function(x);
       x = x0;
       x[i] -= hi;
-      scalar_t f_minus = function(x).value;
+      scalar_t f_minus = function(x);
       (*hessian)(i, i) = (f_plus - 2 * f0 + f_minus) / (hi * hi);
 
       for (index_t j = i + 1; j < n; j++) {
@@ -143,76 +142,76 @@ void ComputeFiniteHessian(
         x = x0;
         x[i] = tmpi + 1 * h;
         x[j] = tmpj - 2 * h;
-        term1 += function(x).value;
+        term1 += function(x);
         x = x0;
         x[i] = tmpi + 2 * h;
         x[j] = tmpj - 1 * h;
-        term1 += function(x).value;
+        term1 += function(x);
         x = x0;
         x[i] = tmpi - 2 * h;
         x[j] = tmpj + 1 * h;
-        term1 += function(x).value;
+        term1 += function(x);
         x = x0;
         x[i] = tmpi - 1 * h;
         x[j] = tmpj + 2 * h;
-        term1 += function(x).value;
+        term1 += function(x);
 
         // term2: +63 * (f(tmpi-1h, tmpj-2h) + f(tmpi-2h, tmpj-1h) + f(tmpi+1h,
         // tmpj+2h) + f(tmpi+2h, tmpj+1h))
         x = x0;
         x[i] = tmpi - 1 * h;
         x[j] = tmpj - 2 * h;
-        term2 += function(x).value;
+        term2 += function(x);
         x = x0;
         x[i] = tmpi - 2 * h;
         x[j] = tmpj - 1 * h;
-        term2 += function(x).value;
+        term2 += function(x);
         x = x0;
         x[i] = tmpi + 1 * h;
         x[j] = tmpj + 2 * h;
-        term2 += function(x).value;
+        term2 += function(x);
         x = x0;
         x[i] = tmpi + 2 * h;
         x[j] = tmpj + 1 * h;
-        term2 += function(x).value;
+        term2 += function(x);
 
         // term3: +44 * (f(tmpi+2h, tmpj-2h) + f(tmpi-2h, tmpj+2h) - f(tmpi-2h,
         // tmpj-2h) - f(tmpi+2h, tmpj+2h))
         x = x0;
         x[i] = tmpi + 2 * h;
         x[j] = tmpj - 2 * h;
-        term3 += function(x).value;
+        term3 += function(x);
         x = x0;
         x[i] = tmpi - 2 * h;
         x[j] = tmpj + 2 * h;
-        term3 += function(x).value;
+        term3 += function(x);
         x = x0;
         x[i] = tmpi - 2 * h;
         x[j] = tmpj - 2 * h;
-        term3 -= function(x).value;
+        term3 -= function(x);
         x = x0;
         x[i] = tmpi + 2 * h;
         x[j] = tmpj + 2 * h;
-        term3 -= function(x).value;
+        term3 -= function(x);
 
         // term4: +74 * (f(tmpi-1h, tmpj-1h) + f(tmpi+1h, tmpj+1h) - f(tmpi+1h,
         // tmpj-1h) - f(tmpi-1h, tmpj+1h))
         x = x0;
         x[i] = tmpi - 1 * h;
         x[j] = tmpj - 1 * h;
-        term4 += function(x).value;
+        term4 += function(x);
         x = x0;
         x[i] = tmpi + 1 * h;
         x[j] = tmpj + 1 * h;
-        term4 += function(x).value;
+        term4 += function(x);
         x = x0;
         x[i] = tmpi + 1 * h;
         x[j] = tmpj - 1 * h;
-        term4 -= function(x).value;
+        term4 -= function(x);
         x = x0;
         x[i] = tmpi - 1 * h;
         x[j] = tmpj + 1 * h;
-        term4 -= function(x).value;
+        term4 -= function(x);
 
         // Combine the weighted terms.
         scalar_t mixed = (-63 * term1 + 63 * term2 + 44 * term3 + 74 * term4) /
@@ -235,7 +234,8 @@ bool IsGradientCorrect(const function_t &function,
   using index_t = typename vector_t::Index;
 
   const index_t D = x0.rows();
-  vector_t actual_gradient = function(x0).gradient;
+  vector_t actual_gradient;
+  function(x0, &actual_gradient);
   vector_t expected_gradient(D);
 
   ComputeFiniteGradient(function, x0, &expected_gradient, accuracy);
@@ -264,7 +264,8 @@ bool IsHessianCorrect(const function_t &function,
 
   const index_t D = x0.rows();
 
-  matrix_t actual_hessian = function(x0).hessian;
+  matrix_t actual_hessian;
+  function(x0, nullptr, &actual_hessian);
   matrix_t expected_hessian = matrix_t::Zero(D, D);
   ComputeFiniteHessian(function, x0, &expected_hessian, accuracy);
   for (index_t d = 0; d < D; ++d) {
