@@ -150,7 +150,7 @@ SOLVER_SETUP(Bfgs, RosenbrockGradient)
 SOLVER_SETUP(Lbfgs, RosenbrockGradient)
 SOLVER_SETUP(Lbfgsb, RosenbrockGradient)
 SOLVER_SETUP(NewtonDescent, RosenbrockFull)
-// SOLVER_SETUP(NelderMead, RosenbrockValue)
+SOLVER_SETUP(NelderMead, RosenbrockValue)
 
 // simple function y <- 3*a-b
 template <class T>
