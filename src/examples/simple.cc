@@ -18,7 +18,7 @@ using FunctionXd = cppoptlib::function::Function<
     double, Eigen::Dynamic, cppoptlib::function::Differentiability::Second>;
 
 class Function : public FunctionXd {
- public:
+public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   scalar_t operator()(const vector_t &x, vector_t *gradient = nullptr,
