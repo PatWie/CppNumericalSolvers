@@ -32,7 +32,8 @@ class Bfgs : public Solver<function_t> {
 
   using Superclass::Superclass;
 
-  void InitializeSolver(const state_t &initial_state) override {
+  void InitializeSolver(const function_t & /*function*/,
+                        const state_t &initial_state) override {
     dim_ = initial_state.x.rows();
     inverse_hessian_ =
         matrix_t::Identity(initial_state.x.rows(), initial_state.x.rows());
@@ -40,24 +41,29 @@ class Bfgs : public Solver<function_t> {
 
   state_t OptimizationStep(const function_t &function, const state_t &current,
                            const progress_t & /*progress*/) override {
-    vector_t search_direction = -inverse_hessian_ * current.gradient;
+    vector_t current_gradient;
+    function(current.x, &current_gradient);
+
+    vector_t search_direction = -inverse_hessian_ * current_gradient;
 
     // If not positive definit re-initialize Hessian.
-    const scalar_t phi = current.gradient.dot(search_direction);
+    const scalar_t phi = current_gradient.dot(search_direction);
     if ((phi > 0) || std::isnan(phi)) {
       // no, we reset the hessian approximation
       inverse_hessian_ = matrix_t::Identity(dim_, dim_);
-      search_direction = -current.gradient;
+      search_direction = -current_gradient;
     }
 
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
         current.x, search_direction, function);
 
     const state_t next = function.GetState(current.x + rate * search_direction);
+    vector_t next_gradient;
+    function(next.x, &next_gradient);
 
     // Update inverse Hessian estimate.
     const vector_t s = rate * search_direction;
-    const vector_t y = next.gradient - current.gradient;
+    const vector_t y = next_gradient - current_gradient;
     const scalar_t rho = 1.0 / y.dot(s);
 
     inverse_hessian_ =

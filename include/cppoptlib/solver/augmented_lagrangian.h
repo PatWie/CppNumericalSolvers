@@ -34,7 +34,8 @@ class AugmentedLagrangian : public Solver<function_t> {
   AugmentedLagrangian(const solver_t &inner_solver)
       : inner_solver_(inner_solver) {}
 
-  void InitializeSolver(const state_t & /*initial_state*/) override {}
+  void InitializeSolver(const function_t & /*function*/,
+                        const state_t & /*initial_state*/) override {}
 
   state_t OptimizationStep(const function_t &function, const state_t &state,
                            const progress_t & /*progress*/) override {

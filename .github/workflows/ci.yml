@@ -58,3 +58,4 @@ jobs:
       - name: Build
         run: |
           bazel run simple
+          bazel run constrained_simple

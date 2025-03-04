@@ -46,7 +46,8 @@ class Lbfgsb : public Solver<function_t> {
     upper_bound_ = upper_bound;
   }
 
-  void InitializeSolver(const state_t &initial_state) override {
+  void InitializeSolver(const function_t & /*function*/,
+                        const state_t &initial_state) override {
     dim_ = initial_state.x.rows();
 
     if (!bounds_initialized_) {
@@ -70,13 +71,17 @@ class Lbfgsb : public Solver<function_t> {
                            const progress_t & /*progress*/) override {
     // STEP 2: compute the cauchy point
     vector_t cauchy_point = vector_t::Zero(current.x.rows());
+
+    vector_t current_gradient;
+    function(current.x, &current_gradient);
+
     dyn_vector_t c = dyn_vector_t::Zero(W_.cols());
-    GetGeneralizedCauchyPoint(current, &cauchy_point, &c);
+    GetGeneralizedCauchyPoint(current.x, current_gradient, &cauchy_point, &c);
 
     // STEP 3: compute a search direction d_k by the primal method for the
     // sub-problem
     const vector_t subspace_min =
-        SubspaceMinimization(current, cauchy_point, c);
+        SubspaceMinimization(current.x, current_gradient, cauchy_point, c);
 
     // STEP 4: perform linesearch and STEP 5: compute gradient
     scalar_t alpha_init = 1.0;
@@ -90,9 +95,11 @@ class Lbfgsb : public Solver<function_t> {
         x_next.cwiseMin(upper_bound_).cwiseMax(lower_bound_);
 
     const state_t next = function.GetState(clipped_x_next);
+    vector_t next_gradient;
+    function(next.x, &next_gradient);
 
     // prepare for next iteration
-    const vector_t new_y = next.gradient - current.gradient;
+    const vector_t new_y = next_gradient - current_gradient;
     const vector_t new_s = next.x - current.x;
 
     // STEP 6:
@@ -138,8 +145,8 @@ class Lbfgsb : public Solver<function_t> {
     return idx;
   }
 
-  void GetGeneralizedCauchyPoint(const state_t &current, vector_t *x_cauchy,
-                                 dyn_vector_t *c) const {
+  void GetGeneralizedCauchyPoint(const vector_t &x, const vector_t &gradient,
+                                 vector_t *x_cauchy, dyn_vector_t *c) const {
     constexpr scalar_t max_value = std::numeric_limits<scalar_t>::max();
     constexpr scalar_t epsilon = std::numeric_limits<scalar_t>::epsilon();
 
@@ -149,17 +156,17 @@ class Lbfgsb : public Solver<function_t> {
     std::vector<std::pair<int, scalar_t>> set_of_t;
     set_of_t.reserve(dim_);
     // The feasible set is implicitly given by "set_of_t - {t_i==0}".
-    vector_t d = -current.gradient;
+    vector_t d = -gradient;
     // n operations
     for (int j = 0; j < dim_; j++) {
-      if (current.gradient(j) == 0) {
+      if (gradient(j) == 0) {
         set_of_t.emplace_back(j, max_value);
       } else {
         scalar_t tmp = 0;
-        if (current.gradient(j) < 0) {
-          tmp = (current.x(j) - upper_bound_(j)) / current.gradient(j);
+        if (gradient(j) < 0) {
+          tmp = (x(j) - upper_bound_(j)) / gradient(j);
         } else {
-          tmp = (current.x(j) - lower_bound_(j)) / current.gradient(j);
+          tmp = (x(j) - lower_bound_(j)) / gradient(j);
         }
         set_of_t.emplace_back(j, tmp);
         if (tmp == 0) d(j) = 0;
@@ -167,7 +174,7 @@ class Lbfgsb : public Solver<function_t> {
     }
     // sortedindices [1,0,2] means the minimal element is on the 1-st entry
     std::vector<int> sorted_indices = SortIndexes(set_of_t);
-    *x_cauchy = current.x;
+    *x_cauchy = x;
     // Initialize
     // p :=     W^scalar_t*p
     dyn_vector_t p = (W_.transpose() * d);  // (2mn operations)
@@ -205,22 +212,19 @@ class Lbfgsb : public Solver<function_t> {
       else if (d(b) < 0)
         (*x_cauchy)(b) = lower_bound_(b);
       // z_b = x_p^{cp} - x_b
-      const scalar_t zb = (*x_cauchy)(b)-current.x(b);
+      const scalar_t zb = (*x_cauchy)(b)-x(b);
       // c   :=  c +\delta t*p
       *c += dt * p;
       // cache
       dyn_vector_t wbt = W_.row(b);
-      f_prime += dt * f_doubleprime +
-                 current.gradient(b) * current.gradient(b) +
-                 theta_ * current.gradient(b) * zb -
-                 current.gradient(b) * wbt.transpose() * (M_ * *c);
-      f_doubleprime +=
-          scalar_t(-1.0) * theta_ * current.gradient(b) * current.gradient(b) -
-          scalar_t(2.0) * (current.gradient(b) * (wbt.dot(M_ * p))) -
-          current.gradient(b) * current.gradient(b) * wbt.transpose() *
-              (M_ * wbt);
+      f_prime += dt * f_doubleprime + gradient(b) * gradient(b) +
+                 theta_ * gradient(b) * zb -
+                 gradient(b) * wbt.transpose() * (M_ * *c);
+      f_doubleprime += scalar_t(-1.0) * theta_ * gradient(b) * gradient(b) -
+                       scalar_t(2.0) * (gradient(b) * (wbt.dot(M_ * p))) -
+                       gradient(b) * gradient(b) * wbt.transpose() * (M_ * wbt);
       f_doubleprime = std::max<scalar_t>(epsilon * f_dp_orig, f_doubleprime);
-      p += current.gradient(b) * wbt.transpose();
+      p += gradient(b) * wbt.transpose();
       d(b) = 0;
       dt_min = -f_prime / f_doubleprime;
       t_old = t;
@@ -234,8 +238,7 @@ class Lbfgsb : public Solver<function_t> {
     dt_min = std::max<scalar_t>(dt_min, scalar_t{0});
     t_old += dt_min;
 
-    (*x_cauchy)(sorted_indices) =
-        current.x(sorted_indices) + t_old * d(sorted_indices);
+    (*x_cauchy)(sorted_indices) = x(sorted_indices) + t_old * d(sorted_indices);
 
     *c += dt_min * p;
   }
@@ -267,7 +270,7 @@ class Lbfgsb : public Solver<function_t> {
     return alphastar;
   }
 
-  vector_t SubspaceMinimization(const state_t &current,
+  vector_t SubspaceMinimization(const vector_t &x, const vector_t &gradient,
                                 const vector_t &x_cauchy,
                                 const dyn_vector_t &c) const {
     const scalar_t theta_inverse = 1 / theta_;
@@ -283,8 +286,7 @@ class Lbfgsb : public Solver<function_t> {
     const dyn_matrix_t WZ =
         W_(free_variables_index, Eigen::indexing::all).transpose();
 
-    const vector_t rr =
-        (current.gradient + theta_ * (x_cauchy - current.x) - W_ * (M_ * c));
+    const vector_t rr = (gradient + theta_ * (x_cauchy - x) - W_ * (M_ * c));
     // r=r(free_variables);
     const dyn_vector_t r = rr(free_variables_index);
 

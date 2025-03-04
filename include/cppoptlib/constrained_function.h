@@ -24,10 +24,7 @@ struct ConstrainedState : public State<base_t> {
   using unconstrained_base_t = FunctionBase<typename base_t::scalar_t,
                                             base_t::Dim, base_t::DiffLevel, 0>;
 
-  typename base_t::scalar_t value = 0;
   typename base_t::vector_t x;
-  typename base_t::vector_t gradient;
-
   std::array<typename base_t::scalar_t, base_t::NumConstraints>
       lagrange_multipliers;
   std::array<typename base_t::scalar_t, base_t::NumConstraints> violations;
@@ -47,9 +44,7 @@ struct ConstrainedState : public State<base_t> {
   }
 
   void CopyState(const self_t &rhs) {
-    value = rhs.value;
     x = rhs.x.eval();
-    gradient = rhs.gradient.eval();
     penalty = rhs.penalty;
     lagrange_multipliers = rhs.lagrange_multipliers;
     violations = rhs.violations;
@@ -57,9 +52,7 @@ struct ConstrainedState : public State<base_t> {
 
   State<unconstrained_base_t> AsUnconstrained() const {
     State<unconstrained_base_t> state;
-    state.value = value;
     state.x = x.eval();
-    state.gradient = gradient.eval();
     return state;
   }
 };
@@ -91,18 +84,7 @@ class UnconstrainedFunctionAdapter
     const typename cfunction_t::state_t inner = constrained_function.GetState(
         x, constrained_state.lagrange_multipliers, constrained_state.penalty);
     typename cfunction_t::unconstrained_function_t::state_t unconstrained_state;
-    unconstrained_state.value = inner.value;
     unconstrained_state.x = inner.x;
-    if constexpr ((cfunction_t::unconstrained_function_t::Differentiability ==
-                   Differentiability::First) ||
-                  (cfunction_t::unconstrained_function_t::Differentiability ==
-                   Differentiability::Second)) {
-      unconstrained_state.gradient = inner.gradient;
-    }
-    if constexpr (cfunction_t::unconstrained_function_t::Differentiability ==
-                  Differentiability::Second) {
-      unconstrained_state.hessian = inner.hessian;
-    }
     return unconstrained_state;
   }
 
@@ -186,30 +168,12 @@ struct ConstrainedFunction {
 
     state_t constrained_state;
     constrained_state.x = objective_state.x;
-    constrained_state.value = objective_state.value;
-    constrained_state.gradient = objective_state.gradient;
+    constrained_state.penalty = penalty;
 
-    // Sum augmented penalties for hard constraints.
     for (std::size_t i = 0; i < TNumConstraints; ++i) {
-      const typename function_t::state_t constraint_state =
-          constraints_[i]->GetState(x);
-      const scalar_t cost = constraint_state.value;
-      const scalar_t violation = cost;
-
-      const scalar_t lambda = lagrange_multipliers[i];
-      const scalar_t aug_cost =
-          violation + lambda * violation +
-          static_cast<scalar_t>(0.5) * penalty * violation * violation;
-      constrained_state.value += aug_cost;
-      // Augmented gradient (only active if the constraint is violated).
-      const scalar_t a = scalar_t(1) + lambda + penalty * violation;
-      const typename base_t::vector_t scaled_local_grad =
-          a * constraint_state.gradient;
-      typename base_t::vector_t aug_grad =
-          (cost > scalar_t(0)) ? scaled_local_grad
-                               : base_t::vector_t::Zero(x.size());
-      constrained_state.gradient += aug_grad;
+      const scalar_t violation = constraints_[i]->operator()(x);
       constrained_state.violations[i] = violation;
+      constrained_state.lagrange_multipliers[i] = lagrange_multipliers[i];
     }
 
     return constrained_state;

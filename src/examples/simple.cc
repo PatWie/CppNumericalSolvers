@@ -18,7 +18,7 @@ using FunctionXd = cppoptlib::function::Function<
     double, Eigen::Dynamic, cppoptlib::function::Differentiability::Second>;
 
 class Function : public FunctionXd {
-public:
+ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   scalar_t operator()(const vector_t &x, vector_t *gradient = nullptr,
@@ -44,11 +44,11 @@ public:
 };
 
 int main() {
-  // using Solver = cppoptlib::solver::GradientDescent<Function>;
+  using Solver = cppoptlib::solver::GradientDescent<Function>;
   // using Solver = cppoptlib::solver::ConjugatedGradientDescent<Function>;
   // using Solver = cppoptlib::solver::NewtonDescent<Function>;
   // using Solver = cppoptlib::solver::Bfgs<Function>;
-  using Solver = cppoptlib::solver::Lbfgs<Function>;
+  // using Solver = cppoptlib::solver::Lbfgs<Function>;
   // using Solver = cppoptlib::solver::Lbfgsb<Function>;
   // using Solver = cppoptlib::solver::NelderMead<Function>;
 
@@ -73,7 +73,7 @@ int main() {
   auto initial_state = f.GetState(x);
   auto [solution, solver_state] = solver.Minimize(f, initial_state);
   std::cout << "argmin " << solution.x.transpose() << std::endl;
-  std::cout << "f in argmin " << solution.value << std::endl;
+  std::cout << "f in argmin " << f(solution.x) << std::endl;
   std::cout << "iterations " << solver_state.num_iterations << std::endl;
   std::cout << "status " << solver_state.status << std::endl;
 

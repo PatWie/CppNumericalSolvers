@@ -32,20 +32,23 @@ class ConjugatedGradientDescent : public Solver<function_t> {
 
   using Superclass::Superclass;
 
-  void InitializeSolver(const state_t &initial_state) override {
-    previous_gradient_ = initial_state.gradient;
+  void InitializeSolver(const function_t &function,
+                        const state_t &initial_state) override {
+    function(initial_state.x, &previous_gradient_);
   }
 
   state_t OptimizationStep(const function_t &function, const state_t &current,
                            const progress_t &progress) override {
+    vector_t current_gradient;
+    function(current.x, &current_gradient);
     if (progress.num_iterations == 0) {
-      search_direction_ = -current.gradient;
+      search_direction_ = -current_gradient;
     } else {
-      const double beta = current.gradient.dot(current.gradient) /
+      const double beta = current_gradient.dot(current_gradient) /
                           (previous_gradient_.dot(previous_gradient_));
-      search_direction_ = -current.gradient + beta * search_direction_;
+      search_direction_ = -current_gradient + beta * search_direction_;
     }
-    previous_gradient_ = current.gradient;
+    previous_gradient_ = current_gradient;
 
     const scalar_t rate = linesearch::Armijo<function_t, 1>::Search(
         current.x, search_direction_, function);

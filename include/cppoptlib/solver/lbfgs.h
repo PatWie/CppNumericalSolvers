@@ -36,7 +36,8 @@ class Lbfgs : public Solver<function_t> {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   using Superclass::Superclass;
 
-  void InitializeSolver(const state_t &initial_state) override {
+  void InitializeSolver(const function_t & /*function*/,
+                        const state_t &initial_state) override {
     const size_t dim = initial_state.x.rows();
     x_diff_memory_ = memory_matrix_t::Zero(dim, m);
     grad_diff_memory_ = memory_matrix_t::Zero(dim, m);
@@ -48,7 +49,7 @@ class Lbfgs : public Solver<function_t> {
   }
 
   state_t OptimizationStep(const function_t &function, const state_t &current,
-                           const progress_t &progress) override {
+                           const progress_t & /*progress*/) override {
     constexpr scalar_t eps = std::numeric_limits<scalar_t>::epsilon();
     const scalar_t relative_eps =
         static_cast<scalar_t>(eps) *
@@ -57,13 +58,18 @@ class Lbfgs : public Solver<function_t> {
     // --- Preconditioning ---
     // If second-order information is available, use a diagonal preconditioner.
     vector_t precond = vector_t::Ones(current.x.size());
+    vector_t current_gradient;
     if constexpr (function_t::DiffLevel ==
                   cppoptlib::function::Differentiability::Second) {
-      precond = current.hessian.diagonal().cwiseAbs().array() + eps;
+      matrix_t current_hessian;
+      function(current.x, &current_gradient, &current_hessian);
+      precond = current_hessian.diagonal().cwiseAbs().array() + eps;
       precond = precond.cwiseInverse();
+    } else {
+      function(current.x, &current_gradient);
     }
     // Precondition the gradient.
-    vector_t grad_precond = precond.asDiagonal() * current.gradient;
+    vector_t grad_precond = precond.asDiagonal() * current_gradient;
 
     // --- Two-Loop Recursion ---
     // Start with the preconditioned gradient as the initial search direction.
@@ -109,13 +115,13 @@ class Lbfgs : public Solver<function_t> {
     }
 
     // Check descent direction validity.
-    scalar_t descent_direction = -current.gradient.dot(search_direction);
+    scalar_t descent_direction = -current_gradient.dot(search_direction);
     scalar_t alpha_init =
-        (current.gradient.norm() > eps) ? 1.0 / current.gradient.norm() : 1.0;
+        (current_gradient.norm() > eps) ? 1.0 / current_gradient.norm() : 1.0;
     if (!std::isfinite(descent_direction) ||
         descent_direction > -eps * relative_eps) {
       // Fall back to steepest descent if necessary.
-      search_direction = -current.gradient;
+      search_direction = -current_gradient;
       // Reset the correction history if the descent is invalid.
       mem_count_ = 0;
       mem_pos_ = 0;
@@ -127,17 +133,19 @@ class Lbfgs : public Solver<function_t> {
         current.x, -search_direction, function, alpha_init);
 
     const state_t next = function.GetState(current.x - rate * search_direction);
+    vector_t next_gradient;
+    function(next.x, &next_gradient);
 
     // Compute the differences for the new correction pair.
     const vector_t x_diff = next.x - current.x;
-    const vector_t grad_diff = next.gradient - current.gradient;
+    const vector_t grad_diff = next_gradient - current_gradient;
 
     // --- Curvature Condition Check with Cautious Update ---
     // We require:
     //   x_diff.dot(grad_diff) > ||x_diff||^2 * ||current.gradient|| *
     //   cautious_factor_
     const scalar_t threshold =
-        x_diff.squaredNorm() * current.gradient.norm() * cautious_factor_;
+        x_diff.squaredNorm() * current_gradient.norm() * cautious_factor_;
     if (x_diff.dot(grad_diff) > threshold) {
       // Add the new correction pair into the circular buffer.
       if (mem_count_ < static_cast<size_t>(m)) {
