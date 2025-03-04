@@ -26,8 +26,8 @@ class NelderMead : public Solver<function_t> {
 
   // Coefficients for the Nelder–Mead algorithm.
   const scalar_t rho_ = 1.0;    // Reflection coefficient (> 0)
-  const scalar_t xi_ = 1.5;     // Expansion coefficient (reduced from 2.0)
-  const scalar_t gamma_ = 0.5;  // Contraction coefficient (0 < gamma < 1)
+  const scalar_t xi_ = 20.0;    // Expansion coefficient
+  const scalar_t gamma_ = 0.1;  // Contraction coefficient (0 < gamma < 1)
   const scalar_t sigma_ = 0.5;  // Shrink coefficient (0 < sigma < 1)
 
   // Tolerance for detecting a degenerate simplex.
@@ -90,6 +90,10 @@ class NelderMead : public Solver<function_t> {
 
     // Reflection: compute the reflected point.
     vector_t x_r = (1 + rho_) * x_bar - rho_ * simplex_.col(idx[DIM]);
+    if (isCoincident(x_r, x_bar) || isCoincident(x_r, simplex_.col(idx[DIM]))) {
+      shrink(simplex_, idx, f, function);
+      return function.GetState(simplex_.col(idx[0]));
+    }
     scalar_t f_r = function(x_r);
 
     if (f_r < f[idx[0]]) {
@@ -153,6 +157,11 @@ class NelderMead : public Solver<function_t> {
       }
     }
     return s;
+  }
+
+  // Returns true if the two vectors are nearly equal (using the infinity norm).
+  bool isCoincident(const vector_t &a, const vector_t &b) const {
+    return (a - b).template lpNorm<Eigen::Infinity>() < degenerate_tol_;
   }
 
   // Shrink the simplex toward the best vertex.
