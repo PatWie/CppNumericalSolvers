@@ -36,7 +36,8 @@ class NelderMead : public Solver<function_t> {
   using Superclass::Superclass;
 
   // Initialize the solver with the starting point.
-  void InitializeSolver(const state_t &initial_state) override {
+  void InitializeSolver(const function_t & /*function*/,
+                        const state_t &initial_state) override {
     simplex_ = makeInitialSimplex(initial_state.x);
   }
 
@@ -44,7 +45,7 @@ class NelderMead : public Solver<function_t> {
   // This implementation updates the internal simplex and returns the current
   // best vertex.
   state_t OptimizationStep(const function_t &function, const state_t &current,
-                           const progress_t &progress) override {
+                           const progress_t & /*progress*/) override {
     const size_t DIM = current.x.rows();
     const int numVertices = static_cast<int>(DIM) + 1;
 

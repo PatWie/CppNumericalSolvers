@@ -103,18 +103,21 @@ int main(int argc, char const *argv[]) {
     std::cout << "Initial point: " << x.transpose() << std::endl;
 
     // Evaluate
-    auto state = f.GetState(x);
-    std::cout << "Function value at initial point: " << f(x) << std::endl;
-    std::cout << "Gradient at initial point: " << state.gradient << std::endl;
+    Eigen::VectorXd gradient(2);
+    double value = f(x, &gradient);
+    std::cout << "Function value at initial point: " << value << std::endl;
+    std::cout << "Gradient at initial point: " << gradient << std::endl;
 
     // Minimize the Rosenbrock function using the BFGS solver.
     using Solver = cppoptlib::solver::Bfgs<Rosenbrock>;
+    auto init_state = f.GetState(x);
     Solver solver;
-    auto [solution_state, solver_progress] = solver.Minimize(f, x);
+    auto [solution_state, solver_progress] = solver.Minimize(f, init_state);
 
     // Display the results of the optimization.
     std::cout << "Optimal solution: " << solution_state.x.transpose() << std::endl;
-    std::cout << "Optimal function value: " << solution_state.value << std::endl;
+    std::cout << "Optimal function value: " << f(solution_state.x) << std::endl;
+
     std::cout << "Number of iterations: " << solver_progress.num_iterations << std::endl;
     std::cout << "Solver status: " << solver_progress.status << std::endl;
 

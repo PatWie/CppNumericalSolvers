@@ -62,6 +62,8 @@ template <class function_t>
 struct Progress {
   using state_t = typename function_t::state_t;
   using scalar_t = typename function_t::scalar_t;
+  using vector_t = typename function_t::vector_t;
+  using matrix_t = typename function_t::matrix_t;
 
   size_t num_iterations = 0;       // Maximum number of allowed iterations.
   scalar_t x_delta = scalar_t{0};  // Minimum change in parameter vector.
@@ -78,27 +80,51 @@ struct Progress {
   Progress() = default;
 
   // Updates state from function information.
-  void Update(const state_t &previous_function_state,
+  void Update(const function_t &function,
+              const state_t &previous_function_state,
               const state_t &current_function_state,
               const Progress<function_t> &stop_progress) {
+    const vector_t &current_x = current_function_state.x;
+    const vector_t &previous_x = previous_function_state.x;
+    vector_t previous_gradient, current_gradient;
+    scalar_t previous_value;
+    scalar_t current_value;
+    if constexpr (function_t::base_t::DiffLevel >=
+                  cppoptlib::function::Differentiability::First) {
+      if constexpr (function_t::base_t::NumConstraints > 0) {
+        previous_value =
+            function(previous_x, previous_function_state.lagrange_multipliers,
+                     previous_function_state.penalty, &previous_gradient);
+        current_value =
+            function(current_x, current_function_state.lagrange_multipliers,
+                     current_function_state.penalty, &current_gradient);
+      } else {
+        previous_value = function(previous_x, &previous_gradient);
+        current_value = function(current_x, &current_gradient);
+      }
+    } else {
+      previous_value = function(previous_x);
+      current_value = function(current_x);
+    }
+
     num_iterations++;
-    f_delta =
-        std::abs(current_function_state.value - previous_function_state.value);
-    x_delta = (current_function_state.x - previous_function_state.x)
-                  .template lpNorm<Eigen::Infinity>();
+    f_delta = std::abs(current_value - previous_value);
+    x_delta = (current_x - previous_x).template lpNorm<Eigen::Infinity>();
 
     // Compute gradient norm if the function supports differentiation
     if constexpr (function_t::base_t::DiffLevel >=
                   cppoptlib::function::Differentiability::First) {
-      gradient_norm =
-          current_function_state.gradient.template lpNorm<Eigen::Infinity>();
+      gradient_norm = current_gradient.template lpNorm<Eigen::Infinity>();
     }
     // Compute Hessian condition number if the function supports second-order
     // derivatives
     if constexpr (function_t::base_t::DiffLevel ==
                   cppoptlib::function::Differentiability::Second) {
-      condition_hessian = current_function_state.hessian.norm() *
-                          current_function_state.hessian.inverse().norm();
+      matrix_t current_hessian;
+      function(current_x, nullptr, &current_hessian);
+
+      condition_hessian =
+          current_hessian.norm() * current_hessian.inverse().norm();
     }
 
     if ((stop_progress.num_iterations > 0) &&
@@ -175,27 +201,40 @@ Progress<TFunc> DefaultStoppingSolverProgress() {
 // Returns the defaul callback function.
 template <class function_t>
 auto PrintCallback() {
-  return [](const typename function_t::state_t &state,
-            const Progress<function_t> &progress) {
-    std::cout << "Function-State"
-              << "\t";
-    std::cout << "  value    " << state.value << "\t";
-    std::cout << "  x    " << state.x.transpose() << "\t";
-    std::cout << "  gradient    " << state.gradient.transpose() << std::endl;
-    std::cout << "Solver-Progress"
-              << "\t";
-    std::cout << "  iterations " << progress.num_iterations << "\t";
-    std::cout << "  x_delta " << progress.x_delta << "\t";
-    std::cout << "  f_delta " << progress.f_delta << "\t";
-    std::cout << "  gradient_norm " << progress.gradient_norm << "\t";
-    std::cout << "  condition_hessian " << progress.condition_hessian
-              << std::endl;
-  };
+  return
+      [](const function_t &function, const typename function_t::state_t &state,
+         const Progress<function_t> &progress) {
+        std::cout << "Function-State"
+                  << "\t";
+        std::cout << "  value    " << function(state.x) << "\t";
+        std::cout << "  x    " << state.x.transpose() << "\t";
+        if constexpr (function_t::base_t::DiffLevel >=
+                      cppoptlib::function::Differentiability::First) {
+          typename function_t::vector_t gradient;
+          function(state.x, &gradient);
+          std::cout << "  gradient    " << gradient.transpose() << std::endl;
+        }
+        std::cout << "Solver-Progress"
+                  << "\t";
+        std::cout << "  iterations " << progress.num_iterations << "\t";
+        std::cout << "  x_delta " << progress.x_delta << "\t";
+        std::cout << "  f_delta " << progress.f_delta << "\t";
+        if constexpr (function_t::base_t::DiffLevel >=
+                      cppoptlib::function::Differentiability::First) {
+          std::cout << "  gradient_norm " << progress.gradient_norm << "\t";
+        }
+        if constexpr (function_t::base_t::DiffLevel >=
+                      cppoptlib::function::Differentiability::Second) {
+          std::cout << "  condition_hessian " << progress.condition_hessian
+                    << std::endl;
+        }
+      };
 }
 
 template <class function_t>
 auto NoOpCallback() {
-  return [](const typename function_t::state_t & /*state*/,
+  return [](const function_t & /*function*/,
+            const typename function_t::state_t & /*state*/,
             const Progress<function_t> & /*progress*/) {};
 }
 
@@ -204,7 +243,8 @@ template <typename function_t>
 class Solver {
  public:
   using progress_t = Progress<function_t>;
-  using callback_t = std::function<void(const typename function_t::state_t &,
+  using callback_t = std::function<void(const function_t &func,
+                                        const typename function_t::state_t &,
                                         const progress_t &)>;
 
  private:
@@ -223,7 +263,8 @@ class Solver {
 
   virtual ~Solver() = default;
 
-  virtual void InitializeSolver(const state_t & /*initial_state*/) = 0;
+  virtual void InitializeSolver(const function_t &function,
+                                const state_t & /*initial_state*/) = 0;
 
   virtual std::tuple<state_t, progress_t> Minimize(
       const function_t &function, const state_t &function_state) {
@@ -233,11 +274,11 @@ class Solver {
     // state_t function_state = function.GetState(x);
 
     state_t current_function_state(function_state);
-    this->InitializeSolver(function_state);
+    this->InitializeSolver(function, function_state);
 
     do {
       // Trigger a user-defined callback.
-      this->step_callback_(current_function_state, solver_state);
+      this->step_callback_(function, current_function_state, solver_state);
 
       // Find next function state.
       state_t previous_function_state(current_function_state);
@@ -245,12 +286,12 @@ class Solver {
           function, previous_function_state, solver_state);
 
       // Update current solver state.
-      solver_state.Update(previous_function_state, current_function_state,
-                          stopping_progress);
+      solver_state.Update(function, previous_function_state,
+                          current_function_state, stopping_progress);
     } while (solver_state.status == Status::Continue);
 
     // Final Trigger of a user-defined callback.
-    this->step_callback_(current_function_state, solver_state);
+    this->step_callback_(function, current_function_state, solver_state);
 
     return {current_function_state, solver_state};
   }

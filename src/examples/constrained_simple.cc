@@ -70,7 +70,7 @@ int main() {
 
   const auto initial_state = L.GetState(x, {0.0, 0.0}, 10.);
   auto [solution, solver_state] = solver.Minimize(L, initial_state);
-  std::cout << "f in argmin " << solution.value << std::endl;
+  std::cout << "f in argmin " << f(solution.x) << std::endl;
   // Supposed to be [-1, -1].
   std::cout << "argmin " << solution.x.transpose() << std::endl;
   std::cout << "iterations " << solver_state.num_iterations << std::endl;

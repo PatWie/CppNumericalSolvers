@@ -126,7 +126,7 @@ class NelderMeadTest : public testing::Test {};
   if (solver_state.status == cppoptlib::solver::Status::IterationLimit) { \
     std::cout << solver_state.status << std::endl;                        \
   }                                                                       \
-  EXPECT_NEAR(fx, solution.value, PRECISION);
+  EXPECT_NEAR(fx, f(solution.x), PRECISION);
 
 typedef ::testing::Types<double> DoublePrecision;
 TYPED_TEST_CASE(GradientDescentTest, DoublePrecision);
@@ -255,8 +255,6 @@ template <class T>
 class Constrained : public testing::Test {};
 TYPED_TEST_CASE(Constrained, DoublePrecision);
 TYPED_TEST(Constrained, Simple) {
-  using InnerSolver = cppoptlib::solver::Lbfgs<Function2d>;
-
   constexpr auto dim = 2;
   SumObjective::vector_t x(dim);
   x << 7, -4;

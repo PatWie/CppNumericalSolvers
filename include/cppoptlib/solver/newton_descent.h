@@ -31,17 +31,21 @@ class NewtonDescent : public Solver<function_t> {
 
   using Superclass::Superclass;
 
-  void InitializeSolver(const state_t &initial_state) override {
+  void InitializeSolver(const function_t & /*function*/,
+                        const state_t &initial_state) override {
     dim_ = initial_state.x.rows();
   }
 
   state_t OptimizationStep(const function_t &function, const state_t &current,
                            const progress_t & /*state*/) override {
     constexpr scalar_t safe_guard = 1e-5;
-    matrix_t hessian =
-        current.hessian + safe_guard * matrix_t::Identity(dim_, dim_);
 
-    const vector_t delta_x = hessian.lu().solve(-current.gradient);
+    matrix_t hessian;
+    vector_t gradient;
+    function(current.x, &gradient, &hessian);
+    hessian += safe_guard * matrix_t::Identity(dim_, dim_);
+
+    const vector_t delta_x = hessian.lu().solve(-gradient);
     const scalar_t rate =
         linesearch::Armijo<function_t, 2>::Search(current.x, delta_x, function);
 

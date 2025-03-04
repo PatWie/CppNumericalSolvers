@@ -31,14 +31,17 @@ class GradientDescent : public Solver<function_t> {
 
   using Superclass::Superclass;
 
-  void InitializeSolver(const state_t & /*initial_state*/) override {}
+  void InitializeSolver(const function_t & /*function*/,
+                        const state_t & /*initial_state*/) override {}
 
   state_t OptimizationStep(const function_t &function, const state_t &current,
                            const progress_t & /*progress*/) override {
+    vector_t gradient;
+    function(current.x, &gradient);
     const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
-        current.x, -current.gradient, function);
+        current.x, -gradient, function);
 
-    return function.GetState(current.x - rate * current.gradient);
+    return function.GetState(current.x - rate * gradient);
   }
 };
 

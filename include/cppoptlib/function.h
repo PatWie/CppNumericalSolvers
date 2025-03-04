@@ -45,75 +45,20 @@ class Function : public FunctionBase<TScalar, TDim, TDifferentiability> {
   using state_t = State<Function<TScalar, TDim, TDifferentiability>>;
 };
 
-template <class TScalar, int TDim>
-struct State<FunctionBase<TScalar, TDim, Differentiability::None>> {
-  using base_t = FunctionBase<TScalar, TDim, Differentiability::None>;
+template <class TScalar, int TDim, Differentiability TDifferentiability>
+struct State<FunctionBase<TScalar, TDim, TDifferentiability>> {
+  using base_t = FunctionBase<TScalar, TDim, TDifferentiability>;
   using state_t = State<base_t>;
 
-  typename base_t::scalar_t value = 0;
   typename base_t::vector_t x;
 
   State() = default;
 
-  State(const state_t &rhs) : value(rhs.value), x(rhs.x.eval()) {}
+  State(const state_t &rhs) : x(rhs.x.eval()) {}
 
   state_t &operator=(const state_t &rhs) {
     if (this != &rhs) {
-      value = rhs.value;
       x = rhs.x.eval();
-    }
-    return *this;
-  }
-};
-
-template <class TScalar, int TDim>
-struct State<FunctionBase<TScalar, TDim, Differentiability::First>> {
-  using base_t = FunctionBase<TScalar, TDim, Differentiability::First>;
-  using state_t = State<base_t>;
-
-  typename base_t::scalar_t value = 0;
-  typename base_t::vector_t x;
-  typename base_t::vector_t gradient;
-
-  State() = default;
-
-  State(const state_t &rhs)
-      : value(rhs.value), x(rhs.x.eval()), gradient(rhs.gradient.eval()) {}
-
-  state_t &operator=(const state_t &rhs) {
-    if (this != &rhs) {
-      value = rhs.value;
-      x = rhs.x.eval();
-      gradient = rhs.gradient.eval();
-    }
-    return *this;
-  }
-};
-
-template <class TScalar, int TDim>
-struct State<FunctionBase<TScalar, TDim, Differentiability::Second>> {
-  using base_t = FunctionBase<TScalar, TDim, Differentiability::Second>;
-  using state_t = State<base_t>;
-
-  typename base_t::scalar_t value = 0;
-  typename base_t::vector_t x;
-  typename base_t::vector_t gradient;
-  typename base_t::matrix_t hessian;
-
-  State() = default;
-
-  State(const state_t &rhs)
-      : value(rhs.value),
-        x(rhs.x.eval()),
-        gradient(rhs.gradient.eval()),
-        hessian(rhs.hessian.eval()) {}
-
-  state_t &operator=(const state_t &rhs) {
-    if (this != &rhs) {
-      value = rhs.value;
-      x = rhs.x.eval();
-      gradient = rhs.gradient.eval();
-      hessian = rhs.hessian.eval();
     }
     return *this;
   }
@@ -141,7 +86,6 @@ class Function<TScalar, TDim, Differentiability::None>
   state_t GetState(const typename base_t::vector_t &x) const {
     state_t state;
     state.x = x;
-    state.value = this->operator()(x);
     return state;
   }
 };
@@ -168,7 +112,6 @@ class Function<TScalar, TDim, Differentiability::First>
   state_t GetState(const typename base_t::vector_t &x) const {
     state_t state;
     state.x = x;
-    state.value = this->operator()(x, &state.gradient);
     return state;
   }
 };
@@ -196,7 +139,6 @@ class Function<TScalar, TDim, Differentiability::Second>
   state_t GetState(const typename base_t::vector_t &x) const {
     state_t state;
     state.x = x;
-    state.value = this->operator()(x, &state.gradient, &state.hessian);
     return state;
   }
 };
