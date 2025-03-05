@@ -40,7 +40,7 @@ class AugmentedLagrangian : public Solver<function_t> {
   state_t OptimizationStep(const function_t &function, const state_t &state,
                            const progress_t & /*progress*/) override {
     cppoptlib::function::UnconstrainedFunctionAdapter<function_t>
-        unconstrained_function(function, state);
+        unconstrained_function(&function, state);
 
     const auto inner_state = state.AsUnconstrained();
     const auto [solved_inner_state, inner_progress] =

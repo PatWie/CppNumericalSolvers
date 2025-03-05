@@ -35,6 +35,21 @@ public:
   static constexpr Differentiability DiffLevel = TDifferentiability;
   static constexpr int NumConstraints = TNumConstraints;
   static constexpr int Dim = TDim;
+  using base_t = FunctionBase<TScalar, TDim,
+                                 TDifferentiability, TNumConstraints>;
+  using state_t = State<FunctionBase<TScalar, TDim,
+                                 TDifferentiability, TNumConstraints>>;
+  state_t GetState(const typename base_t::vector_t &x) const {
+    state_t state;
+    state.x = x;
+    return state;
+  }
+
+   virtual scalar_t operator()(const vector_t &x, vector_t *gradient = nullptr,
+                             matrix_t *hessian = nullptr) const {
+    std::cout << "wrong call" << std::endl;
+    return scalar_t();
+  }
 };
 
 // Primary template declaration for CRTP-based Function.

@@ -10,7 +10,7 @@
 #include "function.h"
 namespace cppoptlib::function {
 
-template <class function_t, std::size_t NumConstraints>
+template <class function_t, class objective_t, std::size_t NumConstraints>
 struct ConstrainedFunction;
 
 template <class base_t> struct ConstrainedState : public State<base_t> {
@@ -57,11 +57,12 @@ template <class base_t> struct ConstrainedState : public State<base_t> {
 
 template <class cfunction_t>
 class UnconstrainedFunctionAdapter
-    : public cfunction_t::unconstrained_function_t {
+    : public FunctionBase<typename cfunction_t::scalar_t, cfunction_t::Dim, cfunction_t::DiffLevel,
+                          0> {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  UnconstrainedFunctionAdapter(cfunction_t constrained_function,
+  UnconstrainedFunctionAdapter(cfunction_t *constrained_function,
                                typename cfunction_t::state_t constrained_state)
       : constrained_function(constrained_function),
         constrained_state(constrained_state) {}
@@ -71,15 +72,15 @@ public:
       typename cfunction_t::unconstrained_function_t::base_t::vector_t
           *gradient = nullptr
 
-  ) const override {
-    return constrained_function(x, constrained_state.lagrange_multipliers,
-                                constrained_state.penalty, gradient);
+  ) const {
+    return (*constrained_function)(x, constrained_state.lagrange_multipliers,
+                                   constrained_state.penalty, gradient);
   }
 
   typename cfunction_t::unconstrained_function_t::state_t GetState(
       const typename cfunction_t::unconstrained_function_t::base_t::vector_t &x)
       const {
-    const typename cfunction_t::state_t inner = constrained_function.GetState(
+    const typename cfunction_t::state_t inner = constrained_function->GetState(
         x, constrained_state.lagrange_multipliers, constrained_state.penalty);
     typename cfunction_t::unconstrained_function_t::state_t unconstrained_state;
     unconstrained_state.x = inner.x;
@@ -87,12 +88,14 @@ public:
   }
 
 private:
-  cfunction_t constrained_function;
+  cfunction_t *constrained_function;
   typename cfunction_t::state_t constrained_state;
 };
 
-template <class function_t, std::size_t TNumConstraints>
-struct ConstrainedFunction {
+template <class function_t, class constraint_t, std::size_t TNumConstraints>
+struct ConstrainedFunction
+    : public FunctionBase<typename function_t::scalar_t, function_t::Dim, function_t::DiffLevel,
+                          TNumConstraints> {
   static constexpr int NumConstraints = TNumConstraints;
 
   using scalar_t = typename function_t::base_t::scalar_t;
@@ -102,12 +105,14 @@ struct ConstrainedFunction {
                               TNumConstraints>;
   using unconstrained_function_t = function_t;
 
+  using objective_t = const function_t *;
+
 public:
   using state_t = ConstrainedState<base_t>;
   static constexpr Differentiability DiffLevel = function_t::DiffLevel;
-  ConstrainedFunction(const typename function_t::Derived *objective,
-                      const std::array<const typename function_t::Derived *,
-                                       TNumConstraints> &constraints)
+  ConstrainedFunction(
+      objective_t objective,
+      const std::array<const constraint_t, TNumConstraints> &constraints)
       : objective_(objective), constraints_(constraints) {}
 
   scalar_t
@@ -179,17 +184,29 @@ public:
   }
 
   const typename function_t::Derived *objective_;
-  std::array<const typename function_t::Derived *, TNumConstraints>
-      constraints_;
+  std::array<const constraint_t, TNumConstraints> constraints_;
 };
 
-template <typename function_t, typename... Constraints>
-auto BuildConstrainedProblem(const function_t *objective,
+template <typename objective_t, typename... Constraints>
+auto BuildConstrainedProblem(const objective_t *objective,
                              const Constraints *...constraints) {
   constexpr std::size_t N = sizeof...(Constraints);
-  return ConstrainedFunction<typename function_t::Derived, N>(objective,
-                                                              {constraints...});
+  using common_constraint_t = const typename objective_t::base_t *;
+
+  return ConstrainedFunction<objective_t, common_constraint_t, N>(
+      objective, {constraints...});
+  // return ConstrainedFunction<objective_t, common_constraint_t, N>(
+  //     objective, std::array<common_constraint_t, N>{
+  //                    {(constraints)...}});
 }
+
+// template <typename function_t, typename... Constraints>
+// auto BuildConstrainedProblem(const function_t *objective,
+//                              const Constraints *...constraints) {
+//   constexpr std::size_t N = sizeof...(Constraints);
+//   return ConstrainedFunction<function_t,Constraints, N>(objective,
+//   {constraints...});
+// }
 
 template <typename T> struct SquaredPenalty {
   // Returns the penalty: f(x) = x^2

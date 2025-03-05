@@ -56,23 +56,25 @@ int main() {
   //  min   f(x) = x[0] + x[1]        // SumObjective
   //  s.t.      x[0]^2+x[1]^2 <= 2    // InsideCircleConstraint
   //            x[0]^2+x[1]^2 == 2    // CircleBoundaryConstraint
-  SumObjective f;
+  SumObjective g;
+  auto f = g+g;
+  // auto f = g;
   cppoptlib::function::NonNegativeConstraint<InsideCircleConstraint> c1;
   cppoptlib::function::ZeroConstraint<CircleBoundaryConstraint> c2;
 
   const auto L = cppoptlib::function::BuildConstrainedProblem(&f, &c1, &c2);
 
-  // cppoptlib::solver::Lbfgs<decltype(f)> inner_solver;
-  // cppoptlib::solver::AugmentedLagrangian<decltype(L), decltype(inner_solver)>
-  //     solver(inner_solver);
-  //
-  // const auto initial_state = L.GetState(x, {0.0, 0.0}, 10.);
-  // auto [solution, solver_state] = solver.Minimize(L, initial_state);
-  // std::cout << "f in argmin " << f(solution.x) << std::endl;
-  // // Supposed to be [-1, -1].
-  // std::cout << "argmin " << solution.x.transpose() << std::endl;
-  // std::cout << "iterations " << solver_state.num_iterations << std::endl;
-  // std::cout << "status " << solver_state.status << std::endl;
+  cppoptlib::solver::Lbfgs<typename decltype(f)::base_t> inner_solver;
+  cppoptlib::solver::AugmentedLagrangian<decltype(L), decltype(inner_solver)>
+      solver(inner_solver);
+
+  const auto initial_state = L.GetState(x, {0.0, 0.0}, 10.);
+  auto [solution, solver_state] = solver.Minimize(L, initial_state);
+  std::cout << "f in argmin " << f(solution.x) << std::endl;
+  // Supposed to be [-1, -1].
+  std::cout << "argmin " << solution.x.transpose() << std::endl;
+  std::cout << "iterations " << solver_state.num_iterations << std::endl;
+  std::cout << "status " << solver_state.status << std::endl;
 
   return 0;
 }
