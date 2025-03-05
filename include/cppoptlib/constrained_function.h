@@ -13,8 +13,7 @@ namespace cppoptlib::function {
 template <class function_t, std::size_t NumConstraints>
 struct ConstrainedFunction;
 
-template <class base_t>
-struct ConstrainedState : public State<base_t> {
+template <class base_t> struct ConstrainedState : public State<base_t> {
   static_assert(base_t::NumConstraints > 0, "need a constrained function base");
 
   // Self alias for convenience.
@@ -35,7 +34,7 @@ struct ConstrainedState : public State<base_t> {
     penalty = typename base_t::scalar_t(10);
   }
 
-  ConstrainedState(const self_t &rhs) { CopyState(rhs); }  // nolint
+  ConstrainedState(const self_t &rhs) { CopyState(rhs); } // nolint
 
   ConstrainedState operator=(const self_t &rhs) {
     CopyState(rhs);
@@ -59,7 +58,7 @@ struct ConstrainedState : public State<base_t> {
 template <class cfunction_t>
 class UnconstrainedFunctionAdapter
     : public cfunction_t::unconstrained_function_t {
- public:
+public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   UnconstrainedFunctionAdapter(cfunction_t constrained_function,
@@ -87,7 +86,7 @@ class UnconstrainedFunctionAdapter
     return unconstrained_state;
   }
 
- private:
+private:
   cfunction_t constrained_function;
   typename cfunction_t::state_t constrained_state;
 };
@@ -103,18 +102,19 @@ struct ConstrainedFunction {
                               TNumConstraints>;
   using unconstrained_function_t = function_t;
 
- public:
+public:
   using state_t = ConstrainedState<base_t>;
   static constexpr Differentiability DiffLevel = function_t::DiffLevel;
-  ConstrainedFunction(
-      const function_t *objective,
-      const std::array<const function_t *, TNumConstraints> &constraints)
+  ConstrainedFunction(const typename function_t::Derived *objective,
+                      const std::array<const typename function_t::Derived *,
+                                       TNumConstraints> &constraints)
       : objective_(objective), constraints_(constraints) {}
 
-  scalar_t operator()(
-      const typename base_t::vector_t &x,
-      std::array<scalar_t, TNumConstraints> lagrange_multipliers,
-      scalar_t penalty, typename base_t::vector_t *gradient = nullptr) const {
+  scalar_t
+  operator()(const typename base_t::vector_t &x,
+             std::array<scalar_t, TNumConstraints> lagrange_multipliers,
+             scalar_t penalty,
+             typename base_t::vector_t *gradient = nullptr) const {
     scalar_t f;
     vector_t grad;
     if (gradient) {
@@ -178,21 +178,20 @@ struct ConstrainedFunction {
     return constrained_state;
   }
 
-  const function_t *objective_;
-  std::array<const function_t *, TNumConstraints> constraints_;
+  const typename function_t::Derived *objective_;
+  std::array<const typename function_t::Derived *, TNumConstraints>
+      constraints_;
 };
 
 template <typename function_t, typename... Constraints>
 auto BuildConstrainedProblem(const function_t *objective,
                              const Constraints *...constraints) {
   constexpr std::size_t N = sizeof...(Constraints);
-  return ConstrainedFunction<Function<typename function_t::base_t::scalar_t,
-                                      function_t::Dim, function_t::DiffLevel>,
-                             N>(objective, {constraints...});
+  return ConstrainedFunction<typename function_t::Derived, N>(objective,
+                                                              {constraints...});
 }
 
-template <typename T>
-struct SquaredPenalty {
+template <typename T> struct SquaredPenalty {
   // Returns the penalty: f(x) = x^2
   inline T operator()(const T &x) const { return x * x; }
   // Returns the derivative: f'(x) = 2*x
@@ -203,12 +202,12 @@ template <typename function_t,
           typename PenaltyPolicy =
               SquaredPenalty<typename function_t::scalar_t>>
 class ZeroConstraint : public function_t {
- public:
+public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  typename function_t::scalar_t operator()(
-      const typename function_t::vector_t &x,
-      typename function_t::vector_t *gradient = nullptr) const override {
+  typename function_t::scalar_t
+  operator()(const typename function_t::vector_t &x,
+             typename function_t::vector_t *gradient = nullptr) const {
     const PenaltyPolicy policy;
     if (gradient) {
       typename function_t::vector_t constraint_grad;
@@ -216,7 +215,7 @@ class ZeroConstraint : public function_t {
       const typename function_t::scalar_t c_val =
           constraint_(x, &constraint_grad);
       const typename function_t::scalar_t penalty_value =
-          policy(c_val);  // f(c(x)) = c(x)^2
+          policy(c_val); // f(c(x)) = c(x)^2
       // Chain rule: gradient = policy.derivative(c(x)) * c'(x)
       *gradient = policy.derivative(c_val) * constraint_grad;
       return penalty_value;
@@ -226,7 +225,7 @@ class ZeroConstraint : public function_t {
     }
   }
 
- private:
+private:
   function_t constraint_;
 };
 
@@ -234,12 +233,12 @@ template <typename function_t,
           typename PenaltyPolicy =
               SquaredPenalty<typename function_t::scalar_t>>
 class NonNegativeConstraint : public function_t {
- public:
+public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  typename function_t::scalar_t operator()(
-      const typename function_t::vector_t &x,
-      typename function_t::vector_t *gradient = nullptr) const override {
+  typename function_t::scalar_t
+  operator()(const typename function_t::vector_t &x,
+             typename function_t::vector_t *gradient = nullptr) const {
     const PenaltyPolicy policy;
     // Tolerance below which the constraint is considered violated.
     const typename function_t::scalar_t tol = 1e-7;
@@ -252,7 +251,7 @@ class NonNegativeConstraint : public function_t {
         return 0;
       } else {
         const typename function_t::scalar_t violation =
-            -c_val;  // violation is positive
+            -c_val; // violation is positive
         const typename function_t::scalar_t penalty_value = policy(violation);
         // Chain rule: gradient = policy.derivative(violation) * (-c'(x))
         *gradient = policy.derivative(violation) * (-constraint_grad);
@@ -269,7 +268,7 @@ class NonNegativeConstraint : public function_t {
     }
   }
 
- private:
+private:
   function_t constraint_;
 };
 
@@ -277,7 +276,7 @@ template <typename function_t,
           typename PenaltyPolicy =
               SquaredPenalty<typename function_t::scalar_t>>
 class BoxConstraint : public function_t {
- public:
+public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   /**
@@ -305,9 +304,9 @@ class BoxConstraint : public function_t {
    * @param gradient (Optional) Pointer to store the computed gradient.
    * @return The total penalty value.
    */
-  typename function_t::scalar_t operator()(
-      const typename function_t::vector_t &x,
-      typename function_t::vector_t *gradient = nullptr) const override {
+  typename function_t::scalar_t
+  operator()(const typename function_t::vector_t &x,
+             typename function_t::vector_t *gradient = nullptr) const {
     typename function_t::scalar_t total_penalty = 0;
     if (gradient) {
       *gradient = typename function_t::vector_t::Zero(x.size());
@@ -332,11 +331,11 @@ class BoxConstraint : public function_t {
     return total_penalty;
   }
 
- private:
+private:
   typename function_t::vector_t lower_;
   typename function_t::vector_t upper_;
 };
 
-}  // namespace cppoptlib::function
+} // namespace cppoptlib::function
 
-#endif  //  INCLUDE_CPPOPTLIB_CONSTRAINED_FUNCTION_H_
+#endif //  INCLUDE_CPPOPTLIB_CONSTRAINED_FUNCTION_H_
