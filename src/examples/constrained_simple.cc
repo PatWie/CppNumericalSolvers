@@ -1,10 +1,10 @@
 // Copyright 2025, https://github.com/PatWie/CppNumericalSolvers
 #include <iostream>
 
-#include "include/cppoptlib/constrained_function.h"
-#include "include/cppoptlib/function.h"
-#include "include/cppoptlib/solver/augmented_lagrangian.h"
-#include "include/cppoptlib/solver/lbfgs.h"
+#include "cppoptlib/constrained_function.h"
+#include "cppoptlib/function.h"
+#include "cppoptlib/solver/augmented_lagrangian.h"
+#include "cppoptlib/solver/lbfgs.h"
 
 using Function2d = cppoptlib::function::Function<
     double, 2, cppoptlib::function::Differentiability::First>;
