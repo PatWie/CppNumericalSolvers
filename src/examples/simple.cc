@@ -4,15 +4,17 @@
 #include <limits>
 
 #include "Eigen/Core"
-#include "include/cppoptlib/function.h"
-#include "include/cppoptlib/solver/bfgs.h"
-#include "include/cppoptlib/solver/conjugated_gradient_descent.h"
-#include "include/cppoptlib/solver/gradient_descent.h"
-#include "include/cppoptlib/solver/lbfgs.h"
-#include "include/cppoptlib/solver/lbfgsb.h"
-#include "include/cppoptlib/solver/nelder_mead.h"
-#include "include/cppoptlib/solver/newton_descent.h"
-#include "include/cppoptlib/utils/derivatives.h"
+#include "cppoptlib/function.h"
+#include "cppoptlib/solver/bfgs.h"
+#include "cppoptlib/solver/conjugated_gradient_descent.h"
+#include "cppoptlib/solver/gradient_descent.h"
+#include "cppoptlib/solver/lbfgs.h"
+#if EIGEN_VERSION_AT_LEAST(3, 4, 0)
+#include "cppoptlib/solver/lbfgsb.h"
+#endif
+#include "cppoptlib/solver/nelder_mead.h"
+#include "cppoptlib/solver/newton_descent.h"
+#include "cppoptlib/utils/derivatives.h"
 
 using FunctionXd = cppoptlib::function::Function<
     double, Eigen::Dynamic, cppoptlib::function::Differentiability::Second>;

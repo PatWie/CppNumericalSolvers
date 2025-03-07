@@ -28,7 +28,10 @@ jobs:
             python3 \
             ca-certificates \
             clang-format-19 \
-            cpplint
+            cpplint \
+            libeigen3-dev \
+            libgtest-dev
+
 
       - name: Set up Bazel 8
         uses: bazel-contrib/setup-bazel@0.14.0
@@ -59,3 +62,11 @@ jobs:
         run: |
           bazel run simple
           bazel run constrained_simple
+
+      - name: Configure and Build with CMake
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          cmake --build .
+          ctest --output-on-failure

@@ -6,18 +6,20 @@
 #include <limits>
 #include <list>
 
+#include "cppoptlib/constrained_function.h"
+#include "cppoptlib/function.h"
+#include "cppoptlib/solver/augmented_lagrangian.h"
+#include "cppoptlib/solver/bfgs.h"
+#include "cppoptlib/solver/conjugated_gradient_descent.h"
+#include "cppoptlib/solver/gradient_descent.h"
+#include "cppoptlib/solver/lbfgs.h"
+#if EIGEN_VERSION_AT_LEAST(3, 4, 0)
+#include "cppoptlib/solver/lbfgsb.h"
+#endif
+#include "cppoptlib/solver/nelder_mead.h"
+#include "cppoptlib/solver/newton_descent.h"
+#include "cppoptlib/utils/derivatives.h"
 #include "gtest/gtest.h"
-#include "include/cppoptlib/constrained_function.h"
-#include "include/cppoptlib/function.h"
-#include "include/cppoptlib/solver/augmented_lagrangian.h"
-#include "include/cppoptlib/solver/bfgs.h"
-#include "include/cppoptlib/solver/conjugated_gradient_descent.h"
-#include "include/cppoptlib/solver/gradient_descent.h"
-#include "include/cppoptlib/solver/lbfgs.h"
-#include "include/cppoptlib/solver/lbfgsb.h"
-#include "include/cppoptlib/solver/nelder_mead.h"
-#include "include/cppoptlib/solver/newton_descent.h"
-#include "include/cppoptlib/utils/derivatives.h"
 
 constexpr double PRECISION = 1e-4;
 
@@ -134,7 +136,9 @@ TYPED_TEST_CASE(ConjugatedGradientDescentTest, DoublePrecision);
 TYPED_TEST_CASE(NewtonDescentTest, DoublePrecision);
 TYPED_TEST_CASE(BfgsTest, DoublePrecision);
 TYPED_TEST_CASE(LbfgsTest, DoublePrecision);
+#if EIGEN_VERSION_AT_LEAST(3, 4, 0)
 TYPED_TEST_CASE(LbfgsbTest, DoublePrecision);
+#endif
 TYPED_TEST_CASE(NelderMeadTest, DoublePrecision);
 
 #define SOLVER_SETUP(sol, func)                                               \
@@ -148,7 +152,9 @@ SOLVER_SETUP(GradientDescent, RosenbrockGradient)
 SOLVER_SETUP(ConjugatedGradientDescent, RosenbrockGradient)
 SOLVER_SETUP(Bfgs, RosenbrockGradient)
 SOLVER_SETUP(Lbfgs, RosenbrockGradient)
+#if EIGEN_VERSION_AT_LEAST(3, 4, 0)
 SOLVER_SETUP(Lbfgsb, RosenbrockGradient)
+#endif
 SOLVER_SETUP(NewtonDescent, RosenbrockFull)
 SOLVER_SETUP(NelderMead, RosenbrockValue)
 
