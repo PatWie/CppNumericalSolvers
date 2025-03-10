@@ -3,6 +3,9 @@ project(CppNumericalSolvers VERSION 1.0.0 LANGUAGES CXX)
 
 add_library(CppNumericalSolvers INTERFACE)
 
+option(BUILD_EXAMPLES "Build the examples" ON)
+option(BUILD_TESTS "Build the tests" ON)
+
 target_include_directories(CppNumericalSolvers
   INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -40,7 +43,11 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/CppNumericalSolversConfig.cmake
   DESTINATION lib/cmake/CppNumericalSolvers
 )
 
-add_subdirectory(src/examples)
+if(BUILD_EXAMPLES)
+  add_subdirectory(src/examples)
+endif()
 
-enable_testing()
-add_subdirectory(src/test)
+if(BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(src/test)
+endif()
