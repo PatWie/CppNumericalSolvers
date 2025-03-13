@@ -39,10 +39,10 @@ class RosenbrockValue : public FunctionX2<T> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  using typename FunctionX2<T>::scalar_t;
-  using typename FunctionX2<T>::vector_t;
+  using typename FunctionX2<T>::ScalarType;
+  using typename FunctionX2<T>::VectorType;
 
-  scalar_t operator()(const vector_t &x) const override {
+  ScalarType operator()(const VectorType &x) const override {
     const T t1 = (1 - x[0]);
     const T t2 = (x[1] - x[0] * x[0]);
     return t1 * t1 + 100 * t2 * t2;
@@ -54,15 +54,15 @@ class RosenbrockGradient : public FunctionX2_dx<T> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  using typename FunctionX2_dx<T>::scalar_t;
-  using typename FunctionX2_dx<T>::vector_t;
+  using typename FunctionX2_dx<T>::ScalarType;
+  using typename FunctionX2_dx<T>::VectorType;
 
-  scalar_t operator()(const vector_t &x,
-                      vector_t *gradient = nullptr) const override {
+  ScalarType operator()(const VectorType &x,
+                      VectorType *gradient = nullptr) const override {
     const T t1 = (1 - x[0]);
     const T t2 = (x[1] - x[0] * x[0]);
     if (gradient) {
-      *gradient = vector_t::Zero(2);
+      *gradient = VectorType::Zero(2);
       (*gradient)[0] =
           -2 * (1 - x[0]) + 200 * (x[1] - x[0] * x[0]) * (-2 * x[0]);
       (*gradient)[1] = 200 * (x[1] - x[0] * x[0]);
@@ -76,22 +76,22 @@ class RosenbrockFull : public FunctionX2_dxx<T> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  using typename FunctionX2_dxx<T>::scalar_t;
-  using typename FunctionX2_dxx<T>::vector_t;
-  using typename FunctionX2_dxx<T>::matrix_t;
+  using typename FunctionX2_dxx<T>::ScalarType;
+  using typename FunctionX2_dxx<T>::VectorType;
+  using typename FunctionX2_dxx<T>::MatrixType;
 
-  scalar_t operator()(const vector_t &x, vector_t *gradient = nullptr,
-                      matrix_t *hessian = nullptr) const override {
+  ScalarType operator()(const VectorType &x, VectorType *gradient = nullptr,
+                      MatrixType *hessian = nullptr) const override {
     const T t1 = (1 - x[0]);
     const T t2 = (x[1] - x[0] * x[0]);
     if (gradient) {
-      *gradient = vector_t::Zero(2);
+      *gradient = VectorType::Zero(2);
       (*gradient)[0] =
           -2 * (1 - x[0]) + 200 * (x[1] - x[0] * x[0]) * (-2 * x[0]);
       (*gradient)[1] = 200 * (x[1] - x[0] * x[0]);
     }
     if (hessian) {
-      (*hessian) = matrix_t::Zero(2, 2);
+      (*hessian) = MatrixType::Zero(2, 2);
       (*hessian)(0, 0) = 1200 * x[0] * x[0] - 400 * x[1] + 1;
       (*hessian)(0, 1) = -400 * x[0];
       (*hessian)(1, 0) = -400 * x[0];
@@ -120,7 +120,7 @@ class NelderMeadTest : public testing::Test {};
   using Function = func<TypeParam>;                                       \
   using Solver = sol<Function>;                                           \
   Function f;                                                             \
-  typename Function::vector_t x(2);                                       \
+  typename Function::VectorType x(2);                                       \
   x << a, b;                                                              \
   auto initial_state = f.GetState(x);                                     \
   Solver solver;                                                          \
@@ -164,10 +164,10 @@ class SimpleFunction : public FunctionX2<T> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  using typename FunctionX2<T>::scalar_t;
-  using typename FunctionX2<T>::vector_t;
+  using typename FunctionX2<T>::ScalarType;
+  using typename FunctionX2<T>::VectorType;
 
-  scalar_t operator()(const vector_t &x) const override {
+  ScalarType operator()(const VectorType &x) const override {
     return 3 * x[0] * x[0] - x[1] * x[0];
   }
 };
@@ -177,7 +177,7 @@ class CentralDifference : public testing::Test {};
 TYPED_TEST_CASE(CentralDifference, DoublePrecision);
 
 TYPED_TEST(CentralDifference, Gradient) {
-  typename SimpleFunction<TypeParam>::vector_t x0(2);
+  typename SimpleFunction<TypeParam>::VectorType x0(2);
   Eigen::Matrix<TypeParam, Eigen::Dynamic, 1> gradient =
       Eigen::Matrix<TypeParam, Eigen::Dynamic, 1>::Zero(2);
   x0(0) = 0;
@@ -195,7 +195,7 @@ TYPED_TEST(CentralDifference, Gradient) {
 }
 
 TYPED_TEST(CentralDifference, Hessian) {
-  typename SimpleFunction<TypeParam>::vector_t x0(2);
+  typename SimpleFunction<TypeParam>::VectorType x0(2);
   x0(0) = 0;
   x0(1) = 0;
 
@@ -220,10 +220,10 @@ class SumObjective : public Function2d {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  scalar_t operator()(const vector_t &x,
-                      vector_t *gradient = nullptr) const override {
+  ScalarType operator()(const VectorType &x,
+                      VectorType *gradient = nullptr) const override {
     if (gradient) {
-      *gradient = vector_t::Ones(2);
+      *gradient = VectorType::Ones(2);
     }
     return x.sum();
   }
@@ -234,8 +234,8 @@ class InsideCircleConstraint : public Function2d {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   // Enforces x[0]^2+x[1]^2 <= 2 (inside the circle)
-  scalar_t operator()(const vector_t &x,
-                      vector_t *gradient = nullptr) const override {
+  ScalarType operator()(const VectorType &x,
+                      VectorType *gradient = nullptr) const override {
     if (gradient) {
       *gradient = -2 * x;
     }
@@ -248,8 +248,8 @@ class CircleBoundaryConstraint : public Function2d {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   // Enforces x[0]^2+x[1]^2 == 2 (on the circle boundary)
-  scalar_t operator()(const vector_t &x,
-                      vector_t *gradient = nullptr) const override {
+  ScalarType operator()(const VectorType &x,
+                      VectorType *gradient = nullptr) const override {
     if (gradient) {
       *gradient = 2 * x;
     }
@@ -262,7 +262,7 @@ class Constrained : public testing::Test {};
 TYPED_TEST_CASE(Constrained, DoublePrecision);
 TYPED_TEST(Constrained, Simple) {
   constexpr auto dim = 2;
-  SumObjective::vector_t x(dim);
+  SumObjective::VectorType x(dim);
   x << 7, -4;
   // We have to start with one negative point. Otherwise, we would walk around
   // the boundary, which causes function values that might become bigger
