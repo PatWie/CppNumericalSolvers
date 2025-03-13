@@ -61,8 +61,8 @@ public:
    * @param hessian  (Optional) Pointer to store the computed Hessian.
    * @return The function value f(x).
    */
-  scalar_t operator()(const vector_t &x, vector_t *gradient = nullptr,
-                        matrix_t *hessian = nullptr) const override {
+  ScalarType operator()(const VectorType &x, VectorType *gradient = nullptr,
+                        MatrixType *hessian = nullptr) const override {
 
     // Even for functions declared as Differentiability::First, the gradient is not always required.
     // To save computation, we only calculate and store the gradient if a non-null pointer is provided.
