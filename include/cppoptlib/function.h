@@ -1,148 +1,56 @@
-// Copyright https://github.com/PatWie/CppNumericalSolvers, MIT license
+// CPPNumericalSolvers - A lightweight C++ numerical optimization library
+// Copyright (c) 2014    Patrick Wieschollek + Contributors
+// Licensed under the MIT License (see below).
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+// Author: Patrick Wieschollek
+//
+// This file contains implementation details of numerical optimization solvers
+// using automatic differentiation and gradient-based methods.
+// CPPNumericalSolvers provides a flexible and efficient interface for solving
+// unconstrained and constrained optimization problems.
+//
+// More details can be found in the project documentation:
+// https://github.com/PatWie/CppNumericalSolvers
 #ifndef INCLUDE_CPPOPTLIB_FUNCTION_H_
 #define INCLUDE_CPPOPTLIB_FUNCTION_H_
 
-#include "Eigen/Core"
+#include "function_base.h"
+#include "function_expressions.h"
+#include "function_penalty.h"
+#include "function_problem.h"
 
 namespace cppoptlib::function {
 
-enum class Differentiability {
-  None,   // Only function evaluation.
-  First,  // Evaluation and gradient available.
-  Second  // Evaluation, gradient, and Hessian available.
-};
+template <class F>
+using FunctionXf = cppoptlib::function::FunctionCRTP<
+    F, float, cppoptlib::function::DifferentiabilityMode::First>;
+template <class F>
+using FunctionXd = cppoptlib::function::FunctionCRTP<
+    F, double, cppoptlib::function::DifferentiabilityMode::First>;
 
-/**
- * @brief Forward declaration for State.
- *
- * The State structure is used to encapsulate the result of a function
- * evaluation, including the function value, the point at which it was
- * evaluated, and, if available, its derivatives (gradient and Hessian).
- *
- * @tparam TBase The base type whose state is being stored.
- */
-template <typename TBase>
-struct State {
-  using base_t = TBase;
-};
-
-template <class TScalar, int TDim, Differentiability TDifferentiability,
-          int TNumConstraints = 0>
-class FunctionBase {
- public:
-  using scalar_t = TScalar;
-  using vector_t = Eigen::Matrix<TScalar, TDim, 1>;
-  using matrix_t = Eigen::Matrix<TScalar, TDim, TDim>;
-  static constexpr Differentiability DiffLevel = TDifferentiability;
-  static constexpr int NumConstraints = TNumConstraints;
-  static constexpr int Dim = TDim;
-};
-
-template <class TScalar, int TDim, Differentiability TDifferentiability>
-class Function : public FunctionBase<TScalar, TDim, TDifferentiability> {
- public:
-  using base_t = FunctionBase<TScalar, TDim, TDifferentiability>;
-  using state_t = State<Function<TScalar, TDim, TDifferentiability>>;
-};
-
-template <class TScalar, int TDim, Differentiability TDifferentiability>
-struct State<FunctionBase<TScalar, TDim, TDifferentiability>> {
-  using base_t = FunctionBase<TScalar, TDim, TDifferentiability>;
-  using state_t = State<base_t>;
-
-  typename base_t::vector_t x;
-
-  State() = default;
-
-  State(const state_t &rhs) : x(rhs.x.eval()) {}
-
-  state_t &operator=(const state_t &rhs) {
-    if (this != &rhs) {
-      x = rhs.x.eval();
-    }
-    return *this;
-  }
-};
-
-/**
- * @brief Function interface for functions with no derivative information.
- *
- * This class must be derived from by user-defined functions that only provide a
- * function evaluation (no gradient or Hessian).
- *
- * @tparam TScalar The scalar type.
- * @tparam TDim The dimension of the input vector.
- */
-template <class TScalar, int TDim>
-class Function<TScalar, TDim, Differentiability::None>
-    : public FunctionBase<TScalar, TDim, Differentiability::None> {
- public:
-  using base_t = FunctionBase<TScalar, TDim, Differentiability::None>;
-  using state_t = State<base_t>;
-
-  virtual typename base_t::scalar_t operator()(
-      const typename base_t::vector_t &x) const = 0;
-
-  state_t GetState(const typename base_t::vector_t &x) const {
-    state_t state;
-    state.x = x;
-    return state;
-  }
-};
-
-/**
- * @brief Function interface for functions with gradient information.
- *
- * User-defined functions that provide both function evaluation and gradient
- * computation should derive from this class.
- *
- * @tparam TScalar The scalar type.
- * @tparam TDim The dimension of the input vector.
- */
-template <class TScalar, int TDim>
-class Function<TScalar, TDim, Differentiability::First>
-    : public FunctionBase<TScalar, TDim, Differentiability::First> {
- public:
-  using base_t = FunctionBase<TScalar, TDim, Differentiability::First>;
-  using state_t = State<base_t>;
-
-  virtual typename base_t::scalar_t operator()(
-      const typename base_t::vector_t &x,
-      typename base_t::vector_t *gradient = nullptr) const = 0;
-  state_t GetState(const typename base_t::vector_t &x) const {
-    state_t state;
-    state.x = x;
-    return state;
-  }
-};
-
-/**
- * @brief Function interface for functions with Hessian information.
- *
- * User-defined functions that provide function value, gradient, and Hessian
- * computations should derive from this class.
- *
- * @tparam TScalar The scalar type.
- * @tparam TDim The dimension of the input vector.
- */
-template <class TScalar, int TDim>
-class Function<TScalar, TDim, Differentiability::Second>
-    : public FunctionBase<TScalar, TDim, Differentiability::Second> {
- public:
-  using base_t = FunctionBase<TScalar, TDim, Differentiability::Second>;
-  using state_t = State<base_t>;
-
-  virtual typename base_t::scalar_t operator()(
-      const typename base_t::vector_t &x,
-      typename base_t::vector_t *gradient = nullptr,
-      typename base_t::matrix_t *hessian = nullptr) const = 0;
-  state_t GetState(const typename base_t::vector_t &x) const {
-    state_t state;
-    state.x = x;
-    return state;
-  }
-};
+using FunctionExprXf = cppoptlib::function::FunctionExpr<
+    float, cppoptlib::function::DifferentiabilityMode::First>;
+using FunctionExprXd = cppoptlib::function::FunctionExpr<
+    double, cppoptlib::function::DifferentiabilityMode::First>;
 
 }  // namespace cppoptlib::function
 
-#endif  // INCLUDE_CPPOPTLIB_FUNCTION_H_
+#endif  //  INCLUDE_CPPOPTLIB_FUNCTION_H_

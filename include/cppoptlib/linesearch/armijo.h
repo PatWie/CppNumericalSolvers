@@ -3,11 +3,11 @@
 #define INCLUDE_CPPOPTLIB_LINESEARCH_ARMIJO_H_
 
 namespace cppoptlib::solver::linesearch {
-template <typename function_t, int Ord>
+template <typename FunctionType, int Ord>
 class Armijo {
  public:
-  using scalar_t = typename function_t::scalar_t;
-  using vector_t = typename function_t::vector_t;
+  using ScalarType = typename FunctionType::ScalarType;
+  using VectorType = typename FunctionType::VectorType;
   /**
    * @brief use Armijo Rule for (weak) Wolfe conditiions
    * @details [long description]
@@ -17,16 +17,17 @@ class Armijo {
    *
    * @return step-width
    */
-  static scalar_t Search(const vector_t &x, const vector_t &search_direction,
-                         const function_t &function,
-                         const scalar_t alpha_init = 1.0) {
-    constexpr scalar_t c = 0.2;
-    constexpr scalar_t rho = 0.9;
-    scalar_t alpha = alpha_init;
-    vector_t gradient;
-    const scalar_t f_in = function(x, &gradient);
-    scalar_t f = function(x + alpha * search_direction);
-    const scalar_t cache = c * gradient.dot(search_direction);
+  static ScalarType Search(const VectorType &x,
+                           const VectorType &search_direction,
+                           const FunctionType &function,
+                           const ScalarType alpha_init = 1.0) {
+    constexpr ScalarType c = 0.2;
+    constexpr ScalarType rho = 0.9;
+    ScalarType alpha = alpha_init;
+    VectorType gradient;
+    const ScalarType f_in = function(x, &gradient);
+    ScalarType f = function(x + alpha * search_direction);
+    const ScalarType cache = c * gradient.dot(search_direction);
 
     while (f > f_in + alpha * cache) {
       alpha *= rho;
@@ -37,12 +38,12 @@ class Armijo {
   }
 };
 
-template <typename function_t>
-class Armijo<function_t, 2> {
+template <typename FunctionType>
+class Armijo<FunctionType, 2> {
  public:
-  using scalar_t = typename function_t::scalar_t;
-  using vector_t = typename function_t::vector_t;
-  using matrix_t = typename function_t::matrix_t;
+  using ScalarType = typename FunctionType::ScalarType;
+  using VectorType = typename FunctionType::VectorType;
+  using MatrixType = typename FunctionType::MatrixType;
   /**
    * @brief use Armijo Rule for (weak) Wolfe conditiions
    * @details [long description]
@@ -52,16 +53,17 @@ class Armijo<function_t, 2> {
    *
    * @return step-width
    */
-  static scalar_t Search(const vector_t &x, const vector_t &search_direction,
-                         const function_t &function) {
-    constexpr scalar_t c = 0.2;
-    constexpr scalar_t rho = 0.9;
-    scalar_t alpha = 1.0;
-    vector_t gradient;
-    matrix_t hessian;
-    const scalar_t f_in = function(x, &gradient, &hessian);
-    scalar_t f = function(x + alpha * search_direction);
-    const scalar_t cache =
+  static ScalarType Search(const VectorType &x,
+                           const VectorType &search_direction,
+                           const FunctionType &function) {
+    constexpr ScalarType c = 0.2;
+    constexpr ScalarType rho = 0.9;
+    ScalarType alpha = 1.0;
+    VectorType gradient;
+    MatrixType hessian;
+    const ScalarType f_in = function(x, &gradient, &hessian);
+    ScalarType f = function(x + alpha * search_direction);
+    const ScalarType cache =
         c * gradient.dot(search_direction) +
         0.5 * c * c * search_direction.transpose() * hessian * search_direction;
 

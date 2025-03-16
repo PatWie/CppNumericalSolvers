@@ -6,7 +6,6 @@
 #include <limits>
 #include <list>
 
-#include "cppoptlib/constrained_function.h"
 #include "cppoptlib/function.h"
 #include "cppoptlib/solver/augmented_lagrangian.h"
 #include "cppoptlib/solver/bfgs.h"
@@ -23,26 +22,25 @@
 
 constexpr double PRECISION = 1e-4;
 
-template <class T>
-using FunctionX2 =
-    cppoptlib::function::Function<T, 2,
-                                  cppoptlib::function::Differentiability::None>;
-template <class T>
-using FunctionX2_dx = cppoptlib::function::Function<
-    T, 2, cppoptlib::function::Differentiability::First>;
-template <class T>
-using FunctionX2_dxx = cppoptlib::function::Function<
-    T, 2, cppoptlib::function::Differentiability::Second>;
+template <class T, class F>
+using FunctionX2 = cppoptlib::function::FunctionCRTP<
+    F, T, cppoptlib::function::DifferentiabilityMode::None>;
+template <class T, class F>
+using FunctionX2_dx = cppoptlib::function::FunctionCRTP<
+    F, T, cppoptlib::function::DifferentiabilityMode::First>;
+template <class T, class F>
+using FunctionX2_dxx = cppoptlib::function::FunctionCRTP<
+    F, T, cppoptlib::function::DifferentiabilityMode::Second>;
 
 template <class T>
-class RosenbrockValue : public FunctionX2<T> {
+class RosenbrockValue : public FunctionX2<T, RosenbrockValue<T>> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  using typename FunctionX2<T>::scalar_t;
-  using typename FunctionX2<T>::vector_t;
+  using typename FunctionX2<T, RosenbrockValue<T>>::ScalarType;
+  using typename FunctionX2<T, RosenbrockValue<T>>::VectorType;
 
-  scalar_t operator()(const vector_t &x) const override {
+  ScalarType operator()(const VectorType &x) const {
     const T t1 = (1 - x[0]);
     const T t2 = (x[1] - x[0] * x[0]);
     return t1 * t1 + 100 * t2 * t2;
@@ -50,19 +48,19 @@ class RosenbrockValue : public FunctionX2<T> {
 };
 
 template <class T>
-class RosenbrockGradient : public FunctionX2_dx<T> {
+class RosenbrockGradient : public FunctionX2_dx<T, RosenbrockGradient<T>> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  using typename FunctionX2_dx<T>::scalar_t;
-  using typename FunctionX2_dx<T>::vector_t;
+  using typename FunctionX2_dx<T, RosenbrockGradient<T>>::ScalarType;
+  using typename FunctionX2_dx<T, RosenbrockGradient<T>>::VectorType;
 
-  scalar_t operator()(const vector_t &x,
-                      vector_t *gradient = nullptr) const override {
+  ScalarType operator()(const VectorType &x,
+                        VectorType *gradient = nullptr) const {
     const T t1 = (1 - x[0]);
     const T t2 = (x[1] - x[0] * x[0]);
     if (gradient) {
-      *gradient = vector_t::Zero(2);
+      *gradient = VectorType::Zero(2);
       (*gradient)[0] =
           -2 * (1 - x[0]) + 200 * (x[1] - x[0] * x[0]) * (-2 * x[0]);
       (*gradient)[1] = 200 * (x[1] - x[0] * x[0]);
@@ -72,26 +70,26 @@ class RosenbrockGradient : public FunctionX2_dx<T> {
 };
 
 template <class T>
-class RosenbrockFull : public FunctionX2_dxx<T> {
+class RosenbrockFull : public FunctionX2_dxx<T, RosenbrockFull<T>> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  using typename FunctionX2_dxx<T>::scalar_t;
-  using typename FunctionX2_dxx<T>::vector_t;
-  using typename FunctionX2_dxx<T>::matrix_t;
+  using typename FunctionX2_dxx<T, RosenbrockFull<T>>::ScalarType;
+  using typename FunctionX2_dxx<T, RosenbrockFull<T>>::VectorType;
+  using typename FunctionX2_dxx<T, RosenbrockFull<T>>::MatrixType;
 
-  scalar_t operator()(const vector_t &x, vector_t *gradient = nullptr,
-                      matrix_t *hessian = nullptr) const override {
+  ScalarType operator()(const VectorType &x, VectorType *gradient = nullptr,
+                        MatrixType *hessian = nullptr) const {
     const T t1 = (1 - x[0]);
     const T t2 = (x[1] - x[0] * x[0]);
     if (gradient) {
-      *gradient = vector_t::Zero(2);
+      *gradient = VectorType::Zero(2);
       (*gradient)[0] =
           -2 * (1 - x[0]) + 200 * (x[1] - x[0] * x[0]) * (-2 * x[0]);
       (*gradient)[1] = 200 * (x[1] - x[0] * x[0]);
     }
     if (hessian) {
-      (*hessian) = matrix_t::Zero(2, 2);
+      (*hessian) = MatrixType::Zero(2, 2);
       (*hessian)(0, 0) = 1200 * x[0] * x[0] - 400 * x[1] + 1;
       (*hessian)(0, 1) = -400 * x[0];
       (*hessian)(1, 0) = -400 * x[0];
@@ -120,9 +118,9 @@ class NelderMeadTest : public testing::Test {};
   using Function = func<TypeParam>;                                       \
   using Solver = sol<Function>;                                           \
   Function f;                                                             \
-  typename Function::vector_t x(2);                                       \
+  typename Function::VectorType x(2);                                     \
   x << a, b;                                                              \
-  auto initial_state = f.GetState(x);                                     \
+  auto initial_state = cppoptlib::function::FunctionState(x);             \
   Solver solver;                                                          \
   auto [solution, solver_state] = solver.Minimize(f, initial_state);      \
   if (solver_state.status == cppoptlib::solver::Status::IterationLimit) { \
@@ -160,14 +158,14 @@ SOLVER_SETUP(NelderMead, RosenbrockValue)
 
 // simple function y <- 3*a-b
 template <class T>
-class SimpleFunction : public FunctionX2<T> {
+class SimpleFunction : public FunctionX2<T, SimpleFunction<T>> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  using typename FunctionX2<T>::scalar_t;
-  using typename FunctionX2<T>::vector_t;
+  using typename FunctionX2<T, SimpleFunction<T>>::ScalarType;
+  using typename FunctionX2<T, SimpleFunction<T>>::VectorType;
 
-  scalar_t operator()(const vector_t &x) const override {
+  ScalarType operator()(const VectorType &x) const {
     return 3 * x[0] * x[0] - x[1] * x[0];
   }
 };
@@ -177,7 +175,7 @@ class CentralDifference : public testing::Test {};
 TYPED_TEST_CASE(CentralDifference, DoublePrecision);
 
 TYPED_TEST(CentralDifference, Gradient) {
-  typename SimpleFunction<TypeParam>::vector_t x0(2);
+  typename SimpleFunction<TypeParam>::VectorType x0(2);
   Eigen::Matrix<TypeParam, Eigen::Dynamic, 1> gradient =
       Eigen::Matrix<TypeParam, Eigen::Dynamic, 1>::Zero(2);
   x0(0) = 0;
@@ -195,7 +193,7 @@ TYPED_TEST(CentralDifference, Gradient) {
 }
 
 TYPED_TEST(CentralDifference, Hessian) {
-  typename SimpleFunction<TypeParam>::vector_t x0(2);
+  typename SimpleFunction<TypeParam>::VectorType x0(2);
   x0(0) = 0;
   x0(1) = 0;
 
@@ -212,48 +210,36 @@ TYPED_TEST(CentralDifference, Hessian) {
 }
 
 // constrained version
-using Function2d = cppoptlib::function::Function<
-    double, 2, cppoptlib::function::Differentiability::First>;
-using Function2dC = cppoptlib::function::ConstrainedFunction<Function2d, 2>;
+template <class F>
+using Function2d = cppoptlib::function::FunctionCRTP<
+    F, double, cppoptlib::function::DifferentiabilityMode::First, 2>;
+using FunctionExpr2d1 = cppoptlib::function::FunctionExpr<
+    double, cppoptlib::function::DifferentiabilityMode::First, 2>;
 
-class SumObjective : public Function2d {
+class SumObjective : public Function2d<SumObjective> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  scalar_t operator()(const vector_t &x,
-                      vector_t *gradient = nullptr) const override {
+  ScalarType operator()(const VectorType &x,
+                        VectorType *gradient = nullptr) const {
     if (gradient) {
-      *gradient = vector_t::Ones(2);
+      *gradient = VectorType::Ones(2);
     }
     return x.sum();
   }
 };
 
-class InsideCircleConstraint : public Function2d {
+class Circle : public Function2d<Circle> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  // Enforces x[0]^2+x[1]^2 <= 2 (inside the circle)
-  scalar_t operator()(const vector_t &x,
-                      vector_t *gradient = nullptr) const override {
-    if (gradient) {
-      *gradient = -2 * x;
-    }
-    return 2 - x.squaredNorm();
-  }
-};
-
-class CircleBoundaryConstraint : public Function2d {
- public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-  // Enforces x[0]^2+x[1]^2 == 2 (on the circle boundary)
-  scalar_t operator()(const vector_t &x,
-                      vector_t *gradient = nullptr) const override {
+  // Compute the squared norm.
+  ScalarType operator()(const VectorType &x,
+                        VectorType *gradient = nullptr) const {
     if (gradient) {
       *gradient = 2 * x;
     }
-    return x.squaredNorm() - 2;
+    return x.squaredNorm();
   }
 };
 
@@ -262,24 +248,29 @@ class Constrained : public testing::Test {};
 TYPED_TEST_CASE(Constrained, DoublePrecision);
 TYPED_TEST(Constrained, Simple) {
   constexpr auto dim = 2;
-  SumObjective::vector_t x(dim);
+  SumObjective::VectorType x(dim);
   x << 7, -4;
   // We have to start with one negative point. Otherwise, we would walk around
   // the boundary, which causes function values that might become bigger
   // (consider [0, 1] walking to [-1, -1] is almost impossible).
 
-  SumObjective f;
-  cppoptlib::function::NonNegativeConstraint<InsideCircleConstraint> c1;
-  cppoptlib::function::ZeroConstraint<CircleBoundaryConstraint> c2;
+  // Define the objective function.
+  cppoptlib::function::FunctionExpr objective = SumObjective();
+  cppoptlib::function::FunctionExpr circle = Circle();
 
-  const auto L = cppoptlib::function::BuildConstrainedProblem(&f, &c1, &c2);
-
-  cppoptlib::solver::Lbfgs<Function2d> inner_solver;
-  cppoptlib::solver::AugmentedLagrangian<decltype(L), decltype(inner_solver)>
+  cppoptlib::function::ConstrainedOptimizationProblem prob(
+      objective,
+      /* equality constraints */
+      {cppoptlib::function::FunctionExpr(circle - 2)},
+      /* inequality constraints */
+      {cppoptlib::function::FunctionExpr(2 - circle)});
+  cppoptlib::solver::Lbfgs<FunctionExpr2d1> inner_solver;
+  cppoptlib::solver::AugmentedLagrangian<decltype(prob), decltype(inner_solver)>
       solver(inner_solver);
+  cppoptlib::solver::AugmentedLagrangeState<double, 2> l_state(x, 1, 1, 1.0);
 
-  const auto initial_state = L.GetState(x, {0.0, 0.0}, 10.);
-  auto [solution, solver_state] = solver.Minimize(L, initial_state);
+  // Run the solver.
+  auto [solution, solver_state] = solver.Minimize(prob, l_state);
   EXPECT_NEAR(solution.x[0], -1, 1e-3);
   EXPECT_NEAR(solution.x[1], -1, 1e-3);
 }

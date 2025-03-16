@@ -62,6 +62,8 @@ jobs:
         run: |
           bazel run simple
           bazel run constrained_simple
+          bazel run constrained_simple2
+          bazel run debug
 
       - name: Configure and Build with CMake
         run: |

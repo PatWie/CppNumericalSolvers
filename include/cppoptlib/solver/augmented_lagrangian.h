@@ -1,68 +1,172 @@
-// Copyright 2025, https://github.com/PatWie/CppNumericalSolvers
+// CPPNumericalSolvers - A lightweight C++ numerical optimization library
+// Copyright (c) 2014    Patrick Wieschollek + Contributors
+// Licensed under the MIT License (see below).
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+// Author: Patrick Wieschollek
+//
+// This file contains implementation details of numerical optimization solvers
+// using automatic differentiation and gradient-based methods.
+// CPPNumericalSolvers provides a flexible and efficient interface for solving
+// unconstrained and constrained optimization problems.
+//
+// More details can be found in the project documentation:
+// https://github.com/PatWie/CppNumericalSolvers
+
 #ifndef INCLUDE_CPPOPTLIB_SOLVER_AUGMENTED_LAGRANGIAN_H_
 #define INCLUDE_CPPOPTLIB_SOLVER_AUGMENTED_LAGRANGIAN_H_
 
 #include <utility>
 
-#include "../constrained_function.h"  // NOLINT
+#include "../function_penalty.h"
+#include "../function_problem.h"
 #include "Eigen/Core"
-#include "solver.h"  // NOLINT
+#include "solver.h"
 
 namespace cppoptlib::solver {
 
-template <typename function_t, typename solver_t>
-class AugmentedLagrangian : public Solver<function_t> {
-  static_assert(function_t::DiffLevel ==
-                        cppoptlib::function::Differentiability::First ||
-                    function_t::DiffLevel ==
-                        cppoptlib::function::Differentiability::Second,
+template <typename TScalar, int TDimension = Eigen::Dynamic>
+struct AugmentedLagrangeState {
+  static constexpr int NumConstraints = 1;
+  using VectorType = Eigen::Matrix<TScalar, TDimension, 1>;
+  VectorType x;
+
+  // State for Lagrange multipliers.
+  cppoptlib::function::LagrangeMultiplierState<TScalar> multiplier_state;
+
+  // State for the penalty parameter.
+  cppoptlib::function::PenaltyState<TScalar> penalty_state;
+
+  // Constructor #1: Construct from an initial guess, custom initializer lists
+  // for equality and inequality multipliers, and a penalty value.
+  //
+  // Usage:
+  //   AugmentedLagrangeState<double, 2> state(x, {0.0}, {0.0}, 1.0);
+  AugmentedLagrangeState(const VectorType &init_x,
+                         std::initializer_list<TScalar> eq_multipliers,
+                         std::initializer_list<TScalar> ineq_multipliers,
+                         TScalar penalty)
+      : x(init_x),
+        multiplier_state(eq_multipliers, ineq_multipliers),
+        penalty_state(penalty) {}
+
+  // Constructor #2: Construct from an initial guess, numbers of equality and
+  // inequality constraints (multipliers will be zero-initialized), and an
+  // optional penalty value.
+  //
+  // Usage:
+  //   AugmentedLagrangeState<double, 2> state(x, 1, 1, 1.0);
+  AugmentedLagrangeState(const VectorType &init_x, size_t num_eq,
+                         size_t num_ineq, TScalar penalty = TScalar(1))
+      : x(init_x),
+        multiplier_state(num_eq, num_ineq, TScalar(0)),
+        penalty_state(penalty) {}
+};
+
+template <typename ProblemType, typename solver_t>
+class AugmentedLagrangian
+    : public Solver<ProblemType,
+                    AugmentedLagrangeState<typename ProblemType::ScalarType,
+                                           ProblemType::Dimension>> {
+  static_assert(ProblemType::Differentiability ==
+                        cppoptlib::function::DifferentiabilityMode::First ||
+                    ProblemType::Differentiability ==
+                        cppoptlib::function::DifferentiabilityMode::Second,
                 "AugmentedLagrangian only supports first- or second-order "
                 "differentiable functions");
 
  private:
-  using Superclass = Solver<function_t>;
+  using StateType = AugmentedLagrangeState<typename ProblemType::ScalarType,
+                                           ProblemType::Dimension>;
+  using Superclass = Solver<ProblemType, StateType>;
   using progress_t = typename Superclass::progress_t;
 
-  using state_t = typename function_t::state_t;
-  using scalar_t = typename function_t::scalar_t;
-  using vector_t = typename function_t::vector_t;
-  using matrix_t = typename function_t::matrix_t;
+  using ScalarType = typename ProblemType::ScalarType;
+  using VectorType = typename ProblemType::VectorType;
+  using MatrixType = typename ProblemType::MatrixType;
 
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  AugmentedLagrangian(const solver_t &inner_solver)
-      : inner_solver_(inner_solver) {}
+  AugmentedLagrangian(const solver_t &unconstrained_solver)
+      : unconstrained_solver_(unconstrained_solver) {}
 
-  void InitializeSolver(const function_t & /*function*/,
-                        const state_t & /*initial_state*/) override {}
+  AugmentedLagrangian(const ProblemType & /*problem*/,
+                      const solver_t &unconstrained_solver)
+      : unconstrained_solver_(unconstrained_solver) {}
 
-  state_t OptimizationStep(const function_t &function, const state_t &state,
-                           const progress_t & /*progress*/) override {
-    cppoptlib::function::UnconstrainedFunctionAdapter<function_t>
-        unconstrained_function(function, state);
+  void InitializeSolver(const ProblemType & /*function*/,
+                        const StateType & /*initial_state*/) override {}
 
-    const auto inner_state = state.AsUnconstrained();
+  StateType OptimizationStep(const ProblemType &function,
+                             const StateType &state,
+                             const progress_t & /*progress*/) override {
+    const auto unconstrained_function =
+        cppoptlib::function::ToAugmentedLagrangian(
+            function, state.multiplier_state, state.penalty_state);
     const auto [solved_inner_state, inner_progress] =
-        inner_solver_.Minimize(unconstrained_function, inner_state);
-
-    state_t next_state = function.GetState(
-        solved_inner_state.x, state.lagrange_multipliers, state.penalty);
+        unconstrained_solver_.Minimize(
+            unconstrained_function,
+            cppoptlib::function::FunctionState<ScalarType,
+                                               ProblemType::Dimension>(
+                state.x));
+    StateType next_state = StateType(state);
+    next_state.x = solved_inner_state.x;
 
     float max_violation = 0.0f;
-    for (std::size_t i = 0; i < function_t::NumConstraints; ++i) {
-      const scalar_t violation = next_state.violations[i];
-      max_violation = (violation > max_violation) ? violation : max_violation;
-      next_state.lagrange_multipliers[i] += next_state.penalty * violation;
-    }
 
-    next_state.penalty = state.penalty * 10;
+    // Lambda to update multipliers for a set of constraints.
+    auto updateMultipliers = [&](const auto &constraints, auto &multipliers,
+                                 auto penaltyFn) {
+      for (size_t i = 0; i < constraints.size(); ++i) {
+        const auto &constr = constraints[i];
+        auto penaltyExpr = penaltyFn(constr);
+        ScalarType violation = penaltyExpr(next_state.x);
+        max_violation = std::max<ScalarType>(max_violation, violation);
+        multipliers[i] += next_state.penalty_state.penalty * violation;
+      }
+    };
+
+    // Update multipliers for equality constraints.
+    updateMultipliers(
+        function.equality_constraints,
+        next_state.multiplier_state.equality_multipliers,
+        [](const auto &c) { return quadraticEqualityPenalty(c); });
+
+    // Update multipliers for inequality constraints.
+    updateMultipliers(
+        function.inequality_constraints,
+        next_state.multiplier_state.inequality_multipliers,
+        [](const auto &c) { return quadraticInequalityPenalty_ge(c); });
+
+    next_state.penalty_state.penalty = state.penalty_state.penalty * 10;
     return next_state;
   }
 
  private:
-  solver_t inner_solver_;
+  solver_t unconstrained_solver_;
 };
+
+template <typename ProblemType, typename solver_t>
+AugmentedLagrangian(const ProblemType &, const solver_t &)
+    -> AugmentedLagrangian<ProblemType, solver_t>;
 
 }  // namespace cppoptlib::solver
 
