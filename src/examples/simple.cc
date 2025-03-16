@@ -16,17 +16,24 @@
 #include "cppoptlib/solver/newton_descent.h"
 #include "cppoptlib/utils/derivatives.h"
 
-using FunctionXd = cppoptlib::function::Function<
-    double, Eigen::Dynamic, cppoptlib::function::Differentiability::Second>;
+template <class F>
+using FunctionXd = cppoptlib::function::FunctionCRTP<
+    F, double, cppoptlib::function::DifferentiabilityMode::Second>;
+using FunctionExprXd2 = cppoptlib::function::FunctionExpr<
+    double, cppoptlib::function::DifferentiabilityMode::Second>;
 
-class Function : public FunctionXd {
+class Function : public FunctionXd<Function> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  // static constexpr int Dimension = Eigen::Dynamic;
+  // static constexpr cppoptlib::function::DifferentiabilityMode
+  //     Differentiability = cppoptlib::function::DifferentiabilityMode::Second;
+  // using ScalarType = double;
 
-  scalar_t operator()(const vector_t &x, vector_t *gradient = nullptr,
-                      matrix_t *hessian = nullptr
+  ScalarType operator()(const VectorType &x, VectorType *gradient = nullptr,
+                        MatrixType *hessian = nullptr
 
-  ) const override {
+  ) const {
     if (gradient) {
       gradient->resize(x.size());
       (*gradient)[0] = 2 * 5 * x[0];
@@ -46,33 +53,32 @@ class Function : public FunctionXd {
 };
 
 int main() {
-  using Solver = cppoptlib::solver::GradientDescent<Function>;
-  // using Solver = cppoptlib::solver::ConjugatedGradientDescent<Function>;
-  // using Solver = cppoptlib::solver::NewtonDescent<Function>;
-  // using Solver = cppoptlib::solver::Bfgs<Function>;
-  // using Solver = cppoptlib::solver::Lbfgs<Function>;
-  // using Solver = cppoptlib::solver::Lbfgsb<Function>;
-  // using Solver = cppoptlib::solver::NelderMead<Function>;
+  // using Solver = cppoptlib::solver::GradientDescent<FunctionExprXd2>;
+  // using Solver =
+  // cppoptlib::solver::ConjugatedGradientDescent<FunctionExprXd2>; using Solver
+  // = cppoptlib::solver::NewtonDescent<FunctionExprXd2>; using Solver =
+  // cppoptlib::solver::Bfgs<FunctionExprXd2>; using Solver =
+  // cppoptlib::solver::Lbfgs<FunctionExprXd2>;
+  // using Solver = cppoptlib::solver::Lbfgsb<FunctionExprXd2>;
+  using Solver = cppoptlib::solver::NelderMead<FunctionExprXd2>;
 
   constexpr auto dim = 2;
-  Function f;
-  Function::vector_t x(dim);
+  FunctionExprXd2 f = Function();
+  Function::VectorType x(dim);
   x << -1, 2;
 
-  Eigen::VectorXd gradient = Eigen::VectorXd::Zero(2);
+  Function::VectorType gradient = Function::VectorType::Zero(2);
   const double value = f(x, &gradient);
 
   std::cout << value << std::endl;
   std::cout << gradient << std::endl;
 
-  // std::cout << cppoptlib::utils::IsGradientCorrect(f, x) << std::endl;
-  // std::cout << cppoptlib::utils::IsHessianCorrect(f, x) << std::endl;
+  std::cout << cppoptlib::utils::IsGradientCorrect(f, x) << std::endl;
+  std::cout << cppoptlib::utils::IsHessianCorrect(f, x) << std::endl;
 
-  // Solver solver;
-  Solver solver(cppoptlib::solver::DefaultStoppingSolverProgress<Function>(),
-                cppoptlib::solver::PrintCallback<Function>());
-
-  auto initial_state = f.GetState(x);
+  const auto initial_state = cppoptlib::function::FunctionState(x);
+  std::cout << "init " << initial_state.x.transpose() << std::endl;
+  Solver solver;
   auto [solution, solver_state] = solver.Minimize(f, initial_state);
   std::cout << "argmin " << solution.x.transpose() << std::endl;
   std::cout << "f in argmin " << f(solution.x) << std::endl;

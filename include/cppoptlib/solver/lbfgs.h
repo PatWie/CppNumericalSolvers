@@ -1,4 +1,29 @@
-// Copyright 2020, https://github.com/PatWie/CppNumericalSolvers
+// CPPNumericalSolvers - A lightweight C++ numerical optimization library
+// Copyright (c) 2014    Patrick Wieschollek + Contributors
+// Licensed under the MIT License (see below).
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+// Author: Patrick Wieschollek
+//
+// More details can be found in the project documentation:
+// https://github.com/PatWie/CppNumericalSolvers
 #ifndef INCLUDE_CPPOPTLIB_SOLVER_LBFGS_H_
 #define INCLUDE_CPPOPTLIB_SOLVER_LBFGS_H_
 
@@ -12,35 +37,41 @@
 
 namespace cppoptlib::solver {
 
-template <typename function_t, int m = 10>
-class Lbfgs : public Solver<function_t> {
+template <typename FunctionType, int m = 10>
+class Lbfgs
+    : public Solver<FunctionType, typename cppoptlib::function::FunctionState<
+                                      typename FunctionType::ScalarType,
+                                      FunctionType::Dimension>> {
   static_assert(
-      function_t::DiffLevel == cppoptlib::function::Differentiability::First ||
-          function_t::DiffLevel ==
-              cppoptlib::function::Differentiability::Second,
+      FunctionType::Differentiability ==
+              cppoptlib::function::DifferentiabilityMode::First ||
+          FunctionType::Differentiability ==
+              cppoptlib::function::DifferentiabilityMode::Second,
       "L-BFGS only supports first- or second-order differentiable functions");
 
  private:
-  using Superclass = Solver<function_t>;
+  using StateType = typename cppoptlib::function::FunctionState<
+      typename FunctionType::ScalarType, FunctionType::Dimension>;
+  using Superclass = Solver<FunctionType, StateType>;
   using progress_t = typename Superclass::progress_t;
-  using state_t = typename function_t::state_t;
-  using scalar_t = typename function_t::scalar_t;
-  using vector_t = typename function_t::vector_t;
-  using matrix_t = typename function_t::matrix_t;
+
+  using ScalarType = typename FunctionType::ScalarType;
+  using VectorType = typename FunctionType::VectorType;
+  using MatrixType = typename FunctionType::MatrixType;
 
   // Storage for the correction pairs using Eigen matrices.
-  using memory_matrix_t = Eigen::Matrix<scalar_t, Eigen::Dynamic, m>;
-  using memory_vector_t = Eigen::Matrix<scalar_t, 1, m>;
+  using memory_MatrixType = Eigen::Matrix<ScalarType, Eigen::Dynamic, m>;
+  using memory_VectorType = Eigen::Matrix<ScalarType, 1, m>;
 
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   using Superclass::Superclass;
 
-  void InitializeSolver(const function_t & /*function*/,
-                        const state_t &initial_state) override {
+  void InitializeSolver(const FunctionType & /*function*/,
+                        const StateType &initial_state) override {
     const size_t dim = initial_state.x.rows();
-    x_diff_memory_ = memory_matrix_t::Zero(dim, m);
-    grad_diff_memory_ = memory_matrix_t::Zero(dim, m);
+    x_diff_memory_ = memory_MatrixType::Zero(dim, m);
+    grad_diff_memory_ = memory_MatrixType::Zero(dim, m);
     alpha.resize(m);
     // Reset the circular buffer:
     mem_count_ = 0;
@@ -48,20 +79,21 @@ class Lbfgs : public Solver<function_t> {
     scaling_factor_ = 1;
   }
 
-  state_t OptimizationStep(const function_t &function, const state_t &current,
-                           const progress_t & /*progress*/) override {
-    constexpr scalar_t eps = std::numeric_limits<scalar_t>::epsilon();
-    const scalar_t relative_eps =
-        static_cast<scalar_t>(eps) *
-        std::max<scalar_t>(scalar_t{1.0}, current.x.norm());
+  StateType OptimizationStep(const FunctionType &function,
+                             const StateType &current,
+                             const progress_t & /*progress*/) override {
+    constexpr ScalarType eps = std::numeric_limits<ScalarType>::epsilon();
+    const ScalarType relative_eps =
+        static_cast<ScalarType>(eps) *
+        std::max<ScalarType>(ScalarType{1.0}, current.x.norm());
 
     // --- Preconditioning ---
     // If second-order information is available, use a diagonal preconditioner.
-    vector_t precond = vector_t::Ones(current.x.size());
-    vector_t current_gradient;
-    if constexpr (function_t::DiffLevel ==
-                  cppoptlib::function::Differentiability::Second) {
-      matrix_t current_hessian;
+    VectorType precond = VectorType::Ones(current.x.size());
+    VectorType current_gradient;
+    if constexpr (FunctionType::Differentiability ==
+                  cppoptlib::function::DifferentiabilityMode::Second) {
+      MatrixType current_hessian;
       function(current.x, &current_gradient, &current_hessian);
       precond = current_hessian.diagonal().cwiseAbs().array() + eps;
       precond = precond.cwiseInverse();
@@ -69,11 +101,11 @@ class Lbfgs : public Solver<function_t> {
       function(current.x, &current_gradient);
     }
     // Precondition the gradient.
-    vector_t grad_precond = precond.asDiagonal() * current_gradient;
+    VectorType grad_precond = precond.asDiagonal() * current_gradient;
 
     // --- Two-Loop Recursion ---
     // Start with the preconditioned gradient as the initial search direction.
-    vector_t search_direction = grad_precond;
+    VectorType search_direction = grad_precond;
 
     // Determine the number of corrections available for the two-loop recursion.
     // We exclude the most recent correction (which was just computed) from use.
@@ -87,12 +119,12 @@ class Lbfgs : public Solver<function_t> {
       // mem_count_-1]. When full, they are stored cyclically starting at
       // mem_pos_ (oldest) up to (mem_pos_ + m - 1) mod m.
       int idx = (mem_count_ < m ? i : ((mem_pos_ + i) % m));
-      const scalar_t denom =
+      const ScalarType denom =
           x_diff_memory_.col(idx).dot(grad_diff_memory_.col(idx));
       if (std::abs(denom) < eps) {
         continue;
       }
-      const scalar_t rho = 1.0 / denom;
+      const ScalarType rho = 1.0 / denom;
       alpha(i) = rho * x_diff_memory_.col(idx).dot(search_direction);
       search_direction -= alpha(i) * grad_diff_memory_.col(idx);
     }
@@ -103,20 +135,20 @@ class Lbfgs : public Solver<function_t> {
     // --- Second Loop (Forward Pass) ---
     for (int i = 0; i < k; i++) {
       int idx = (mem_count_ < m ? i : ((mem_pos_ + i) % m));
-      const scalar_t denom =
+      const ScalarType denom =
           x_diff_memory_.col(idx).dot(grad_diff_memory_.col(idx));
       if (std::abs(denom) < eps) {
         continue;
       }
-      const scalar_t rho = 1.0 / denom;
-      const scalar_t beta =
+      const ScalarType rho = 1.0 / denom;
+      const ScalarType beta =
           rho * grad_diff_memory_.col(idx).dot(search_direction);
       search_direction += x_diff_memory_.col(idx) * (alpha(i) - beta);
     }
 
     // Check descent direction validity.
-    scalar_t descent_direction = -current_gradient.dot(search_direction);
-    scalar_t alpha_init =
+    ScalarType descent_direction = -current_gradient.dot(search_direction);
+    ScalarType alpha_init =
         (current_gradient.norm() > eps) ? 1.0 / current_gradient.norm() : 1.0;
     if (!std::isfinite(descent_direction) ||
         descent_direction > -eps * relative_eps) {
@@ -129,22 +161,22 @@ class Lbfgs : public Solver<function_t> {
     }
 
     // Perform a line search.
-    const scalar_t rate = linesearch::MoreThuente<function_t, 1>::Search(
+    const ScalarType rate = linesearch::MoreThuente<FunctionType, 1>::Search(
         current.x, -search_direction, function, alpha_init);
 
-    const state_t next = function.GetState(current.x - rate * search_direction);
-    vector_t next_gradient;
+    const StateType next = StateType(current.x - rate * search_direction);
+    VectorType next_gradient;
     function(next.x, &next_gradient);
 
     // Compute the differences for the new correction pair.
-    const vector_t x_diff = next.x - current.x;
-    const vector_t grad_diff = next_gradient - current_gradient;
+    const VectorType x_diff = next.x - current.x;
+    const VectorType grad_diff = next_gradient - current_gradient;
 
     // --- Curvature Condition Check with Cautious Update ---
     // We require:
     //   x_diff.dot(grad_diff) > ||x_diff||^2 * ||current.gradient|| *
     //   cautious_factor_
-    const scalar_t threshold =
+    const ScalarType threshold =
         x_diff.squaredNorm() * current_gradient.norm() * cautious_factor_;
     if (x_diff.dot(grad_diff) > threshold) {
       // Add the new correction pair into the circular buffer.
@@ -161,10 +193,10 @@ class Lbfgs : public Solver<function_t> {
       }
     }
     // Update the scaling factor (adaptive damping).
-    constexpr scalar_t fallback_value = scalar_t(1e7);
-    const scalar_t grad_diff_norm_sq = grad_diff.dot(grad_diff);
+    constexpr ScalarType fallback_value = ScalarType(1e7);
+    const ScalarType grad_diff_norm_sq = grad_diff.dot(grad_diff);
     if (std::abs(grad_diff_norm_sq) > eps) {
-      scalar_t temp_scaling = grad_diff.dot(x_diff) / grad_diff_norm_sq;
+      ScalarType temp_scaling = grad_diff.dot(x_diff) / grad_diff_norm_sq;
       if (!std::isfinite(temp_scaling) ||
           std::abs(temp_scaling) > fallback_value) {
         scaling_factor_ = fallback_value;
@@ -179,18 +211,18 @@ class Lbfgs : public Solver<function_t> {
   }
 
  private:
-  memory_matrix_t x_diff_memory_;
-  memory_matrix_t grad_diff_memory_;
+  memory_MatrixType x_diff_memory_;
+  memory_MatrixType grad_diff_memory_;
   // Circular buffer state:
   size_t mem_count_ = 0;  // Number of corrections stored so far (max m).
   size_t mem_pos_ = 0;    // Index of the oldest correction in the buffer.
 
-  memory_vector_t
+  memory_VectorType
       alpha;  // Storage for the coefficients in the two-loop recursion.
-  scalar_t scaling_factor_ = 1;
+  ScalarType scaling_factor_ = 1;
   // Cautious factor to determine whether to accept a new correction pair.
   // You may want to expose this parameter or adjust its default value.
-  scalar_t cautious_factor_ = 1e-6;
+  ScalarType cautious_factor_ = 1e-6;
 };
 
 }  // namespace cppoptlib::solver
