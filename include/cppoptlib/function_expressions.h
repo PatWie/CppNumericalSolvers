@@ -54,8 +54,8 @@ struct ConstExpression : public FunctionInterface<TScalar, TMode, TDimension> {
 
   TScalar c;
   explicit ConstExpression(TScalar c_) : c(c_) {}
-  virtual TScalar operator()(const VectorType &x, VectorType *grad = nullptr,
-                             MatrixType *hess = nullptr) const override {
+  virtual TScalar operator()(const VectorType& x, VectorType* grad = nullptr,
+                             MatrixType* hess = nullptr) const override {
     (void)x;
     if (grad) {
       *grad = VectorType::Zero(x.size());
@@ -108,9 +108,10 @@ struct AddExpression
 
   F f;
   G g;
-  AddExpression(const F &f_, const G &g_) : f(f_), g(g_) {}
-  virtual ScalarType operator()(const VectorType &x, VectorType *grad = nullptr,
-                                MatrixType *hess = nullptr) const override {
+  AddExpression(const F& f_, const G& g_) : f(f_), g(g_) {}
+  virtual ScalarType operator()(
+      const VectorType& x, [[maybe_unused]] VectorType* grad = nullptr,
+      [[maybe_unused]] MatrixType* hess = nullptr) const override {
     if constexpr (TMode == DifferentiabilityMode::None) {
       return f(x) + g(x);
     } else if constexpr (TMode == DifferentiabilityMode::First) {
@@ -162,9 +163,9 @@ struct SubExpression
 
   F f;
   G g;
-  SubExpression(const F &f_, const G &g_) : f(f_), g(g_) {}
-  virtual ScalarType operator()(const VectorType &x, VectorType *grad = nullptr,
-                                MatrixType *hess = nullptr) const override {
+  SubExpression(const F& f_, const G& g_) : f(f_), g(g_) {}
+  virtual ScalarType operator()(const VectorType& x, VectorType* grad = nullptr,
+                                MatrixType* hess = nullptr) const override {
     if constexpr (TMode == DifferentiabilityMode::None) {
       return f(x) - g(x);
     } else if constexpr (TMode == DifferentiabilityMode::First) {
@@ -210,11 +211,11 @@ struct MulExpression : public FunctionInterface<TScalar, TMode, F::Dimension> {
   using MatrixType = Eigen::Matrix<ScalarType, Dimension, Dimension>;
   static constexpr DifferentiabilityMode Differentiability = TMode;
 
-  F f;
   TScalar c;
-  MulExpression(const TScalar &c_, const F &f_) : c(c_), f(f_) {}
-  virtual ScalarType operator()(const VectorType &x, VectorType *grad = nullptr,
-                                MatrixType *hess = nullptr) const override {
+  F f;
+  MulExpression(const TScalar& c_, const F& f_) : c(c_), f(f_) {}
+  virtual ScalarType operator()(const VectorType& x, VectorType* grad = nullptr,
+                                MatrixType* hess = nullptr) const override {
     if (c == TScalar(0)) {
       if (grad) {
         *grad = VectorType::Zero(x.size());
@@ -275,10 +276,10 @@ struct ProdExpression
   F f;
   G g;
 
-  ProdExpression(const F &f_, const G &g_) : f(f_), g(g_) {}
+  ProdExpression(const F& f_, const G& g_) : f(f_), g(g_) {}
 
-  virtual ScalarType operator()(const VectorType &x, VectorType *grad = nullptr,
-                                MatrixType *hess = nullptr) const override {
+  virtual ScalarType operator()(const VectorType& x, VectorType* grad = nullptr,
+                                MatrixType* hess = nullptr) const override {
     if constexpr (TMode == DifferentiabilityMode::None) {
       return f(x) * g(x);
     } else if constexpr (TMode == DifferentiabilityMode::First) {
@@ -326,10 +327,10 @@ struct MinZeroExpression
       F::Differentiability;
 
   F f;
-  explicit MinZeroExpression(const F &f_) : f(f_) {}
+  explicit MinZeroExpression(const F& f_) : f(f_) {}
 
-  virtual ScalarType operator()(const VectorType &x, VectorType *grad = nullptr,
-                                MatrixType *hess = nullptr) const override {
+  virtual ScalarType operator()(const VectorType& x, VectorType* grad = nullptr,
+                                MatrixType* hess = nullptr) const override {
     if constexpr (Differentiability == DifferentiabilityMode::None) {
       ScalarType val = f(x);
       // Use ConstExpression to return zero (with zero derivatives) if inactive.
@@ -369,10 +370,10 @@ struct MaxZeroExpression
       F::Differentiability;
 
   F f;
-  explicit MaxZeroExpression(const F &f_) : f(f_) {}
+  explicit MaxZeroExpression(const F& f_) : f(f_) {}
 
-  virtual ScalarType operator()(const VectorType &x, VectorType *grad = nullptr,
-                                MatrixType *hess = nullptr) const override {
+  virtual ScalarType operator()(const VectorType& x, VectorType* grad = nullptr,
+                                MatrixType* hess = nullptr) const override {
     if constexpr (Differentiability == DifferentiabilityMode::None) {
       ScalarType val = f(x);
       return (val <= 0)
@@ -402,7 +403,7 @@ struct MaxZeroExpression
 template <typename F, typename G,
           typename = std::void_t<decltype(F::Differentiability),
                                  decltype(G::Differentiability)>>
-auto operator+(const F &f, const G &g) {
+auto operator+(const F& f, const G& g) {
   static_assert(
       std::is_same<typename F::ScalarType, typename G::ScalarType>::value,
       "ScalarType must match in addition.");
@@ -417,7 +418,7 @@ auto operator+(const F &f, const G &g) {
 template <typename F, typename G,
           typename = std::void_t<decltype(F::Differentiability),
                                  decltype(G::Differentiability)>>
-auto operator-(const F &f, const G &g) {
+auto operator-(const F& f, const G& g) {
   static_assert(
       std::is_same<typename F::ScalarType, typename G::ScalarType>::value,
       "ScalarType must match in addition.");
@@ -430,7 +431,7 @@ auto operator-(const F &f, const G &g) {
 
 // For multiplication (F * c and c * F).
 template <typename F>
-auto operator*(const F &f, const typename F::ScalarType &c)
+auto operator*(const F& f, const typename F::ScalarType& c)
     -> MulExpression<F, typename F::ScalarType, F::Differentiability> {
   using ScalarType = typename F::ScalarType;
   // Always return a MulExpression. Inside its operator() you can check if c==0.
@@ -438,7 +439,7 @@ auto operator*(const F &f, const typename F::ScalarType &c)
 }
 
 template <typename F>
-auto operator*(const typename F::ScalarType &c, const F &f)
+auto operator*(const typename F::ScalarType& c, const F& f)
     -> MulExpression<F, typename F::ScalarType, F::Differentiability> {
   using ScalarType = typename F::ScalarType;
   return MulExpression<F, ScalarType, F::Differentiability>(c, f);
@@ -449,7 +450,7 @@ auto operator*(const typename F::ScalarType &c, const F &f)
 template <typename F, typename G,
           typename = std::void_t<decltype(F::Differentiability),
                                  decltype(G::Differentiability)>>
-auto operator*(const F &f, const G &g) {
+auto operator*(const F& f, const G& g) {
   static_assert(
       std::is_same<typename F::ScalarType, typename G::ScalarType>::value,
       "ScalarType must match in addition.");
@@ -462,14 +463,14 @@ auto operator*(const F &f, const G &g) {
 
 // Unary minus: returns a MulExpression representing (-1)*f.
 template <typename F>
-auto operator-(const F &f)
+auto operator-(const F& f)
     -> MulExpression<F, typename F::ScalarType, F::Differentiability> {
   return (-1) * f;
 }
 
 // Overload for adding a constant scalar to a function (f + c).
 template <typename F>
-auto operator+(const F &f, const typename F::ScalarType &c) -> AddExpression<
+auto operator+(const F& f, const typename F::ScalarType& c) -> AddExpression<
     F,
     ConstExpression<typename F::ScalarType, F::Differentiability, F::Dimension>,
     F::Differentiability> {
@@ -482,7 +483,7 @@ auto operator+(const F &f, const typename F::ScalarType &c) -> AddExpression<
 
 // Overload for adding a function to a constant scalar (c + f).
 template <typename F>
-auto operator+(const typename F::ScalarType &c, const F &f) -> AddExpression<
+auto operator+(const typename F::ScalarType& c, const F& f) -> AddExpression<
     ConstExpression<typename F::ScalarType, F::Differentiability, F::Dimension>,
     F, F::Differentiability> {
   using ScalarType = typename F::ScalarType;
@@ -494,7 +495,7 @@ auto operator+(const typename F::ScalarType &c, const F &f) -> AddExpression<
 
 // Overload for subtracting a constant scalar from a function (f - c).
 template <typename F>
-auto operator-(const F &f, const typename F::ScalarType &c) {
+auto operator-(const F& f, const typename F::ScalarType& c) {
   using ScalarType = typename F::ScalarType;
   // Create a constant expression for the scalar.
   ConstExpression<ScalarType, F::Differentiability, F::Dimension> c_expr(c);
@@ -506,7 +507,7 @@ auto operator-(const F &f, const typename F::ScalarType &c) {
 
 // Overload for subtracting a function from a constant scalar (c - f).
 template <typename F>
-auto operator-(const typename F::ScalarType &c, const F &f) {
+auto operator-(const typename F::ScalarType& c, const F& f) {
   using ScalarType = typename F::ScalarType;
   // Create a constant expression for the scalar.
   ConstExpression<ScalarType, F::Differentiability, F::Dimension> c_expr(c);
