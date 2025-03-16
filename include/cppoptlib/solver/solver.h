@@ -39,7 +39,7 @@
 
 namespace cppoptlib::solver {
 
-// Returns the defaul callback function.
+// Returns the default callback function.
 template <class FunctionType, class StateType>
 auto PrintCallback() {
   return [](const FunctionType &function, const StateType &state,

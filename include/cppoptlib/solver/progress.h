@@ -36,11 +36,11 @@ enum class Status {
   Continue = 0,     // Optimization should continue.
   IterationLimit,   // Maximum of allowed iterations has been reached.
   XDeltaViolation,  // Minimum change in parameter vector has been reached.
-  FDeltaViolation,  // Minimum chnage in cost function has been reached.
+  FDeltaViolation,  // Minimum change in cost function has been reached.
   GradientNormViolation,  // Minimum norm in gradient vector has been reached.
   HessianConditionViolation,  // Maximum condition number of hessian_t has been
                               // reached.
-  Finished                    // Successfull finished
+  Finished                    // Successful finished
 };
 
 inline std::ostream &operator<<(std::ostream &stream, const Status &status) {

@@ -76,7 +76,7 @@ class Bfgs
 
     VectorType search_direction = -inverse_hessian_ * current_gradient;
 
-    // If not positive definit re-initialize Hessian.
+    // If not positive definite re-initialize Hessian.
     const ScalarType phi = current_gradient.dot(search_direction);
     if ((phi > 0) || std::isnan(phi)) {
       // no, we reset the hessian approximation
