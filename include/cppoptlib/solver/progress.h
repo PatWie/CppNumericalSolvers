@@ -152,17 +152,15 @@ struct Progress {
       status = Status::IterationLimit;
       return;
     }
-    // if constexpr (FunctionType::base_t::NumConstraints > 0) {
-    //   for (size_t i = 0; i < FunctionType::NumConstraints; i++) {
-    //     if (std::abs(current_function_state.violations[i]) >
-    //         stop_progress.constraint_threshold) {
-    //       status = Status::Continue;
-    //       return;
-    //     }
-    //   }
-    //   status = Status::Finished; // All constraints satisfied
-    //   return;
-    // }
+    if constexpr (StateType::NumConstraints > 0) {
+      if (std::abs(current_function_state.max_violation) >
+          stop_progress.constraint_threshold) {
+        status = Status::Continue;
+        return;
+      }
+      status = Status::Finished;  // All constraints satisfied
+      return;
+    }
     if ((stop_progress.x_delta > 0) && (x_delta < stop_progress.x_delta)) {
       x_delta_violations++;
       if (x_delta_violations >= stop_progress.x_delta_violations) {

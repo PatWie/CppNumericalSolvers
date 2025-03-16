@@ -42,6 +42,7 @@ struct AugmentedLagrangeState {
   static constexpr int NumConstraints = 1;
   using VectorType = Eigen::Matrix<TScalar, TDimension, 1>;
   VectorType x;
+  TScalar max_violation;
 
   // State for Lagrange multipliers.
   cppoptlib::function::LagrangeMultiplierState<TScalar> multiplier_state;
@@ -60,7 +61,8 @@ struct AugmentedLagrangeState {
                          TScalar penalty)
       : x(init_x),
         multiplier_state(eq_multipliers, ineq_multipliers),
-        penalty_state(penalty) {}
+        penalty_state(penalty),
+        max_violation(0) {}
 
   // Constructor #2: Construct from an initial guess, numbers of equality and
   // inequality constraints (multipliers will be zero-initialized), and an
@@ -72,7 +74,8 @@ struct AugmentedLagrangeState {
                          size_t num_ineq, TScalar penalty = TScalar(1))
       : x(init_x),
         multiplier_state(num_eq, num_ineq, TScalar(0)),
-        penalty_state(penalty) {}
+        penalty_state(penalty),
+        max_violation(0) {}
 };
 
 template <typename ProblemType, typename solver_t>
@@ -152,6 +155,7 @@ class AugmentedLagrangian
         [](const auto &c) { return quadraticInequalityPenalty_ge(c); });
 
     next_state.penalty_state.penalty = state.penalty_state.penalty * 10;
+    next_state.max_violation = max_violation;
     return next_state;
   }
 
