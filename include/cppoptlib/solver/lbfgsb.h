@@ -73,6 +73,7 @@ class Lbfgsb
   void SetBounds(const VectorType &lower_bound, const VectorType &upper_bound) {
     lower_bound_ = lower_bound;
     upper_bound_ = upper_bound;
+    bounds_initialized_ = true;
   }
 
   void InitializeSolver(const FunctionType & /*function*/,
