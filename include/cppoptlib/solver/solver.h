@@ -42,8 +42,8 @@ namespace cppoptlib::solver {
 // Returns the default callback function.
 template <class FunctionType, class StateType>
 auto PrintCallback() {
-  return [](const FunctionType &function, const StateType &state,
-            const Progress<FunctionType, StateType> &progress) {
+  return [](const FunctionType& function, const StateType& state,
+            const Progress<FunctionType, StateType>& progress) {
     std::cout << "Function-State"
               << "\t";
     std::cout << "  value    " << function(state.x) << "\t";
@@ -73,8 +73,8 @@ auto PrintCallback() {
 
 template <class FunctionType, class StateType>
 auto NoOpCallback() {
-  return [](const FunctionType & /*function*/, const StateType & /*state*/,
-            const Progress<FunctionType, StateType> & /*progress*/) {};
+  return [](const FunctionType& /*function*/, const StateType& /*state*/,
+            const Progress<FunctionType, StateType>& /*progress*/) {};
 }
 
 // Specifies a solver implementation (of a given order) for a given function
@@ -93,26 +93,22 @@ class Solver {
 
   // protected:
   //   using StateType = typename FunctionType::StateType;
+  progress_t stopping_progress;
 
  public:
-  Solver() = default;
-  // explicit Solver(const Progress<FunctionType> &stopping_progress =
-  //                     DefaultStoppingSolverProgress<FunctionType>(),
-  //                 callback_t step_callback = NoOpCallback<FunctionType>())
-  //     : stopping_progress(stopping_progress),
-  //       step_callback_(std::move(step_callback)) {}
+  explicit Solver(const progress_t& stopping_progress =
+                      DefaultStoppingSolverProgress<FunctionType, StateType>())
+      : stopping_progress(stopping_progress) {}
 
   virtual ~Solver() = default;
 
-  virtual void InitializeSolver(const FunctionType & /*function*/,
-                                const StateType & /*initial_state*/) = 0;
+  virtual void InitializeSolver(const FunctionType& /*function*/,
+                                const StateType& /*initial_state*/) = 0;
 
   virtual std::tuple<StateType, Progress<FunctionType, StateType>> Minimize(
-      const FunctionType &function, const StateType &function_state) {
+      const FunctionType& function, const StateType& function_state) {
     // Solver state during the optimization.
     progress_t solver_state;
-    progress_t stopping_progress =
-        DefaultStoppingSolverProgress<FunctionType, StateType>();
     // return {function_state, solver_state};
     // // Function state during the optimization.
     StateType current_function_state = function_state;
@@ -141,9 +137,9 @@ class Solver {
     return {current_function_state, solver_state};
   }
 
-  virtual StateType OptimizationStep(const FunctionType &function,
-                                     const StateType &current,
-                                     const progress_t &state) = 0;
+  virtual StateType OptimizationStep(const FunctionType& function,
+                                     const StateType& current,
+                                     const progress_t& state) = 0;
 
   // progress_t stopping_progress; // Specifies when to stop.
   // protected:
