@@ -53,8 +53,9 @@ class Armijo {
     const ScalarType f_in = function(x, &gradient);
     ScalarType f = function(x + alpha * search_direction);
     const ScalarType cache = c * gradient.dot(search_direction);
+    constexpr ScalarType alpha_min = ScalarType{1e-8};
 
-    while (f > f_in + alpha * cache) {
+    while (f > f_in + alpha * cache && alpha > alpha_min) {
       alpha *= rho;
       f = function(x + alpha * search_direction);
     }
