@@ -49,16 +49,17 @@ class Lbfgs
               cppoptlib::function::DifferentiabilityMode::Second,
       "L-BFGS only supports first- or second-order differentiable functions");
 
- private:
+ public:
   using StateType = typename cppoptlib::function::FunctionState<
       typename FunctionType::ScalarType, FunctionType::Dimension>;
   using Superclass = Solver<FunctionType, StateType>;
-  using progress_t = typename Superclass::progress_t;
+  using ProgressType = typename Superclass::ProgressType;
 
   using ScalarType = typename FunctionType::ScalarType;
   using VectorType = typename FunctionType::VectorType;
   using MatrixType = typename FunctionType::MatrixType;
 
+ private:
   // Storage for the correction pairs using Eigen matrices.
   using memory_MatrixType = Eigen::Matrix<ScalarType, Eigen::Dynamic, m>;
   using memory_VectorType = Eigen::Matrix<ScalarType, 1, m>;
@@ -81,7 +82,7 @@ class Lbfgs
 
   StateType OptimizationStep(const FunctionType &function,
                              const StateType &current,
-                             const progress_t & /*progress*/) override {
+                             const ProgressType & /*progress*/) override {
     constexpr ScalarType eps = std::numeric_limits<ScalarType>::epsilon();
     const ScalarType relative_eps =
         static_cast<ScalarType>(eps) *

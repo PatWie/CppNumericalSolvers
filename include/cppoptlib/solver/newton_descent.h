@@ -49,7 +49,7 @@ class NewtonDescent
   using StateType = typename cppoptlib::function::FunctionState<
       typename FunctionType::ScalarType, FunctionType::Dimension>;
   using Superclass = Solver<FunctionType, StateType>;
-  using progress_t = typename Superclass::progress_t;
+  using ProgressType = typename Superclass::ProgressType;
 
   using ScalarType = typename FunctionType::ScalarType;
   using VectorType = typename FunctionType::VectorType;
@@ -67,7 +67,7 @@ class NewtonDescent
 
   StateType OptimizationStep(const FunctionType &function,
                              const StateType &current,
-                             const progress_t & /*state*/) override {
+                             const ProgressType & /*state*/) override {
     constexpr ScalarType safe_guard = 1e-5;
 
     MatrixType hessian;

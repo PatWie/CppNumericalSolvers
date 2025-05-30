@@ -55,7 +55,7 @@ class Lbfgsb
   using StateType = typename cppoptlib::function::FunctionState<
       typename FunctionType::ScalarType, FunctionType::Dimension>;
   using Superclass = Solver<FunctionType, StateType>;
-  using progress_t = typename Superclass::progress_t;
+  using ProgressType = typename Superclass::ProgressType;
 
   using ScalarType = typename FunctionType::ScalarType;
   using MatrixType = typename FunctionType::MatrixType;
@@ -99,7 +99,7 @@ class Lbfgsb
 
   StateType OptimizationStep(const FunctionType &function,
                              const StateType &current,
-                             const progress_t & /*progress*/) override {
+                             const ProgressType & /*progress*/) override {
     // STEP 2: compute the cauchy point
     VectorType cauchy_point = VectorType::Zero(current.x.rows());
 
