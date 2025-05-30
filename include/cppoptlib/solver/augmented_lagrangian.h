@@ -94,7 +94,7 @@ class AugmentedLagrangian
   using StateType = AugmentedLagrangeState<typename ProblemType::ScalarType,
                                            ProblemType::Dimension>;
   using Superclass = Solver<ProblemType, StateType>;
-  using progress_t = typename Superclass::progress_t;
+  using ProgressType = typename Superclass::ProgressType;
 
   using ScalarType = typename ProblemType::ScalarType;
   using VectorType = typename ProblemType::VectorType;
@@ -115,7 +115,7 @@ class AugmentedLagrangian
 
   StateType OptimizationStep(const ProblemType &function,
                              const StateType &state,
-                             const progress_t & /*progress*/) override {
+                             const ProgressType & /*progress*/) override {
     const auto unconstrained_function =
         cppoptlib::function::ToAugmentedLagrangian(
             function, state.multiplier_state, state.penalty_state);

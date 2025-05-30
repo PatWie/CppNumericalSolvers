@@ -50,7 +50,7 @@ class GradientDescent
   using StateType = typename cppoptlib::function::FunctionState<
       typename FunctionType::ScalarType, FunctionType::Dimension>;
   using Superclass = Solver<FunctionType, StateType>;
-  using progress_t = typename Superclass::progress_t;
+  using ProgressType = typename Superclass::ProgressType;
 
   using ScalarType = typename FunctionType::ScalarType;
   using VectorType = typename FunctionType::VectorType;
@@ -64,7 +64,7 @@ class GradientDescent
 
   StateType OptimizationStep(const FunctionType &function,
                              const StateType &current,
-                             const progress_t & /*progress*/) override {
+                             const ProgressType & /*progress*/) override {
     VectorType gradient;
     function(current.x, &gradient);
     const ScalarType rate = linesearch::MoreThuente<FunctionType, 1>::Search(

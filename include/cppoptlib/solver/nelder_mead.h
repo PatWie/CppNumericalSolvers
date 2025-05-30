@@ -48,7 +48,7 @@ class NelderMead
   using StateType = typename cppoptlib::function::FunctionState<
       typename FunctionType::ScalarType, FunctionType::Dimension>;
   using Superclass = Solver<FunctionType, StateType>;
-  using progress_t = typename Superclass::progress_t;
+  using ProgressType = typename Superclass::ProgressType;
 
   using ScalarType = typename FunctionType::ScalarType;
   using VectorType = typename FunctionType::VectorType;
@@ -76,7 +76,7 @@ class NelderMead
   // best vertex.
   StateType OptimizationStep(const FunctionType &function,
                              const StateType &current,
-                             const progress_t & /*progress*/) override {
+                             const ProgressType & /*progress*/) override {
     const size_t DIM = current.x.rows();
     const int numVertices = static_cast<int>(DIM) + 1;
 

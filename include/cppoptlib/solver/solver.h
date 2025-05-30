@@ -30,7 +30,9 @@
 #include <stdint.h>
 
 #include <functional>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <tuple>
 #include <utility>
 
@@ -39,111 +41,136 @@
 
 namespace cppoptlib::solver {
 
-// Returns the default callback function.
+// Returns a callback function that prints progress to the specified stream.
+// The output stream (e.g., std::cout, std::cerr, or an std::ofstream)
+// is passed as an argument.
 template <class FunctionType, class StateType>
-auto PrintCallback() {
-  return [](const FunctionType& function, const StateType& state,
-            const Progress<FunctionType, StateType>& progress) {
-    std::cout << "Function-State"
-              << "\t";
-    std::cout << "  value    " << function(state.x) << "\t";
-    std::cout << "  x    " << state.x.transpose() << "\t";
-    if constexpr (FunctionType::base_t::DifferentiabilityMode >=
+auto PrintProgressCallback(std::ostream &output_stream) {
+  return [&output_stream](const FunctionType &function, const StateType &state,
+                          const Progress<FunctionType, StateType> &progress) {
+    const int label_width = 18;  // Width for labels like "Value:", "X Delta:"
+    const int num_width = 15;    // Width for numeric values
+    const int precision = 6;     // Decimal places for floating-point numbers
+
+    output_stream << std::fixed << std::setprecision(precision);
+
+    // --- Iteration Header ---
+    output_stream << "--- Iteration: " << std::setw(5) << std::right
+                  << progress.num_iterations << " ---\n";
+
+    // --- Function & State Information ---
+    output_stream << std::left << std::setw(label_width)
+                  << "  Value:" << std::right << std::setw(num_width)
+                  << function(state.x) << "\n";
+
+    // Format vector/matrix output using a stringstream to avoid messing up
+    // widths easily
+    std::stringstream ss_x;
+    ss_x << state.x.transpose();
+
+    output_stream << std::left << std::setw(label_width) << "  X:"
+                  << " " << ss_x.str() << "\n";
+
+    // --- Gradient (Conditional) ---
+    if constexpr (FunctionType::Differentiability >=
                   cppoptlib::function::DifferentiabilityMode::First) {
-      typename FunctionType::VectorType gradient;
+      typename FunctionType::VectorType gradient(state.x.size());
       function(state.x, &gradient);
-      std::cout << "  gradient    " << gradient.transpose() << std::endl;
+      std::stringstream ss_grad;
+      ss_grad << gradient.transpose();
+      output_stream << std::left << std::setw(label_width) << "  Gradient:"
+                    << " " << ss_grad.str() << "\n";
+      output_stream << std::left << std::setw(label_width)
+                    << "  Gradient Norm:" << std::right << std::setw(num_width)
+                    << progress.gradient_norm << "\n";
     }
-    std::cout << "Solver-Progress"
-              << "\t";
-    std::cout << "  iterations " << progress.num_iterations << "\t";
-    std::cout << "  x_delta " << progress.x_delta << "\t";
-    std::cout << "  f_delta " << progress.f_delta << "\t";
-    if constexpr (FunctionType::base_t::DifferentiabilityMode >=
-                  cppoptlib::function::DifferentiabilityMode::First) {
-      std::cout << "  gradient_norm " << progress.gradient_norm << "\t";
-    }
-    if constexpr (FunctionType::base_t::DifferentiabilityMode >=
+
+    // --- Solver Progress Information ---
+    output_stream << std::left << std::setw(label_width)
+                  << "  X Delta:" << std::right << std::setw(num_width)
+                  << progress.x_delta << "\n";
+    output_stream << std::left << std::setw(label_width)
+                  << "  F Delta:" << std::right << std::setw(num_width)
+                  << progress.f_delta << "\n";
+
+    // --- Hessian Condition (Conditional) ---
+    if constexpr (FunctionType::Differentiability >=
                   cppoptlib::function::DifferentiabilityMode::Second) {
-      std::cout << "  condition_hessian " << progress.condition_hessian
-                << std::endl;
+      output_stream << std::left << std::setw(label_width)
+                    << "  Hessian Cond.:";
+      if (!std::isnan(progress.condition_hessian)) {
+        output_stream << std::right << std::setw(num_width)
+                      << progress.condition_hessian;
+      } else {
+        output_stream << std::right << std::setw(num_width) << "N/A";
+      }
+      output_stream << "\n";
     }
+
+    output_stream << "-------------------------" << std::endl;
   };
 }
 
 template <class FunctionType, class StateType>
 auto NoOpCallback() {
-  return [](const FunctionType& /*function*/, const StateType& /*state*/,
-            const Progress<FunctionType, StateType>& /*progress*/) {};
+  return [](const FunctionType & /*function*/, const StateType & /*state*/,
+            const Progress<FunctionType, StateType> & /*progress*/) {};
 }
 
 // Specifies a solver implementation (of a given order) for a given function
-template <typename FunctionType, typename StateType>
+template <typename FunctionTypeT, typename StateTypeT>
 class Solver {
  public:
-  using progress_t = Progress<FunctionType, StateType>;
-  //   using callback_t = std::function<void(const FunctionType &func,
-  //                                         const typename
-  //                                         FunctionType::StateType
-  //                                         &, const progress_t &)>;
+  using StateType = StateTypeT;
+  using FunctionType = FunctionTypeT;
 
-  // private:
-  //   static constexpr int Dim = FunctionType::Dim;
-  //   using VectorType = typename FunctionType::VectorType;
+  using ProgressType = Progress<FunctionType, StateType>;
+  using CallbackType = std::function<void(
+      const FunctionType &func, const StateType &, const ProgressType &)>;
 
-  // protected:
-  //   using StateType = typename FunctionType::StateType;
-  progress_t stopping_progress;
+  ProgressType stopping_progress;
 
  public:
-  explicit Solver(const progress_t& stopping_progress =
+  explicit Solver(const ProgressType &stopping_progress =
                       DefaultStoppingSolverProgress<FunctionType, StateType>())
-      : stopping_progress(stopping_progress) {}
+      : stopping_progress(stopping_progress),
+        step_callback_(NoOpCallback<FunctionType, StateType>()) {}
 
   virtual ~Solver() = default;
 
-  virtual void InitializeSolver(const FunctionType& /*function*/,
-                                const StateType& /*initial_state*/) = 0;
+  void SetCallback(CallbackType callback) { step_callback_ = callback; }
+
+  virtual void InitializeSolver(const FunctionType & /*function*/,
+                                const StateType & /*initial_state*/) = 0;
 
   virtual std::tuple<StateType, Progress<FunctionType, StateType>> Minimize(
-      const FunctionType& function, const StateType& function_state) {
+      const FunctionType &function, const StateType &function_state) {
     // Solver state during the optimization.
-    progress_t solver_state;
-    // return {function_state, solver_state};
-    // // Function state during the optimization.
+    ProgressType solver_state;
     StateType current_function_state = function_state;
 
-    // StateType current_function_state(function_state);
     this->InitializeSolver(function, function_state);
-    //
+
     do {
-      //   // Trigger a user-defined callback.
-      //   this->step_callback_(function, current_function_state, solver_state);
-      //
-      //   // Find next function state.
+      this->step_callback_(function, current_function_state, solver_state);
+
       StateType previous_function_state = current_function_state;
       current_function_state = this->OptimizationStep(
           function, previous_function_state, solver_state);
-      //
-      //   // Update current solver state.
+
       solver_state.Update(function, previous_function_state,
                           current_function_state, stopping_progress);
     } while (solver_state.status == Status::Continue);
-    //
-    // // Final Trigger of a user-defined callback.
-    // this->step_callback_(function, current_function_state, solver_state);
-    //
-    // return {current_function_state, solver_state};
+
+    this->step_callback_(function, current_function_state, solver_state);
     return {current_function_state, solver_state};
   }
 
-  virtual StateType OptimizationStep(const FunctionType& function,
-                                     const StateType& current,
-                                     const progress_t& state) = 0;
+  virtual StateType OptimizationStep(const FunctionType &function,
+                                     const StateType &current,
+                                     const ProgressType &state) = 0;
 
-  // progress_t stopping_progress; // Specifies when to stop.
-  // protected:
-  // callback_t step_callback_; // A user-defined callback function.
+  CallbackType step_callback_;  // A user-defined callback function.
 };
 
 }  // namespace cppoptlib::solver

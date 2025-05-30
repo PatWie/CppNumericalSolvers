@@ -57,15 +57,15 @@ int main() {
   // using Solver =
   // cppoptlib::solver::ConjugatedGradientDescent<FunctionExprXd2>; using Solver
   // = cppoptlib::solver::NewtonDescent<FunctionExprXd2>; using Solver =
-  // cppoptlib::solver::Bfgs<FunctionExprXd2>; using Solver =
-  // cppoptlib::solver::Lbfgs<FunctionExprXd2>;
+  // cppoptlib::solver::Bfgs<FunctionExprXd2>;
+  using Solver = cppoptlib::solver::Lbfgs<FunctionExprXd2>;
   // using Solver = cppoptlib::solver::Lbfgsb<FunctionExprXd2>;
-  using Solver = cppoptlib::solver::NelderMead<FunctionExprXd2>;
+  // using Solver = cppoptlib::solver::NelderMead<FunctionExprXd2>;
 
   constexpr auto dim = 2;
   FunctionExprXd2 f = Function();
   Function::VectorType x(dim);
-  x << -1, 2;
+  x << -10, 2;
 
   Function::VectorType gradient = Function::VectorType::Zero(2);
   const double value = f(x, &gradient);
@@ -79,6 +79,10 @@ int main() {
   const auto initial_state = cppoptlib::function::FunctionState(x);
   std::cout << "init " << initial_state.x.transpose() << std::endl;
   Solver solver;
+
+  solver.SetCallback(
+      cppoptlib::solver::PrintProgressCallback<Solver::FunctionType,
+                                               Solver::StateType>(std::cout));
   auto [solution, solver_state] = solver.Minimize(f, initial_state);
   std::cout << "argmin " << solution.x.transpose() << std::endl;
   std::cout << "f in argmin " << f(solution.x) << std::endl;
