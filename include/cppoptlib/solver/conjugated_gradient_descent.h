@@ -51,7 +51,7 @@ class ConjugatedGradientDescent
   using StateType = typename cppoptlib::function::FunctionState<
       typename FunctionType::ScalarType, FunctionType::Dimension>;
   using Superclass = Solver<FunctionType, StateType>;
-  using progress_t = typename Superclass::progress_t;
+  using ProgressType = typename Superclass::ProgressType;
 
   using ScalarType = typename FunctionType::ScalarType;
   using VectorType = typename FunctionType::VectorType;
@@ -68,7 +68,7 @@ class ConjugatedGradientDescent
 
   StateType OptimizationStep(const FunctionType &function,
                              const StateType &current,
-                             const progress_t &progress) override {
+                             const ProgressType &progress) override {
     VectorType current_gradient;
     function(current.x, &current_gradient);
     if (progress.num_iterations == 0) {
