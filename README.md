@@ -1,175 +1,314 @@
-# CppNumericalSolvers (A header-only C++17 optimization library)
+# CppNumericalSolvers: A Modern C++17 Header-Only Optimization Library
 
-CppNumericalSolvers is a header-only C++17 optimization library providing a
-suite of solvers for both unconstrained and constrained optimization problems.
-The library is designed for efficiency, modern C++ compliance, and easy
-integration into existing projects. It is distributed under a permissive
-license, making it suitable for commercial use.
+CppNumericalSolvers is a lightweight, header-only C++17 library for numerical
+optimization. It provides a suite of modern, efficient solvers for both
+unconstrained and constrained problems, designed for easy integration and high
+performance. A key feature is its use of function expression templates, which
+allow you to build complex objective functions on-the-fly without writing
+boilerplate code.
 
-Key Features:
-- **Unconstrained Optimization**: Supports algorithms such as **Gradient Descent, Conjugate Gradient, Newton's Method, BFGS, L-BFGS, and Nelder-Mead**.
-- **Constrained Optimization**: Provides support for **L-BFGS-B** and **Augmented Lagrangian methods**.
-- **Expression Templates**: Enable efficient evaluation of function expressions without unnecessary allocations.
-- **First- and Second-Order Methods**: Support for both **gradient-based** and **Hessian-based** optimizations.
-- **Differentiation Utilities**: Tools to check gradient and Hessian correctness.
-- **Header-Only**: Easily integrate into any C++17 project with no dependencies.
+The library is built on Eigen3 and is distributed under the permissive MIT
+license, making it suitable for both academic and commercial projects.
 
+## Core Features
 
-## Quick Start
+- **Header-Only & Easy Integration**: Simply include the headers in your
+    project. No complex build steps required.
+- **Modern C++17 Design**: Utilizes modern C++ features for a clean, type-safe,
+    and expressive API.
+- **Powerful Expression Templates**: Compose complex objective functions from
+    simpler parts using operator overloading (`+`, `-`, `*`). This avoids manual
+    implementation of wrapper classes and promotes reusable code.
+- **Comprehensive Solver Suite**:
+  - **Unconstrained Solvers**: Gradient Descent, Conjugate Gradient, Newton's
+      Method, BFGS, L-BFGS, and Nelder-Mead.
+  - **Constrained Solvers**: L-BFGS-B (for box constraints) and the Augmented
+      Lagrangian method (for general equality and inequality constraints).
+- **Automatic Differentiation Utilities**: Includes tools to verify the
+    correctness of your analytical gradients and Hessians using finite difference
+    approximations.
+- **Permissive MIT License**: Free to use in any project, including commercial
+    applications.
 
-### **Minimizing a Function (BFGS Solver)**
+## Quick Start: Basic Minimization
+
+Here’s how to solve a simple unconstrained optimization problem. We'll minimize
+the function *f(x)=5x₀² + 100x₁² + 5*.
+
+### 1. Define the Objective Function
+
+First, create a class for your objective function that inherits from
+`cppoptlib::function::FunctionCRTP`. You need to implement `operator()` which
+returns the function value and optionally computes the gradient and Hessian.
 
 ```cpp
 #include <iostream>
 #include "cppoptlib/function.h"
-#include "cppoptlib/solver/bfgs.h"
+#include "cppoptlib/solver/lbfgs.h"
 
-using namespace cppoptlib::function;
-
-class ExampleFunction : public FunctionXd<ExampleFunction> {
-public:
+// Use a CRTP-based class to define a 2D function with second-order derivatives.
+class MyObjective : public cppoptlib::function::FunctionCRTP<MyObjective, double, cppoptlib::function::DifferentiabilityMode::Second, 2> {
+ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    /**
-     * The function is defined as:
-     *
-     *     f(x) = 5 * x₀² + 100 * x₁² + 5
-     *
-     * Its gradient is given by:
-     *
-     *     ∇f(x) = [10 * x₀, 200 * x₁]ᵀ
-     *
-     * And its Hessian is:
-     *
-     *     ∇²f(x) = [ [10,   0],
-     *                 [ 0, 200] ]
-     */
-  ScalarType operator()(const VectorType &x, VectorType *gradient = nullptr,
-                        MatrixType *hessian = nullptr) const override {
+  // The objective function: f(x) = 5*x₀² + 100*x₁² + 5
+  ScalarType operator()(const VectorType &x, VectorType *gradient, MatrixType *hessian) const {
     if (gradient) {
-      *gradient = VectorType::Zero(2);
-      (*gradient)[0] = 2 * 5 * x[0];
-      (*gradient)[1] = 2 * 100 * x[1];
+      (*gradient)(0) = 10 * x(0);
+      (*gradient)(1) = 200 * x(1);
     }
-
     if (hessian) {
-      *hessian = MatrixType::Zero(2, 2);
       (*hessian)(0, 0) = 10;
       (*hessian)(0, 1) = 0;
       (*hessian)(1, 0) = 0;
       (*hessian)(1, 1) = 200;
     }
-
-    return 5 * x[0] * x[0] + 100 * x[1] * x[1] + 5;
+    return 5 * x(0) * x(0) + 100 * x(1) * x(1) + 5;
   }
 };
+```
 
+### 2. Solve the Problem
+
+Instantiate your function, pick a solver, set a starting point, and run the minimization.
+
+```cpp
 int main() {
-    ExampleFunction f;
-    Eigen::VectorXd x(2);
-    x << -1, 2;
+  MyObjective f;
+  Eigen::Vector2d x_init;
+  x_init << -10, 2;
 
-    using Solver = cppoptlib::solver::Bfgs<ExampleFunction>;
-    auto init_state = f.GetState(x);
-    Solver solver;
-    auto [solution_state, solver_progress] = solver.Minimize(f, init_state);
+  // Choose a solver (L-BFGS is a great all-rounder)
+  cppoptlib::solver::Lbfgs<MyObjective> solver;
 
-    std::cout << "Optimal solution: " << solution_state.x.transpose() << std::endl;
-    return 0;
+  // Create the initial state for the solver
+  auto initial_state = cppoptlib::function::FunctionState(x_init);
+
+  // Set a callback to print progress
+  solver.SetCallback(cppoptlib::solver::PrintProgressCallback<MyObjective, decltype(initial_state)>(std::cout));
+
+  // Run the minimization
+  auto [solution, solver_state] = solver.Minimize(f, initial_state);
+
+  std::cout << "\nSolver finished!" << std::endl;
+  std::cout << "Final Status: " << solver_state.status << std::endl;
+  std::cout << "Found minimum at: " << solution.x.transpose() << std::endl;
+  std::cout << "Function value: " << f(solution.x) << std::endl;
+
+  return 0;
 }
 ```
 
-### **Solving a Constrained Optimization Problem**
+# The Power of Function Expression Templates
 
-CppNumericalSolvers allows solving constrained optimization problems using the
-**Augmented Lagrangian** method. Below, we solve the problem:
+Manually creating a new C++ class for every objective function is tedious,
+especially when objectives are just different combinations of standard cost
+terms. CppNumericalSolvers uses expression templates to let you build complex
+objective functions from modular, reusable "cost functions".
 
-```
-min f(x) = x_0 + x_1
-```
+Let's demonstrate this with a practical example: **Ridge Regression**. The goal
+is to find model parameters, `x`, that minimize a combination of two terms:
 
-subject to the constraint:
+- **Data Fidelity**: How well does the model fit the data? We measure this with
+    the squared error: ∥Ax−y∥².
+- **Regularization**: How complex is the model? We penalize complexity with the
+    L2 norm: ∥x∥².
 
-```
-x_0^2 + x_1^2 = 2
-```
+The final objective is a weighted sum: **F(x) = ∥Ax−y∥² + λ∥x∥²**, where `λ` is
+a scalar weight that controls the trade-off.
+
+With expression templates, we can define each term as a separate, reusable
+class and then combine them with a single line of C++: **DataTerm + lambda *
+RegularizationTerm**.
+
+---
+
+## 1. Define the Building Blocks
+
+First, we create classes for our two cost terms. Each is a self-contained, differentiable function.
 
 ```cpp
 #include <iostream>
 #include "cppoptlib/function.h"
+#include "cppoptlib/solver/lbfgs.h"
+
+// The first term: Data Fidelity as Squared Error: f(x) = ||Ax - y||^2
+class SquaredError : public cppoptlib::function::FunctionCRTP<SquaredError, double, cppoptlib::function::DifferentiabilityMode::Second> {
+private:
+    const Eigen::MatrixXd &A;
+    const Eigen::VectorXd &y;
+
+public:
+    SquaredError(const Eigen::MatrixXd &A, const Eigen::VectorXd &y) : A(A), y(y) {}
+
+    int GetDimension() const { return A.cols(); }
+
+    ScalarType operator()(const VectorType &x, VectorType *grad, MatrixType *hess) const {
+        Eigen::VectorXd residual = A * x - y;
+        if (grad) {
+            *grad = 2 * A.transpose() * residual;
+        }
+        if (hess) {
+            *hess = 2 * A.transpose() * A;
+        }
+        return residual.squaredNorm();
+    }
+};
+
+// The second term: L2 Regularization: g(x) = ||x||^2
+class L2Regularization : public cppoptlib::function::FunctionCRTP<L2Regularization, double, cppoptlib::function::DifferentiabilityMode::Second> {
+public:
+    int dim;
+    explicit L2Regularization(int d) : dim(d) {}
+
+    int GetDimension() const { return dim; }
+
+    ScalarType operator()(const VectorType &x, VectorType *grad, MatrixType *hess) const {
+        if (grad) {
+            *grad = 2 * x;
+        }
+        if (hess) {
+            hess->setIdentity(dim, dim);
+            *hess *= 2;
+        }
+        return x.squaredNorm();
+    }
+};
+```
+
+## 2. Compose and Solve in `main`
+
+Now, we can combine these building blocks to create our final objective function and solve the problem.
+
+```cpp
+int main() {
+    // 1. Define the problem data
+    Eigen::MatrixXd A(3, 2);
+    A << 1, 2,
+         3, 4,
+         5, 6;
+    Eigen::VectorXd y(3);
+    y << 7, 8, 9;
+
+    const double lambda = 0.1; // Regularization weight
+
+    // 2. Create instances of our reusable cost functions
+    auto data_term = SquaredError(A, y);
+    auto reg_term = L2Regularization(A.cols());
+
+    // 3. Compose the final objective using expression templates!
+    // F(x) = (||Ax - y||^2) + lambda * (||x||^2)
+    auto objective_expr = data_term + lambda * reg_term;
+
+    // 4. Wrap the expression for the solver. The library automatically handles
+    // the combination of values, gradients, and Hessians.
+    cppoptlib::function::FunctionExpr objective(objective_expr);
+
+    // 5. Solve as usual
+    Eigen::VectorXd x_init = Eigen::VectorXd::Zero(A.cols());
+    cppoptlib::solver::Lbfgs<decltype(objective)> solver;
+
+    auto [solution, solver_state] = solver.Minimize(objective, cppoptlib::function::FunctionState(x_init));
+
+    std::cout << "Found minimum at: " << solution.x.transpose() << std::endl;
+    std::cout << "Function value: " << objective(solution.x) << std::endl;
+}
+```
+
+## Constrained Optimization
+
+Solve constrained problems using the Augmented Lagrangian method. Here, we
+solve *min f(x) = x₀ + x₁* subject to the equality constraint *x₀² + x₁² - 2 =
+0*. The optimal solution lies on the circle of radius √2 at the point (-1, -1).
+
+```cpp
+#include "cppoptlib/function.h"
 #include "cppoptlib/solver/augmented_lagrangian.h"
 #include "cppoptlib/solver/lbfgs.h"
 
-using namespace cppoptlib::function;
-using namespace cppoptlib::solver;
-
-class SumObjective : public FunctionXd<SumObjective> {
+// Objective: f(x) = x_0 + x_1
+class SumObjective : public cppoptlib::function::FunctionXd<SumObjective> {
  public:
-  ScalarType operator()(const VectorType &x, VectorType *gradient = nullptr) const {
-    if (gradient) *gradient = VectorType::Ones(2);
+  ScalarType operator()(const VectorType &x, VectorType *grad) const {
+    if (grad) *grad = VectorType::Ones(x.size());
     return x.sum();
   }
 };
 
-class Circle : public FunctionXd<Circle> {
+// Constraint: c(x) = x_0^2 + x_1^2
+class Circle : public cppoptlib::function::FunctionXd<Circle> {
  public:
-  ScalarType operator()(const VectorType &x, VectorType *gradient = nullptr) const {
-    if (gradient) *gradient = 2 * x;
+  ScalarType operator()(const VectorType &x, VectorType *grad) const {
+    if (grad) *grad = 2 * x;
     return x.squaredNorm();
   }
 };
 
 int main() {
-  SumObjective::VectorType x(2);
-  x << 2, 10;
+  cppoptlib::function::FunctionExpr objective = SumObjective();
+  cppoptlib::function::FunctionExpr circle_constraint_base = Circle();
 
-  FunctionExpr objective = SumObjective();
-  FunctionExpr circle = Circle();
+  cppoptlib::function::FunctionExpr equality_constraint = circle_constraint_base - 2.0;
 
-  ConstrainedOptimizationProblem prob(
-      objective,
-      // 1. Equality constraint: circle(x) - 2 == 0, forcing the solution onto
-      // the circle's boundary.
-      {FunctionExpr(circle - 2)},
-      // 2. Inequality constraint: 2 - circle(x) >= 0, ensuring the solution
-      // remains inside the circle.
-      {FunctionExpr(2 - circle)});
+  cppoptlib::function::ConstrainedOptimizationProblem problem(
+      objective, {equality_constraint});
 
-  Lbfgs<FunctionExpr2d1> inner_solver;
-  AugmentedLagrangian solver(prob, inner_solver);
+  cppoptlib::solver::Lbfgs<decltype(problem)::ObjectiveFunctionType> inner_solver;
+  cppoptlib::solver::AugmentedLagrangian solver(problem, inner_solver);
 
-  AugmentedLagrangeState<double> l_state(x, /* num_eq=*/1,
-                                            /* num_ineq=*/1,
-                                            /* penalty=*/1.0);
-  auto [solution, solver_state] = solver.Minimize(prob, l_state);
+  Eigen::VectorXd x_init(2);
+  x_init << 5, -3;
 
-  std::cout << "Optimal x: " << solution.x.transpose() << std::endl;
+  cppoptlib::solver::AugmentedLagrangeState<double> state(x_init, 1, 0, 10.0);
+
+  auto [solution, solver_state] = solver.Minimize(problem, state);
+
+  std::cout << "Solver finished!" << std::endl;
+  std::cout << "Found minimum at: " << solution.x.transpose() << std::endl;
+  std::cout << "Function value: " << objective(solution.x) << std::endl;
+
   return 0;
 }
-
 ```
 
+## Installation
 
-## Use in Your Project
+CppNumericalSolvers is header-only. You just need a C++17 compatible compiler
+and Eigen3.
 
-Either use Bazel or CMake:
+### Recommended: CMake FetchContent
 
-```sh
+Add this to your `CMakeLists.txt`:
+
+```cmake
+include(FetchContent)
+
+FetchContent_Declare(
+  cppoptlib
+  GIT_REPOSITORY https://github.com/PatWie/CppNumericalSolvers.git
+  GIT_TAG main # Or a specific commit/tag
+)
+
+FetchContent_MakeAvailable(cppoptlib)
+
+# ... then in your target:
+target_link_libraries(your_target PRIVATE CppNumericalSolvers)
+```
+
+### Manual Integration
+
+Clone the repository:
+
+```bash
 git clone https://github.com/PatWie/CppNumericalSolvers.git
 ```
 
-Compile with:
+Add the `include/` directory to your project's include path.
+Ensure Eigen3 is available in your include path.
 
-```sh
-g++ -std=c++17 -Ipath/to/CppNumericalSolvers/include myfile.cpp -o myprogram
-```
+## Citation
 
-
-
-
-### Citing this implementation
-
-If you find this implementation useful and wish to cite it, please use the following bibtex entry:
+If you use this library in your research, please cite it:
 
 ```bibtex
 @misc{wieschollek2016cppoptimizationlibrary,
@@ -179,3 +318,4 @@ If you find this implementation useful and wish to cite it, please use the follo
   howpublished={\url{https://github.com/PatWie/CppNumericalSolvers}},
 }
 ```
+
