@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+type: software
+title: "CppNumericalSolvers: A Modern C++17 Header-Only Optimization Library"
+abstract: "CppNumericalSolvers is a lightweight, header-only C++17 library for numerical optimization. It provides a suite of modern, efficient solvers for both unconstrained and constrained problems, designed for easy integration and high performance. A key feature is its use of function expression templates, which allow you to build complex objective functions on-the-fly without writing boilerplate code."
+authors:
+  - family-names: "Wieschollek"
+    given-names: "Patrick"
+repository-code: "https://github.com/PatWie/CppNumericalSolvers"
+url: "https://github.com/PatWie/CppNumericalSolvers"
+license: MIT
+date-released: 2014-11-09
+version: "2.0.0"
+keywords:
+  - "optimization"
+  - "numerical-methods"
+  - "cpp17"
+  - "header-only"
+  - "eigen"
+  - "bfgs"
+  - "lbfgs"
+  - "conjugate-gradient"
+  - "newton-method"
+  - "constrained-optimization"
+  - "expression-templates"
