@@ -46,7 +46,7 @@ class Bfgs
                 "Bfgs only supports first- or second-order "
                 "differentiable functions");
 
- private:
+ public:
   using StateType = typename cppoptlib::function::FunctionState<
       typename FunctionType::ScalarType, FunctionType::Dimension>;
   using Superclass = Solver<FunctionType, StateType>;
@@ -55,8 +55,6 @@ class Bfgs
   using ScalarType = typename FunctionType::ScalarType;
   using VectorType = typename FunctionType::VectorType;
   using MatrixType = typename FunctionType::MatrixType;
-
- public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   using Superclass::Superclass;

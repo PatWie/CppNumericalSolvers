@@ -90,7 +90,7 @@ class AugmentedLagrangian
                 "AugmentedLagrangian only supports first- or second-order "
                 "differentiable functions");
 
- private:
+ public:
   using StateType = AugmentedLagrangeState<typename ProblemType::ScalarType,
                                            ProblemType::Dimension>;
   using Superclass = Solver<ProblemType, StateType>;
@@ -99,8 +99,6 @@ class AugmentedLagrangian
   using ScalarType = typename ProblemType::ScalarType;
   using VectorType = typename ProblemType::VectorType;
   using MatrixType = typename ProblemType::MatrixType;
-
- public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   AugmentedLagrangian(const solver_t &unconstrained_solver)

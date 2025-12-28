@@ -46,7 +46,7 @@ class GradientDescent
                 "GradientDescent only supports first- or second-order "
                 "differentiable functions");
 
- private:
+ public:
   using StateType = typename cppoptlib::function::FunctionState<
       typename FunctionType::ScalarType, FunctionType::Dimension>;
   using Superclass = Solver<FunctionType, StateType>;
@@ -54,8 +54,6 @@ class GradientDescent
 
   using ScalarType = typename FunctionType::ScalarType;
   using VectorType = typename FunctionType::VectorType;
-
- public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   using Superclass::Superclass;

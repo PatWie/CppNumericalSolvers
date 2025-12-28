@@ -51,7 +51,7 @@ class Lbfgsb
               cppoptlib::function::DifferentiabilityMode::Second,
       "L-BFGS-B only supports first- or second-order differentiable functions");
 
- private:
+ public:
   using StateType = typename cppoptlib::function::FunctionState<
       typename FunctionType::ScalarType, FunctionType::Dimension>;
   using Superclass = Solver<FunctionType, StateType>;
