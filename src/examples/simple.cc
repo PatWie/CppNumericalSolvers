@@ -36,19 +36,16 @@ class Function : public FunctionXd<Function> {
   ) const {
     if (gradient) {
       gradient->resize(x.size());
-      (*gradient)[0] = 2 * 5 * x[0];
-      (*gradient)[1] = 2 * 100 * x[1];
+      *gradient = Eigen::Vector2d(10, 200).cwiseProduct(x);
     }
 
     if (hessian) {
       hessian->resize(x.size(), x.size());
-      (*hessian)(0, 0) = 10;
-      (*hessian)(0, 1) = 0;
-      (*hessian)(1, 0) = 0;
-      (*hessian)(1, 1) = 200;
+      hessian->setZero();
+      hessian->diagonal() << 10, 200;
     }
 
-    return 5 * x[0] * x[0] + 100 * x[1] * x[1] + 5;
+    return Eigen::Vector2d(5, 100).dot(x.cwiseProduct(x)) + 5;
   }
 };
 
