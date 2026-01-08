@@ -91,7 +91,7 @@ class Lbfgsb
     theta_ = 1.0;
 
     W_ = dyn_MatrixType::Zero(dim_, 0);
-    M_ = dyn_MatrixType::Zero(0, 0);
+    // MM_lu_ will be initialized when first L-BFGS update occurs
 
     y_history_ = dyn_MatrixType::Zero(dim_, 0);
     s_history_ = dyn_MatrixType::Zero(dim_, 0);
@@ -100,27 +100,34 @@ class Lbfgsb
   StateType OptimizationStep(const FunctionType &function,
                              const StateType &current,
                              const ProgressType & /*progress*/) override {
+    // Project current point to bounds (handles infeasible initial points)
+    const VectorType x =
+        current.x.cwiseMin(upper_bound_).cwiseMax(lower_bound_);
+
     // STEP 2: compute the cauchy point
-    VectorType cauchy_point = VectorType::Zero(current.x.rows());
+    VectorType cauchy_point = VectorType::Zero(x.rows());
 
     VectorType current_gradient;
-    function(current.x, &current_gradient);
+    function(x, &current_gradient);
 
     dyn_VectorType c = dyn_VectorType::Zero(W_.cols());
-    GetGeneralizedCauchyPoint(current.x, current_gradient, &cauchy_point, &c);
+    GetGeneralizedCauchyPoint(x, current_gradient, &cauchy_point, &c);
 
     // STEP 3: compute a search direction d_k by the primal method for the
     // sub-problem
-    const VectorType subspace_min =
-        SubspaceMinimization(current.x, current_gradient, cauchy_point, c);
+    const auto [subspace_min, do_line_search] =
+        SubspaceMinimization(x, current_gradient, cauchy_point, c);
 
     // STEP 4: perform linesearch and STEP 5: compute gradient
-    ScalarType alpha_init = 1.0;
-    const ScalarType rate = linesearch::MoreThuente<FunctionType, 1>::Search(
-        current.x, subspace_min - current.x, function, alpha_init);
+    ScalarType rate = 1.0;
+    if (do_line_search) {
+      ScalarType alpha_init = 1.0;
+      rate = linesearch::MoreThuente<FunctionType, 1>::Search(
+          x, subspace_min - x, function, alpha_init);
+    }
 
     // update current guess and function information
-    const VectorType x_next = current.x - rate * (current.x - subspace_min);
+    const VectorType x_next = x - rate * (x - subspace_min);
     // if current solution is out of bound, we clip it
     const VectorType clipped_x_next =
         x_next.cwiseMin(upper_bound_).cwiseMax(lower_bound_);
@@ -131,11 +138,11 @@ class Lbfgsb
 
     // prepare for next iteration
     const VectorType new_y = next_gradient - current_gradient;
-    const VectorType new_s = next.x - current.x;
+    const VectorType new_s = next.x - x;
 
-    // STEP 6:
-    const ScalarType test = fabs(new_s.dot(new_y));
-    if (test > 1e-7 * new_y.squaredNorm()) {
+    // STEP 6: Only update if positive curvature (s'*y > 0)
+    const ScalarType sTy = new_s.dot(new_y);
+    if (sTy > 1e-7 * new_y.squaredNorm()) {
       if (y_history_.cols() < m) {
         y_history_.conservativeResize(dim_, y_history_.cols() + 1);
         s_history_.conservativeResize(dim_, s_history_.cols() + 1);
@@ -157,7 +164,8 @@ class Lbfgsb
       dyn_MatrixType D = -1 * A.diagonal().asDiagonal();
       MM << D, L.transpose(), L,
           ((s_history_.transpose() * s_history_) * theta_);
-      M_ = MM.inverse();
+      // Store LU factorization for efficient triangular solves
+      MM_lu_ = MM.lu();
     }
 
     return next;
@@ -176,12 +184,24 @@ class Lbfgsb
     return idx;
   }
 
+  /**
+   * @brief Solve MM * x = b using stored LU factorization (triangular solves)
+   * More efficient than computing M_ * b when M_ = MM^{-1}
+   */
+  dyn_VectorType SolveM(const dyn_VectorType &b) const {
+    if (b.size() == 0 || MM_lu_.matrixLU().size() == 0) {
+      return b;
+    }
+    return MM_lu_.solve(b);
+  }
+
   void GetGeneralizedCauchyPoint(const VectorType &x,
                                  const VectorType &gradient,
                                  VectorType *x_cauchy,
                                  dyn_VectorType *c) const {
     constexpr ScalarType max_value = std::numeric_limits<ScalarType>::max();
-    constexpr ScalarType epsilon = std::numeric_limits<ScalarType>::epsilon();
+    // Use larger epsilon for numerical stability
+    constexpr ScalarType epsilon = 1e-12;
 
     // Given x,l,u,g, and B = \theta_ I-WMW
     // {all t_i} = { (idx,value), ... }
@@ -216,11 +236,10 @@ class Lbfgsb
     // f' :=    g^ScalarType*d = -d^Td
     ScalarType f_prime = -d.dot(d);  // (n operations)
     // f'' :=   \theta_*d^ScalarType*d-d^ScalarType*W*M*W^ScalarType*d =
-    // -\theta_*f'
-    // -
-    // p^ScalarType*M*p
+    // -\theta_*f' - p^ScalarType*M*p
+    // Use triangular solve: M*p means solve(MM, p)
     ScalarType f_doubleprime = (ScalarType)(-1.0 * theta_) * f_prime -
-                               p.dot(M_ * p);  // (O(m^2) operations)
+                               p.dot(SolveM(p));  // (O(m^2) operations)
     f_doubleprime = std::max<ScalarType>(epsilon, f_doubleprime);
     ScalarType f_dp_orig = f_doubleprime;
     // \delta t_min :=  -f'/f''
@@ -251,12 +270,14 @@ class Lbfgsb
       *c += dt * p;
       // cache
       dyn_VectorType wbt = W_.row(b);
+      dyn_VectorType Mc = SolveM(*c);
+      dyn_VectorType Mp = SolveM(p);
+      dyn_VectorType Mwbt = SolveM(wbt);
       f_prime += dt * f_doubleprime + gradient(b) * gradient(b) +
-                 theta_ * gradient(b) * zb -
-                 gradient(b) * wbt.transpose() * (M_ * *c);
+                 theta_ * gradient(b) * zb - gradient(b) * wbt.transpose() * Mc;
       f_doubleprime += ScalarType(-1.0) * theta_ * gradient(b) * gradient(b) -
-                       ScalarType(2.0) * (gradient(b) * (wbt.dot(M_ * p))) -
-                       gradient(b) * gradient(b) * wbt.transpose() * (M_ * wbt);
+                       ScalarType(2.0) * (gradient(b) * (wbt.dot(Mp))) -
+                       gradient(b) * gradient(b) * wbt.transpose() * Mwbt;
       f_doubleprime = std::max<ScalarType>(epsilon * f_dp_orig, f_doubleprime);
       p += gradient(b) * wbt.transpose();
       d(b) = 0;
@@ -304,12 +325,9 @@ class Lbfgsb
     return alphastar;
   }
 
-  VectorType SubspaceMinimization(const VectorType &x,
-                                  const VectorType &gradient,
-                                  const VectorType &x_cauchy,
-                                  const dyn_VectorType &c) const {
-    const ScalarType theta_inverse = 1 / theta_;
-
+  std::pair<VectorType, bool> SubspaceMinimization(
+      const VectorType &x, const VectorType &gradient,
+      const VectorType &x_cauchy, const dyn_VectorType &c) const {
     std::vector<int> free_variables_index;
     for (int i = 0; i < x_cauchy.rows(); i++) {
       if ((x_cauchy(i) != upper_bound_(i)) &&
@@ -318,19 +336,32 @@ class Lbfgsb
       }
     }
     const int free_var_count = free_variables_index.size();
+
+    // Early return if no free variables - Cauchy point is optimal
+    if (free_var_count == 0) {
+      return {x_cauchy, false};
+    }
+
+    const ScalarType theta_inverse = 1 / theta_;
     const dyn_MatrixType WZ =
         W_(free_variables_index, Eigen::indexing::all).transpose();
 
-    const VectorType rr = (gradient + theta_ * (x_cauchy - x) - W_ * (M_ * c));
+    const VectorType rr = (gradient + theta_ * (x_cauchy - x) - W_ * SolveM(c));
     // r=r(free_variables);
     const dyn_VectorType r = rr(free_variables_index);
 
     // STEP 2: "v = w^T*Z*r" and STEP 3: "v = M*v"
-    dyn_VectorType v = M_ * (WZ * r);
+    dyn_VectorType v = SolveM(WZ * r);
     // STEP 4: N = 1/theta*W^T*Z*(W^T*Z)^T
     dyn_MatrixType N = theta_inverse * WZ * WZ.transpose();
-    // N = I - MN
-    N = dyn_MatrixType::Identity(N.rows(), N.rows()) - M_ * N;
+    // N = I - MN (solve M*X = N for each column, then compute I - X)
+    if (N.cols() > 0) {
+      dyn_MatrixType MN(N.rows(), N.cols());
+      for (int col = 0; col < N.cols(); ++col) {
+        MN.col(col) = SolveM(N.col(col));
+      }
+      N = dyn_MatrixType::Identity(N.rows(), N.rows()) - MN;
+    }
     // STEP: 5
     // v = N^{-1}*v
     if (v.size() > 0) {
@@ -349,7 +380,7 @@ class Lbfgsb
       subspace_min(free_variables_index[i]) =
           subspace_min(free_variables_index[i]) + dStar(i);
     }
-    return subspace_min;
+    return {subspace_min, true};
   }
 
  private:
@@ -358,7 +389,7 @@ class Lbfgsb
   VectorType upper_bound_;
   bool bounds_initialized_ = false;
 
-  dyn_MatrixType M_;
+  Eigen::PartialPivLU<dyn_MatrixType> MM_lu_;
   dyn_MatrixType W_;
   ScalarType theta_;
 
