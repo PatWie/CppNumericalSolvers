@@ -6,4 +6,5 @@ build_example("constrained_simple")
 build_example("constrained_simple2")
 build_example("linear_regression")
 build_test("verify")
+build_test("cstep_test")
 

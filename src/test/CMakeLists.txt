@@ -13,5 +13,6 @@ find_package(GTest REQUIRED)
 
 # Build tests
 build_test(verify)
+build_test(cstep_test)
 
 
