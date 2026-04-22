@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install System Dependencies
         run: |
@@ -33,8 +33,8 @@ jobs:
             libgtest-dev
 
 
-      - name: Set up Bazel 8
-        uses: bazel-contrib/setup-bazel@0.14.0
+      - name: Set up Bazel 9
+        uses: bazel-contrib/setup-bazel@0.19.0
         with:
           bazelisk-cache: true
           disk-cache: ${{ github.workflow }}
