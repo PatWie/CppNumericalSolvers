@@ -3,7 +3,8 @@
 // Unit tests for the `cstep` trial-interval update in the More-Thuente line
 // search.  `cstep` is the safeguarded cubic/quadratic interpolation used to
 // choose the next trial step on each line-search iteration.  We validate:
-//   1. Structural invariants (info code, bracketing flag, clamp to [tmin,tmax]).
+//   1. Structural invariants (info code, bracketing flag, clamp to
+//   [tmin,tmax]).
 //   2. Case-by-case correctness on scalar quadratic/cubic reference models
 //      where the "right answer" is analytically computable.
 //   3. The 0.66 safeguard that prevents the new trial from sitting too close
@@ -26,21 +27,20 @@ class ScalarFunctionStub
           ScalarFunctionStub, double,
           cppoptlib::function::DifferentiabilityMode::First> {
  public:
-  ScalarType operator()(const VectorType &, VectorType * = nullptr) const {
+  ScalarType operator()(const VectorType&, VectorType* = nullptr) const {
     return 0.0;  // never called by cstep.
   }
 };
 
-using LineSearch = cppoptlib::solver::linesearch::MoreThuente<
-    ScalarFunctionStub, /*Ord=*/1>;
+using LineSearch =
+    cppoptlib::solver::linesearch::MoreThuente<ScalarFunctionStub, /*Ord=*/1>;
 
 // Convenience wrapper: call `cstep` with mutable local state and return the
 // info code.  Mirrors the raw parameter order of the implementation so test
 // setups read naturally.
-static int CallCstep(double &stx, double &fx, double &dx,
-                     double &sty, double &fy, double &dy,
-                     double &stp, double fp, double dp,
-                     bool &brackt, double stpmin, double stpmax, int &info) {
+static int CallCstep(double& stx, double& fx, double& dx, double& sty,
+                     double& fy, double& dy, double& stp, double fp, double dp,
+                     bool& brackt, double stpmin, double stpmax, int& info) {
   return LineSearch::cstep(stx, fx, dx, sty, fy, dy, stp, fp, dp, brackt,
                            stpmin, stpmax, info);
 }
@@ -84,8 +84,8 @@ TEST(CstepCase2, DerivativeSignFlipBracketsAndHitsMinimizer) {
   double stp = 3.0, fp = 0.5, dp = 1.0;
   bool brackt = false;
   int info = 0;
-  ASSERT_EQ(0, CallCstep(stx, fx, dx, sty, fy, dy, stp, fp, dp, brackt,
-                         0.0, 10.0, info));
+  ASSERT_EQ(0, CallCstep(stx, fx, dx, sty, fy, dy, stp, fp, dp, brackt, 0.0,
+                         10.0, info));
   EXPECT_EQ(2, info);
   EXPECT_TRUE(brackt) << "Case 2 must set brackt to true.";
   EXPECT_NEAR(2.0, stp, 1e-12)
@@ -114,8 +114,8 @@ TEST(CstepCase3, NotBracketedAdvancesTowardMinimizer) {
   int info = 0;
   constexpr double tmin = 0.0;
   constexpr double tmax = 20.0;
-  ASSERT_EQ(0, CallCstep(stx, fx, dx, sty, fy, dy, stp, fp, dp, brackt,
-                         tmin, tmax, info));
+  ASSERT_EQ(0, CallCstep(stx, fx, dx, sty, fy, dy, stp, fp, dp, brackt, tmin,
+                         tmax, info));
   EXPECT_EQ(3, info);
   EXPECT_FALSE(brackt);  // still unbracketed because derivatives same-sign.
   EXPECT_GT(stp, 1.0) << "Should advance past the current trial toward a*=4.";
@@ -146,7 +146,8 @@ TEST(CstepCase4, NotBracketedExtrapolatesToMax) {
                          /*stpmin=*/0.0, tmax, info));
   EXPECT_EQ(4, info);
   EXPECT_FALSE(brackt);
-  EXPECT_EQ(tmax, stp) << "Unbracketed Case 4 with stp > stx must push to tmax.";
+  EXPECT_EQ(tmax, stp)
+      << "Unbracketed Case 4 with stp > stx must push to tmax.";
 }
 
 // ---- Result is always clamped to [stpmin, stpmax] -------------------------
@@ -160,8 +161,8 @@ TEST(CstepClamp, ResultAlwaysInsideStpminStpmax) {
   // The unclamped answer for this Case 1 setup is 1.0; force clamp to 0.75.
   constexpr double stpmin = 0.1;
   constexpr double stpmax = 0.75;
-  ASSERT_EQ(0, CallCstep(stx, fx, dx, sty, fy, dy, stp, fp, dp, brackt,
-                         stpmin, stpmax, info));
+  ASSERT_EQ(0, CallCstep(stx, fx, dx, sty, fy, dy, stp, fp, dp, brackt, stpmin,
+                         stpmax, info));
   EXPECT_GE(stp, stpmin);
   EXPECT_LE(stp, stpmax);
 }
@@ -198,6 +199,6 @@ TEST(CstepInvariants, RejectsNonDescentInput) {
   double stp = 1.0, fp = 0.5, dp = 0.5;
   bool brackt = false;
   int info = 0;
-  EXPECT_EQ(-1, CallCstep(stx, fx, dx, sty, fy, dy, stp, fp, dp, brackt,
-                          0.0, 10.0, info));
+  EXPECT_EQ(-1, CallCstep(stx, fx, dx, sty, fy, dy, stp, fp, dp, brackt, 0.0,
+                          10.0, info));
 }

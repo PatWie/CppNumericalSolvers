@@ -66,17 +66,17 @@ class NelderMead
   using Superclass::Superclass;
 
   // Initialize the solver with the starting point.
-  void InitializeSolver(const FunctionType & /*function*/,
-                        const StateType &initial_state) override {
+  void InitializeSolver(const FunctionType& /*function*/,
+                        const StateType& initial_state) override {
     simplex_ = makeInitialSimplex(initial_state.x);
   }
 
   // Performs one iteration (step) of the Nelder–Mead algorithm.
   // This implementation updates the internal simplex and returns the current
   // best vertex.
-  StateType OptimizationStep(const FunctionType &function,
-                             const StateType &current,
-                             const ProgressType & /*progress*/) override {
+  StateType OptimizationStep(const FunctionType& function,
+                             const StateType& current,
+                             const ProgressType& /*progress*/) override {
     const size_t DIM = current.x.rows();
     const int numVertices = static_cast<int>(DIM) + 1;
 
@@ -174,7 +174,7 @@ class NelderMead
 
   // Create an initial simplex given the starting point x using adaptive
   // perturbations.
-  MatrixType makeInitialSimplex(const VectorType &x) {
+  MatrixType makeInitialSimplex(const VectorType& x) {
     const size_t DIM = x.rows();
     MatrixType s = MatrixType::Zero(DIM, DIM + 1);
     for (size_t c = 0; c < DIM + 1; ++c) {
@@ -192,13 +192,13 @@ class NelderMead
   }
 
   // Returns true if the two vectors are nearly equal (using the infinity norm).
-  bool isCoincident(const VectorType &a, const VectorType &b) const {
+  bool isCoincident(const VectorType& a, const VectorType& b) const {
     return (a - b).template lpNorm<Eigen::Infinity>() < degenerate_tol_;
   }
 
   // Shrink the simplex toward the best vertex.
-  void shrink(MatrixType &s, std::vector<int> &idx, std::vector<ScalarType> &f,
-              const FunctionType &function) {
+  void shrink(MatrixType& s, std::vector<int>& idx, std::vector<ScalarType>& f,
+              const FunctionType& function) {
     const size_t DIM = s.rows();
     // Re-evaluate the best vertex.
     f[idx[0]] = function(s.col(idx[0]));

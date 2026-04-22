@@ -68,8 +68,8 @@ class Lbfgs
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   using Superclass::Superclass;
 
-  void InitializeSolver(const FunctionType & /*function*/,
-                        const StateType &initial_state) override {
+  void InitializeSolver(const FunctionType& /*function*/,
+                        const StateType& initial_state) override {
     const size_t dim = initial_state.x.rows();
     x_diff_memory_ = memory_MatrixType::Zero(dim, m);
     grad_diff_memory_ = memory_MatrixType::Zero(dim, m);
@@ -80,9 +80,9 @@ class Lbfgs
     scaling_factor_ = 1;
   }
 
-  StateType OptimizationStep(const FunctionType &function,
-                             const StateType &current,
-                             const ProgressType & /*progress*/) override {
+  StateType OptimizationStep(const FunctionType& function,
+                             const StateType& current,
+                             const ProgressType& /*progress*/) override {
     constexpr ScalarType eps = std::numeric_limits<ScalarType>::epsilon();
     const ScalarType relative_eps =
         static_cast<ScalarType>(eps) *
@@ -183,8 +183,9 @@ class Lbfgs
     ScalarType alpha_init = ScalarType{1};
     if (mem_count_ == 0) {
       const ScalarType search_direction_norm = search_direction.norm();
-      alpha_init = (search_direction_norm > eps) ? ScalarType{1} / search_direction_norm
-                                                 : ScalarType{1};
+      alpha_init = (search_direction_norm > eps)
+                       ? ScalarType{1} / search_direction_norm
+                       : ScalarType{1};
     }
     if (!std::isfinite(descent_direction) ||
         descent_direction > -eps * relative_eps) {
@@ -194,8 +195,8 @@ class Lbfgs
       mem_count_ = 0;
       mem_pos_ = 0;
       const ScalarType gradient_norm = current_gradient.norm();
-      alpha_init = (gradient_norm > eps) ? ScalarType{1} / gradient_norm
-                                         : ScalarType{1};
+      alpha_init =
+          (gradient_norm > eps) ? ScalarType{1} / gradient_norm : ScalarType{1};
     }
 
     // Perform a line search.  The cached `(current_value, current_gradient)`

@@ -43,7 +43,7 @@ enum class Status {
   Finished                    // Successful finished
 };
 
-inline std::ostream &operator<<(std::ostream &stream, const Status &status) {
+inline std::ostream& operator<<(std::ostream& stream, const Status& status) {
   switch (status) {
     case Status::NotStarted:
       stream << "Solver not started.";
@@ -96,12 +96,12 @@ struct Progress {
   Progress() = default;
 
   // Updates state from function information.
-  void Update(const FunctionType &function,
-              const StateType &previous_function_state,
-              const StateType &current_function_state,
-              const Progress<FunctionType, StateType> &stop_progress) {
-    const VectorType &current_x = current_function_state.x;
-    const VectorType &previous_x = previous_function_state.x;
+  void Update(const FunctionType& function,
+              const StateType& previous_function_state,
+              const StateType& current_function_state,
+              const Progress<FunctionType, StateType>& stop_progress) {
+    const VectorType& current_x = current_function_state.x;
+    const VectorType& previous_x = previous_function_state.x;
     VectorType previous_gradient, current_gradient;
     ScalarType previous_value;
     ScalarType current_value;

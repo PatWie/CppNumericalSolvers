@@ -42,9 +42,9 @@ class Armijo {
    *
    * @return step-width
    */
-  static ScalarType Search(const VectorType &x,
-                           const VectorType &search_direction,
-                           const FunctionType &function,
+  static ScalarType Search(const VectorType& x,
+                           const VectorType& search_direction,
+                           const FunctionType& function,
                            const ScalarType alpha_init = 1.0) {
     constexpr ScalarType c = 0.2;
     constexpr ScalarType rho = 0.9;
@@ -79,9 +79,9 @@ class Armijo<FunctionType, 2> {
    *
    * @return step-width
    */
-  static ScalarType Search(const VectorType &x,
-                           const VectorType &search_direction,
-                           const FunctionType &function) {
+  static ScalarType Search(const VectorType& x,
+                           const VectorType& search_direction,
+                           const FunctionType& function) {
     constexpr ScalarType c = 0.2;
     constexpr ScalarType rho = 0.9;
     ScalarType alpha = 1.0;

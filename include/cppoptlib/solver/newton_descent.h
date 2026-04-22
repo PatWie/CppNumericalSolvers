@@ -58,14 +58,14 @@ class NewtonDescent
 
   using Superclass::Superclass;
 
-  void InitializeSolver(const FunctionType & /*function*/,
-                        const StateType &initial_state) override {
+  void InitializeSolver(const FunctionType& /*function*/,
+                        const StateType& initial_state) override {
     dim_ = initial_state.x.rows();
   }
 
-  StateType OptimizationStep(const FunctionType &function,
-                             const StateType &current,
-                             const ProgressType & /*state*/) override {
+  StateType OptimizationStep(const FunctionType& function,
+                             const StateType& current,
+                             const ProgressType& /*state*/) override {
     constexpr ScalarType safe_guard = 1e-5;
 
     MatrixType hessian;

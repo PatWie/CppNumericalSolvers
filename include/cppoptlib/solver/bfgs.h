@@ -61,17 +61,17 @@ class Bfgs
 
   using Superclass::Superclass;
 
-  void InitializeSolver(const FunctionType & /*function*/,
-                        const StateType &initial_state) override {
+  void InitializeSolver(const FunctionType& /*function*/,
+                        const StateType& initial_state) override {
     dim_ = initial_state.x.rows();
     inverse_hessian_ =
         MatrixType::Identity(initial_state.x.rows(), initial_state.x.rows());
     fresh_inverse_hessian_ = true;
   }
 
-  StateType OptimizationStep(const FunctionType &function,
-                             const StateType &current,
-                             const ProgressType & /*progress*/) override {
+  StateType OptimizationStep(const FunctionType& function,
+                             const StateType& current,
+                             const ProgressType& /*progress*/) override {
     constexpr ScalarType eps = std::numeric_limits<ScalarType>::epsilon();
 
     VectorType current_gradient;
@@ -132,8 +132,7 @@ class Bfgs
       const VectorType Hy = inverse_hessian_ * y;
       const ScalarType yHy = y.dot(Hy);
       inverse_hessian_ =
-          inverse_hessian_ -
-          rho * (s * Hy.transpose() + Hy * s.transpose()) +
+          inverse_hessian_ - rho * (s * Hy.transpose() + Hy * s.transpose()) +
           rho * (rho * yHy + ScalarType{1}) * (s * s.transpose());
       fresh_inverse_hessian_ = false;
     }

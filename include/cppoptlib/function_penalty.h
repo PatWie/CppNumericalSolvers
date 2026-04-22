@@ -38,7 +38,7 @@ namespace cppoptlib::function {
 //-------------------------------------------------------------
 // Equality penalty: P(x) = 0.5 * [f(x) - g(x)]^2
 template <typename F>
-auto quadraticEqualityPenalty(const F &c) {
+auto quadraticEqualityPenalty(const F& c) {
   return 0.5 * (c * c);
 }
 
@@ -46,7 +46,7 @@ auto quadraticEqualityPenalty(const F &c) {
 // Inequality penalty for constraint c(x) >= 0:
 // P(x) = 0.5 * [min{0, c(x)}]^2. When c(x) >= 0 the penalty is zero.
 template <typename F>
-auto quadraticInequalityPenalty_ge(const F &c) {
+auto quadraticInequalityPenalty_ge(const F& c) {
   auto minExpr = MinZeroExpression<F>(c);
   return 0.5 * (minExpr * minExpr);
 }
@@ -55,7 +55,7 @@ auto quadraticInequalityPenalty_ge(const F &c) {
 // Inequality penalty for constraint c(x) < 0:
 // P(x) = 0.5 * [max{0, c(x)}]^2. When c(x) < 0 the penalty is zero.
 template <typename F>
-auto quadraticInequalityPenalty_lt(const F &c) {
+auto quadraticInequalityPenalty_lt(const F& c) {
   auto maxExpr = MaxZeroExpression<F>(c);
   return 0.5 * (maxExpr * maxExpr);
 }
@@ -96,8 +96,8 @@ template <typename TScalar,
 FunctionExpr<TScalar, MinDifferentiabilityMode<ModeObj, ModeConstr>::value,
              TDim>
 FormLagrangianPart(const ConstrainedOptimizationProblem<TScalar, ModeObj,
-                                                        ModeConstr, TDim> &prob,
-                   const LagrangeMultiplierState<TScalar> &mult_state) {
+                                                        ModeConstr, TDim>& prob,
+                   const LagrangeMultiplierState<TScalar>& mult_state) {
   static constexpr DifferentiabilityMode Differentiability =
       ConstrainedOptimizationProblem<TScalar, ModeObj, ModeConstr,
                                      TDim>::Differentiability;
@@ -130,8 +130,8 @@ template <typename TScalar,
 FunctionExpr<TScalar, MinDifferentiabilityMode<ModeObj, ModeConstr>::value,
              TDim>
 FormPenaltyPart(const ConstrainedOptimizationProblem<TScalar, ModeObj,
-                                                     ModeConstr, TDim> &prob,
-                const PenaltyState<TScalar> &pen_state) {
+                                                     ModeConstr, TDim>& prob,
+                const PenaltyState<TScalar>& pen_state) {
   static constexpr DifferentiabilityMode Differentiability =
       ConstrainedOptimizationProblem<TScalar, ModeObj, ModeConstr,
                                      TDim>::Differentiability;
@@ -141,14 +141,14 @@ FormPenaltyPart(const ConstrainedOptimizationProblem<TScalar, ModeObj,
 
   // Process equality constraints.
   for (size_t i = 0; i < prob.equality_constraints.size(); i++) {
-    const auto &constr = prob.equality_constraints[i];
+    const auto& constr = prob.equality_constraints[i];
     auto penaltyExpr = quadraticEqualityPenalty(constr);
     penaltyPart = penaltyPart + pen_state.penalty * penaltyExpr;
   }
 
   // Process inequality constraints.
   for (size_t i = 0; i < prob.inequality_constraints.size(); i++) {
-    const auto &constr = prob.inequality_constraints[i];
+    const auto& constr = prob.inequality_constraints[i];
     auto penaltyExpr = quadraticInequalityPenalty_ge(constr);
     penaltyPart = penaltyPart + pen_state.penalty * penaltyExpr;
   }
@@ -165,8 +165,8 @@ template <typename TScalar,
 FunctionExpr<TScalar, MinDifferentiabilityMode<ModeObj, ModeConstr>::value,
              TDim>
 ToPenalty(const ConstrainedOptimizationProblem<TScalar, ModeObj, ModeConstr,
-                                               TDim> &prob,
-          const PenaltyState<TScalar> &pen_state) {
+                                               TDim>& prob,
+          const PenaltyState<TScalar>& pen_state) {
   return prob.objective + FormPenaltyPart(prob, pen_state);
 }
 // --- Forming the Full Augmented Lagrangian ---
@@ -177,11 +177,10 @@ template <typename TScalar,
           int TDim = Eigen::Dynamic>
 FunctionExpr<TScalar, MinDifferentiabilityMode<ModeObj, ModeConstr>::value,
              TDim>
-ToAugmentedLagrangian(
-    const ConstrainedOptimizationProblem<TScalar, ModeObj, ModeConstr, TDim>
-        &prob,
-    const LagrangeMultiplierState<TScalar> &mult_state,
-    const PenaltyState<TScalar> &pen_state) {
+ToAugmentedLagrangian(const ConstrainedOptimizationProblem<
+                          TScalar, ModeObj, ModeConstr, TDim>& prob,
+                      const LagrangeMultiplierState<TScalar>& mult_state,
+                      const PenaltyState<TScalar>& pen_state) {
   return prob.objective + FormLagrangianPart(prob, mult_state) +
          FormPenaltyPart(prob, pen_state);
 }

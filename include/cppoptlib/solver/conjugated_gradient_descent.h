@@ -59,14 +59,14 @@ class ConjugatedGradientDescent
 
   using Superclass::Superclass;
 
-  void InitializeSolver(const FunctionType &function,
-                        const StateType &initial_state) override {
+  void InitializeSolver(const FunctionType& function,
+                        const StateType& initial_state) override {
     function(initial_state.x, &previous_gradient_);
   }
 
-  StateType OptimizationStep(const FunctionType &function,
-                             const StateType &current,
-                             const ProgressType &progress) override {
+  StateType OptimizationStep(const FunctionType& function,
+                             const StateType& current,
+                             const ProgressType& progress) override {
     VectorType current_gradient;
     function(current.x, &current_gradient);
     if (progress.num_iterations == 0) {

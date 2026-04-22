@@ -75,7 +75,7 @@ struct ConstrainedOptimizationProblem {
 template <typename TScalar, DifferentiabilityMode ModeObj,
           DifferentiabilityMode ModeConstr, int TDim>
 ConstrainedOptimizationProblem(
-    const FunctionExpr<TScalar, ModeObj, TDim> &,
+    const FunctionExpr<TScalar, ModeObj, TDim>&,
     std::initializer_list<FunctionExpr<TScalar, ModeConstr, TDim>>)
     -> ConstrainedOptimizationProblem<TScalar, ModeObj, ModeConstr, TDim>;
 
@@ -83,7 +83,7 @@ ConstrainedOptimizationProblem(
 template <typename TScalar, DifferentiabilityMode ModeObj,
           DifferentiabilityMode ModeConstr, int TDim>
 ConstrainedOptimizationProblem(
-    const FunctionExpr<TScalar, ModeObj, TDim> &,
+    const FunctionExpr<TScalar, ModeObj, TDim>&,
     std::initializer_list<FunctionExpr<TScalar, ModeConstr, TDim>>,
     std::initializer_list<FunctionExpr<TScalar, ModeConstr, TDim>>)
     -> ConstrainedOptimizationProblem<TScalar, ModeObj, ModeConstr, TDim>;

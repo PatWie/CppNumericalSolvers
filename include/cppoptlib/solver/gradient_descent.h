@@ -57,12 +57,12 @@ class GradientDescent
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   using Superclass::Superclass;
-  void InitializeSolver(const FunctionType & /*function*/,
-                        const StateType & /*initial_state*/) override {}
+  void InitializeSolver(const FunctionType& /*function*/,
+                        const StateType& /*initial_state*/) override {}
 
-  StateType OptimizationStep(const FunctionType &function,
-                             const StateType &current,
-                             const ProgressType & /*progress*/) override {
+  StateType OptimizationStep(const FunctionType& function,
+                             const StateType& current,
+                             const ProgressType& /*progress*/) override {
     VectorType gradient;
     function(current.x, &gradient);
     const ScalarType rate = linesearch::MoreThuente<FunctionType, 1>::Search(

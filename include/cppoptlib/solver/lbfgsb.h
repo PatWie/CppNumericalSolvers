@@ -70,14 +70,14 @@ class Lbfgsb
 
   using Superclass::Superclass;
 
-  void SetBounds(const VectorType &lower_bound, const VectorType &upper_bound) {
+  void SetBounds(const VectorType& lower_bound, const VectorType& upper_bound) {
     lower_bound_ = lower_bound;
     upper_bound_ = upper_bound;
     bounds_initialized_ = true;
   }
 
-  void InitializeSolver(const FunctionType & /*function*/,
-                        const StateType &initial_state) override {
+  void InitializeSolver(const FunctionType& /*function*/,
+                        const StateType& initial_state) override {
     dim_ = initial_state.x.rows();
 
     if (!bounds_initialized_) {
@@ -97,9 +97,9 @@ class Lbfgsb
     s_history_ = dyn_MatrixType::Zero(dim_, 0);
   }
 
-  StateType OptimizationStep(const FunctionType &function,
-                             const StateType &current,
-                             const ProgressType & /*progress*/) override {
+  StateType OptimizationStep(const FunctionType& function,
+                             const StateType& current,
+                             const ProgressType& /*progress*/) override {
     // Project current point to bounds (handles infeasible initial points)
     const VectorType x =
         current.x.cwiseMin(upper_bound_).cwiseMax(lower_bound_);
@@ -176,7 +176,7 @@ class Lbfgsb
    * @brief sort pairs (k,v) according v ascending
    */
   static std::vector<int> SortIndexes(
-      const std::vector<std::pair<int, ScalarType>> &v) {
+      const std::vector<std::pair<int, ScalarType>>& v) {
     std::vector<int> idx(v.size());
     for (size_t i = 0; i != idx.size(); ++i) idx[i] = v[i].first;
     sort(idx.begin(), idx.end(),
@@ -188,17 +188,17 @@ class Lbfgsb
    * @brief Solve MM * x = b using stored LU factorization (triangular solves)
    * More efficient than computing M_ * b when M_ = MM^{-1}
    */
-  dyn_VectorType SolveM(const dyn_VectorType &b) const {
+  dyn_VectorType SolveM(const dyn_VectorType& b) const {
     if (b.size() == 0 || MM_lu_.matrixLU().size() == 0) {
       return b;
     }
     return MM_lu_.solve(b);
   }
 
-  void GetGeneralizedCauchyPoint(const VectorType &x,
-                                 const VectorType &gradient,
-                                 VectorType *x_cauchy,
-                                 dyn_VectorType *c) const {
+  void GetGeneralizedCauchyPoint(const VectorType& x,
+                                 const VectorType& gradient,
+                                 VectorType* x_cauchy,
+                                 dyn_VectorType* c) const {
     constexpr ScalarType max_value = std::numeric_limits<ScalarType>::max();
     // Use larger epsilon for numerical stability
     constexpr ScalarType epsilon = 1e-12;
@@ -301,8 +301,8 @@ class Lbfgsb
   /**
    * @brief find alpha* = max {a : a <= 1 and  l_i-xc_i <= a*d_i <= u_i-xc_i}
    */
-  ScalarType FindAlpha(const VectorType &x_cp, const dyn_VectorType &du,
-                       const std::vector<int> &free_variables) const {
+  ScalarType FindAlpha(const VectorType& x_cp, const dyn_VectorType& du,
+                       const std::vector<int>& free_variables) const {
     ScalarType alphastar = 1;
     const unsigned int n = free_variables.size();
     assert(du.rows() == n);
@@ -326,8 +326,8 @@ class Lbfgsb
   }
 
   std::pair<VectorType, bool> SubspaceMinimization(
-      const VectorType &x, const VectorType &gradient,
-      const VectorType &x_cauchy, const dyn_VectorType &c) const {
+      const VectorType& x, const VectorType& gradient,
+      const VectorType& x_cauchy, const dyn_VectorType& c) const {
     std::vector<int> free_variables_index;
     for (int i = 0; i < x_cauchy.rows(); i++) {
       if ((x_cauchy(i) != upper_bound_(i)) &&

@@ -55,7 +55,7 @@ struct AugmentedLagrangeState {
   //
   // Usage:
   //   AugmentedLagrangeState<double, 2> state(x, {0.0}, {0.0}, 1.0);
-  AugmentedLagrangeState(const VectorType &init_x,
+  AugmentedLagrangeState(const VectorType& init_x,
                          std::initializer_list<TScalar> eq_multipliers,
                          std::initializer_list<TScalar> ineq_multipliers,
                          TScalar penalty)
@@ -70,7 +70,7 @@ struct AugmentedLagrangeState {
   //
   // Usage:
   //   AugmentedLagrangeState<double, 2> state(x, 1, 1, 1.0);
-  AugmentedLagrangeState(const VectorType &init_x, size_t num_eq,
+  AugmentedLagrangeState(const VectorType& init_x, size_t num_eq,
                          size_t num_ineq, TScalar penalty = TScalar(1))
       : x(init_x),
         multiplier_state(num_eq, num_ineq, TScalar(0)),
@@ -101,19 +101,19 @@ class AugmentedLagrangian
   using MatrixType = typename ProblemType::MatrixType;
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  AugmentedLagrangian(const solver_t &unconstrained_solver)
+  AugmentedLagrangian(const solver_t& unconstrained_solver)
       : unconstrained_solver_(unconstrained_solver) {}
 
-  AugmentedLagrangian(const ProblemType & /*problem*/,
-                      const solver_t &unconstrained_solver)
+  AugmentedLagrangian(const ProblemType& /*problem*/,
+                      const solver_t& unconstrained_solver)
       : unconstrained_solver_(unconstrained_solver) {}
 
-  void InitializeSolver(const ProblemType & /*function*/,
-                        const StateType & /*initial_state*/) override {}
+  void InitializeSolver(const ProblemType& /*function*/,
+                        const StateType& /*initial_state*/) override {}
 
-  StateType OptimizationStep(const ProblemType &function,
-                             const StateType &state,
-                             const ProgressType & /*progress*/) override {
+  StateType OptimizationStep(const ProblemType& function,
+                             const StateType& state,
+                             const ProgressType& /*progress*/) override {
     const auto unconstrained_function =
         cppoptlib::function::ToAugmentedLagrangian(
             function, state.multiplier_state, state.penalty_state);
@@ -129,10 +129,10 @@ class AugmentedLagrangian
     float max_violation = 0.0f;
 
     // Lambda to update multipliers for a set of constraints.
-    auto updateMultipliers = [&](const auto &constraints, auto &multipliers,
+    auto updateMultipliers = [&](const auto& constraints, auto& multipliers,
                                  auto penaltyFn) {
       for (size_t i = 0; i < constraints.size(); ++i) {
-        const auto &constr = constraints[i];
+        const auto& constr = constraints[i];
         auto penaltyExpr = penaltyFn(constr);
         ScalarType violation = penaltyExpr(next_state.x);
         max_violation = std::max<ScalarType>(max_violation, violation);
@@ -144,13 +144,13 @@ class AugmentedLagrangian
     updateMultipliers(
         function.equality_constraints,
         next_state.multiplier_state.equality_multipliers,
-        [](const auto &c) { return quadraticEqualityPenalty(c); });
+        [](const auto& c) { return quadraticEqualityPenalty(c); });
 
     // Update multipliers for inequality constraints.
     updateMultipliers(
         function.inequality_constraints,
         next_state.multiplier_state.inequality_multipliers,
-        [](const auto &c) { return quadraticInequalityPenalty_ge(c); });
+        [](const auto& c) { return quadraticInequalityPenalty_ge(c); });
 
     next_state.penalty_state.penalty = state.penalty_state.penalty * 10;
     next_state.max_violation = max_violation;
@@ -162,7 +162,7 @@ class AugmentedLagrangian
 };
 
 template <typename ProblemType, typename solver_t>
-AugmentedLagrangian(const ProblemType &, const solver_t &)
+AugmentedLagrangian(const ProblemType&, const solver_t&)
     -> AugmentedLagrangian<ProblemType, solver_t>;
 
 }  // namespace cppoptlib::solver

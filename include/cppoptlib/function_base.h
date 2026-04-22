@@ -56,8 +56,8 @@ struct FunctionInterface {
   static constexpr DifferentiabilityMode Differentiability = Mode;
 
   // Unified signature: even if some derivatives are not computed.
-  virtual ScalarType operator()(const VectorType &x, VectorType *grad = nullptr,
-                                MatrixType *hess = nullptr) const = 0;
+  virtual ScalarType operator()(const VectorType& x, VectorType* grad = nullptr,
+                                MatrixType* hess = nullptr) const = 0;
   virtual std::unique_ptr<FunctionInterface<TScalar, Mode, Dimension>> clone()
       const = 0;
   virtual ~FunctionInterface() = default;
@@ -81,24 +81,24 @@ struct FunctionCRTP : public FunctionInterface<TScalar, TMode, TDimension> {
   using MatrixType = Eigen::Matrix<TScalar, Dimension, Dimension>;
   static constexpr DifferentiabilityMode Differentiability = TMode;
 
-  virtual TScalar operator()(const VectorType &x, VectorType *grad = nullptr,
-                             MatrixType *hess = nullptr) const override {
+  virtual TScalar operator()(const VectorType& x, VectorType* grad = nullptr,
+                             MatrixType* hess = nullptr) const override {
     if constexpr (TMode == DifferentiabilityMode::None) {
-      return static_cast<const Derived *>(this)->operator()(x);
+      return static_cast<const Derived*>(this)->operator()(x);
     } else if constexpr (TMode == DifferentiabilityMode::First) {
       if (hess) {
         throw std::runtime_error(
             "Hessian not available for first order function.");
       }
-      return static_cast<const Derived *>(this)->operator()(x, grad);
+      return static_cast<const Derived*>(this)->operator()(x, grad);
     } else {  // DifferentiabilityMode::Second
-      return static_cast<const Derived *>(this)->operator()(x, grad, hess);
+      return static_cast<const Derived*>(this)->operator()(x, grad, hess);
     }
   }
 
   virtual std::unique_ptr<FunctionInterface<TScalar, TMode, TDimension>> clone()
       const override {
-    return std::make_unique<Derived>(static_cast<const Derived &>(*this));
+    return std::make_unique<Derived>(static_cast<const Derived&>(*this));
   }
 };
 
@@ -121,7 +121,7 @@ struct FunctionExpr {
   // provided it's not already an FunctionExpr.
   template <typename F, typename = std::enable_if_t<
                             !std::is_same_v<std::decay_t<F>, FunctionExpr>>>
-  FunctionExpr(const F &f) : ptr(f.clone()) {
+  FunctionExpr(const F& f) : ptr(f.clone()) {
     static_assert(F::Differentiability == TMode,
                   "Differentiability mode mismatch");
     static_assert(F::Dimension == TDimension, "Dimension mismatch");
@@ -130,22 +130,22 @@ struct FunctionExpr {
   }
 
   // Copy constructor.
-  FunctionExpr(const FunctionExpr &other)
+  FunctionExpr(const FunctionExpr& other)
       : ptr(other.ptr ? other.ptr->clone() : nullptr) {}
 
   // Copy assignment.
-  FunctionExpr &operator=(const FunctionExpr &other) {
+  FunctionExpr& operator=(const FunctionExpr& other) {
     if (this != &other) ptr = other.ptr ? other.ptr->clone() : nullptr;
     return *this;
   }
 
   // Default move constructor/assignment.
-  FunctionExpr(FunctionExpr &&) noexcept = default;
-  FunctionExpr &operator=(FunctionExpr &&) noexcept = default;
+  FunctionExpr(FunctionExpr&&) noexcept = default;
+  FunctionExpr& operator=(FunctionExpr&&) noexcept = default;
 
   // Call operator.
-  ScalarType operator()(const VectorType &x, VectorType *grad = nullptr,
-                        MatrixType *hess = nullptr) const {
+  ScalarType operator()(const VectorType& x, VectorType* grad = nullptr,
+                        MatrixType* hess = nullptr) const {
     return (*ptr)(x, grad, hess);
   }
 };
@@ -153,7 +153,7 @@ struct FunctionExpr {
 // Deduction guide for FunctionExpr.
 
 template <typename Expr>
-FunctionExpr(const Expr &)
+FunctionExpr(const Expr&)
     -> FunctionExpr<typename Expr::ScalarType, Expr::Differentiability,
                     Expr::Dimension>;
 

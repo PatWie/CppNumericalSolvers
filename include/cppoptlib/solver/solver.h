@@ -45,9 +45,9 @@ namespace cppoptlib::solver {
 // The output stream (e.g., std::cout, std::cerr, or an std::ofstream)
 // is passed as an argument.
 template <class FunctionType, class StateType>
-auto PrintProgressCallback(std::ostream &output_stream) {
-  return [&output_stream](const FunctionType &function, const StateType &state,
-                          const Progress<FunctionType, StateType> &progress) {
+auto PrintProgressCallback(std::ostream& output_stream) {
+  return [&output_stream](const FunctionType& function, const StateType& state,
+                          const Progress<FunctionType, StateType>& progress) {
     const int label_width = 18;  // Width for labels like "Value:", "X Delta:"
     const int num_width = 15;    // Width for numeric values
     const int precision = 6;     // Decimal places for floating-point numbers
@@ -113,8 +113,8 @@ auto PrintProgressCallback(std::ostream &output_stream) {
 
 template <class FunctionType, class StateType>
 auto NoOpCallback() {
-  return [](const FunctionType & /*function*/, const StateType & /*state*/,
-            const Progress<FunctionType, StateType> & /*progress*/) {};
+  return [](const FunctionType& /*function*/, const StateType& /*state*/,
+            const Progress<FunctionType, StateType>& /*progress*/) {};
 }
 
 // Specifies a solver implementation (of a given order) for a given function
@@ -126,12 +126,12 @@ class Solver {
 
   using ProgressType = Progress<FunctionType, StateType>;
   using CallbackType = std::function<void(
-      const FunctionType &func, const StateType &, const ProgressType &)>;
+      const FunctionType& func, const StateType&, const ProgressType&)>;
 
   ProgressType stopping_progress;
 
  public:
-  explicit Solver(const ProgressType &stopping_progress =
+  explicit Solver(const ProgressType& stopping_progress =
                       DefaultStoppingSolverProgress<FunctionType, StateType>())
       : stopping_progress(stopping_progress),
         step_callback_(NoOpCallback<FunctionType, StateType>()) {}
@@ -140,11 +140,11 @@ class Solver {
 
   void SetCallback(CallbackType callback) { step_callback_ = callback; }
 
-  virtual void InitializeSolver(const FunctionType & /*function*/,
-                                const StateType & /*initial_state*/) = 0;
+  virtual void InitializeSolver(const FunctionType& /*function*/,
+                                const StateType& /*initial_state*/) = 0;
 
   virtual std::tuple<StateType, Progress<FunctionType, StateType>> Minimize(
-      const FunctionType &function, const StateType &function_state) {
+      const FunctionType& function, const StateType& function_state) {
     // Solver state during the optimization.
     ProgressType solver_state;
     StateType current_function_state = function_state;
@@ -166,9 +166,9 @@ class Solver {
     return {current_function_state, solver_state};
   }
 
-  virtual StateType OptimizationStep(const FunctionType &function,
-                                     const StateType &current,
-                                     const ProgressType &state) = 0;
+  virtual StateType OptimizationStep(const FunctionType& function,
+                                     const StateType& current,
+                                     const ProgressType& state) = 0;
 
   CallbackType step_callback_;  // A user-defined callback function.
 };

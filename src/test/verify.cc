@@ -40,7 +40,7 @@ class RosenbrockValue : public FunctionX2<T, RosenbrockValue<T>> {
   using typename FunctionX2<T, RosenbrockValue<T>>::ScalarType;
   using typename FunctionX2<T, RosenbrockValue<T>>::VectorType;
 
-  ScalarType operator()(const VectorType &x) const {
+  ScalarType operator()(const VectorType& x) const {
     const T t1 = (1 - x[0]);
     const T t2 = (x[1] - x[0] * x[0]);
     return t1 * t1 + 100 * t2 * t2;
@@ -55,8 +55,8 @@ class RosenbrockGradient : public FunctionX2_dx<T, RosenbrockGradient<T>> {
   using typename FunctionX2_dx<T, RosenbrockGradient<T>>::ScalarType;
   using typename FunctionX2_dx<T, RosenbrockGradient<T>>::VectorType;
 
-  ScalarType operator()(const VectorType &x,
-                        VectorType *gradient = nullptr) const {
+  ScalarType operator()(const VectorType& x,
+                        VectorType* gradient = nullptr) const {
     const T t1 = (1 - x[0]);
     const T t2 = (x[1] - x[0] * x[0]);
     if (gradient) {
@@ -78,8 +78,8 @@ class RosenbrockFull : public FunctionX2_dxx<T, RosenbrockFull<T>> {
   using typename FunctionX2_dxx<T, RosenbrockFull<T>>::VectorType;
   using typename FunctionX2_dxx<T, RosenbrockFull<T>>::MatrixType;
 
-  ScalarType operator()(const VectorType &x, VectorType *gradient = nullptr,
-                        MatrixType *hessian = nullptr) const {
+  ScalarType operator()(const VectorType& x, VectorType* gradient = nullptr,
+                        MatrixType* hessian = nullptr) const {
     const T t1 = (1 - x[0]);
     const T t2 = (x[1] - x[0] * x[0]);
     if (gradient) {
@@ -165,7 +165,7 @@ class SimpleFunction : public FunctionX2<T, SimpleFunction<T>> {
   using typename FunctionX2<T, SimpleFunction<T>>::ScalarType;
   using typename FunctionX2<T, SimpleFunction<T>>::VectorType;
 
-  ScalarType operator()(const VectorType &x) const {
+  ScalarType operator()(const VectorType& x) const {
     return 3 * x[0] * x[0] - x[1] * x[0];
   }
 };
@@ -220,8 +220,8 @@ class SumObjective : public Function2d<SumObjective> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  ScalarType operator()(const VectorType &x,
-                        VectorType *gradient = nullptr) const {
+  ScalarType operator()(const VectorType& x,
+                        VectorType* gradient = nullptr) const {
     if (gradient) {
       *gradient = VectorType::Ones(2);
     }
@@ -234,8 +234,8 @@ class Circle : public Function2d<Circle> {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   // Compute the squared norm.
-  ScalarType operator()(const VectorType &x,
-                        VectorType *gradient = nullptr) const {
+  ScalarType operator()(const VectorType& x,
+                        VectorType* gradient = nullptr) const {
     if (gradient) {
       *gradient = 2 * x;
     }
@@ -275,7 +275,7 @@ TYPED_TEST(Constrained, Simple) {
   EXPECT_NEAR(solution.x[1], -1, 1e-3);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

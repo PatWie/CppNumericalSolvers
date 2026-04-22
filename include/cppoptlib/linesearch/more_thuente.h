@@ -57,9 +57,9 @@ class MoreThuente {
    * that path avoids a total of two redundant full function evaluations per
    * outer iteration.
    */
-  static ScalarType Search(const VectorType &x,
-                           const VectorType &search_direction,
-                           const FunctionType &function,
+  static ScalarType Search(const VectorType& x,
+                           const VectorType& search_direction,
+                           const FunctionType& function,
                            const ScalarType alpha_init = 1.0) {
     ScalarType alpha = alpha_init;
     VectorType g;
@@ -83,12 +83,12 @@ class MoreThuente {
    * captured from the final internal line-search evaluation, so no extra
    * call to `function` is issued.
    */
-  static ScalarType Search(const VectorType &x, ScalarType f0,
-                           const VectorType &g0,
-                           const VectorType &search_direction,
-                           const FunctionType &function, ScalarType alpha_init,
-                           VectorType *x_out, ScalarType *f_out,
-                           VectorType *g_out) {
+  static ScalarType Search(const VectorType& x, ScalarType f0,
+                           const VectorType& g0,
+                           const VectorType& search_direction,
+                           const FunctionType& function, ScalarType alpha_init,
+                           VectorType* x_out, ScalarType* f_out,
+                           VectorType* g_out) {
     ScalarType alpha = alpha_init;
     ScalarType f = f0;
     VectorType g = g0;
@@ -103,8 +103,8 @@ class MoreThuente {
     return alpha;
   }
 
-  static int cvsrch(const FunctionType &function, VectorType *x, ScalarType *f,
-                    VectorType *g, ScalarType *stp, const VectorType &s) {
+  static int cvsrch(const FunctionType& function, VectorType* x, ScalarType* f,
+                    VectorType* g, ScalarType* stp, const VectorType& s) {
     // we rewrite this from MIN-LAPACK and some MATLAB code
     int info = 0;
     int infoc = 1;
@@ -227,12 +227,12 @@ class MoreThuente {
   // TODO(patwie): cpplint prefers pointers here, but this would make the code
   // unreadable. As these are all changing values a configuration structure
   // would be helpful.
-  static int cstep(ScalarType &stx, ScalarType &fx, ScalarType &dx,   // NOLINT
-                   ScalarType &sty,                                   // NOLINT
-                   ScalarType &fy, ScalarType &dy, ScalarType &stp,   // NOLINT
-                   ScalarType &fp,                                    // NOLINT
-                   ScalarType &dp, bool &brackt, ScalarType &stpmin,  // NOLINT
-                   ScalarType &stpmax, int &info) {                   // NOLINT
+  static int cstep(ScalarType& stx, ScalarType& fx, ScalarType& dx,   // NOLINT
+                   ScalarType& sty,                                   // NOLINT
+                   ScalarType& fy, ScalarType& dy, ScalarType& stp,   // NOLINT
+                   ScalarType& fp,                                    // NOLINT
+                   ScalarType& dp, bool& brackt, ScalarType& stpmin,  // NOLINT
+                   ScalarType& stpmax, int& info) {                   // NOLINT
     info = 0;
     bool bound = false;
 
