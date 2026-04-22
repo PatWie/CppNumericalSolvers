@@ -88,29 +88,45 @@ class Lbfgs
         static_cast<ScalarType>(eps) *
         std::max<ScalarType>(ScalarType{1.0}, current.x.norm());
 
-    // --- Preconditioning ---
-    // If second-order information is available, use a diagonal preconditioner.
-    VectorType precond = VectorType::Ones(current.x.size());
+    // --- Preconditioner for the two-loop recursion ---
+    // If second-order information is available, build a diagonal
+    // preconditioner `M^{-1} = diag(|H|)^{-1}` that will be applied to the
+    // *center* of the two-loop recursion (Morales & Nocedal 2000,
+    // "Automatic preconditioning by limited memory quasi-Newton updating").
+    // Crucially, do NOT precondition the starting vector of the recursion:
+    // the stored `(s_k, y_k)` pairs live in the unpreconditioned space, so
+    // mixing a preconditioned `q_0` with unpreconditioned `s, y` corrupts
+    // the recursion.  When no Hessian is available the preconditioner is
+    // the identity and the usual Cholesky-style scalar `scaling_factor_` is
+    // used as `H_0` instead.
+    const bool has_diagonal_preconditioner =
+        FunctionType::Differentiability ==
+        cppoptlib::function::DifferentiabilityMode::Second;
+    VectorType preconditioner_diagonal = VectorType::Ones(current.x.size());
     VectorType current_gradient;
+    ScalarType current_value;
     if constexpr (FunctionType::Differentiability ==
                   cppoptlib::function::DifferentiabilityMode::Second) {
       MatrixType current_hessian;
-      function(current.x, &current_gradient, &current_hessian);
-      precond = current_hessian.diagonal().cwiseAbs().array() + eps;
-      precond = precond.cwiseInverse();
+      current_value = function(current.x, &current_gradient, &current_hessian);
+      preconditioner_diagonal =
+          current_hessian.diagonal().cwiseAbs().array() + eps;
+      preconditioner_diagonal = preconditioner_diagonal.cwiseInverse();
     } else {
-      function(current.x, &current_gradient);
+      current_value = function(current.x, &current_gradient);
     }
-    // Precondition the gradient.
-    VectorType grad_precond = precond.asDiagonal() * current_gradient;
 
     // --- Two-Loop Recursion ---
-    // Start with the preconditioned gradient as the initial search direction.
-    VectorType search_direction = grad_precond;
+    // Start from the raw gradient (unpreconditioned); the Morales-Nocedal
+    // preconditioner, if any, is applied below at the center of the loop.
+    VectorType search_direction = current_gradient;
 
-    // Determine the number of corrections available for the two-loop recursion.
-    // We exclude the most recent correction (which was just computed) from use.
-    int k = (mem_count_ > 0 ? static_cast<int>(mem_count_) - 1 : 0);
+    // Number of corrections available for the two-loop recursion.  Use every
+    // stored pair -- including the newest pair added at the end of the
+    // previous step -- because it carries the most recent curvature
+    // information and is exactly the pair that Nocedal & Wright Algorithm 7.4
+    // consumes first in the backward pass.
+    const int k = static_cast<int>(mem_count_);
 
     // --- First Loop (Backward Pass) ---
     // Iterate over stored corrections in reverse chronological order.
@@ -130,8 +146,16 @@ class Lbfgs
       search_direction -= alpha(i) * grad_diff_memory_.col(idx);
     }
 
-    // Apply the initial Hessian approximation.
-    search_direction *= scaling_factor_;
+    // Apply the initial Hessian approximation.  With a diagonal
+    // preconditioner we use `H_0 = M^{-1}` (element-wise scaling).
+    // Without one we fall back to the scalar Cholesky estimate
+    // `gamma = s_{k-1}^T y_{k-1} / y_{k-1}^T y_{k-1}`.
+    if (has_diagonal_preconditioner) {
+      search_direction =
+          preconditioner_diagonal.asDiagonal() * search_direction;
+    } else {
+      search_direction *= scaling_factor_;
+    }
 
     // --- Second Loop (Forward Pass) ---
     for (int i = 0; i < k; i++) {
@@ -149,8 +173,19 @@ class Lbfgs
 
     // Check descent direction validity.
     ScalarType descent_direction = -current_gradient.dot(search_direction);
-    ScalarType alpha_init =
-        (current_gradient.norm() > eps) ? 1.0 / current_gradient.norm() : 1.0;
+    // Initial line-search step.  When no curvature information exists yet
+    // (iteration zero, or right after a fallback-to-steepest reset), the
+    // raw gradient direction has unknown scale so normalize the first trial
+    // step as `1 / ||d||`.  Once we have at least one correction pair, the
+    // two-loop direction already carries the Hessian scaling, so the
+    // standard choice `alpha_init = 1` gives full Newton-like steps that
+    // are accepted in one function evaluation for well-conditioned problems.
+    ScalarType alpha_init = ScalarType{1};
+    if (mem_count_ == 0) {
+      const ScalarType search_direction_norm = search_direction.norm();
+      alpha_init = (search_direction_norm > eps) ? ScalarType{1} / search_direction_norm
+                                                 : ScalarType{1};
+    }
     if (!std::isfinite(descent_direction) ||
         descent_direction > -eps * relative_eps) {
       // Fall back to steepest descent if necessary.
@@ -158,16 +193,23 @@ class Lbfgs
       // Reset the correction history if the descent is invalid.
       mem_count_ = 0;
       mem_pos_ = 0;
-      alpha_init = 1.0;
+      const ScalarType gradient_norm = current_gradient.norm();
+      alpha_init = (gradient_norm > eps) ? ScalarType{1} / gradient_norm
+                                         : ScalarType{1};
     }
 
-    // Perform a line search.
-    const ScalarType rate = linesearch::MoreThuente<FunctionType, 1>::Search(
-        current.x, -search_direction, function, alpha_init);
-
-    const StateType next = StateType(current.x - rate * search_direction);
+    // Perform a line search.  The cached `(current_value, current_gradient)`
+    // at `current.x` is passed in so the line search doesn't re-evaluate the
+    // starting point, and `(next.x, next_gradient)` are captured from the
+    // final internal line-search evaluation -- together avoiding two
+    // redundant full function evaluations per iteration.
+    VectorType next_x;
     VectorType next_gradient;
-    function(next.x, &next_gradient);
+    linesearch::MoreThuente<FunctionType, 1>::Search(
+        current.x, current_value, current_gradient, -search_direction, function,
+        alpha_init, &next_x, /*f_out=*/nullptr, &next_gradient);
+
+    const StateType next = StateType(next_x);
 
     // Compute the differences for the new correction pair.
     const VectorType x_diff = next.x - current.x;
@@ -193,20 +235,26 @@ class Lbfgs
         mem_pos_ = (mem_pos_ + 1) % m;
       }
     }
-    // Update the scaling factor (adaptive damping).
+    // Update the scaling factor (initial Hessian approximation `H_0`).  The
+    // standard L-BFGS choice is `gamma_k = s_k^T y_k / y_k^T y_k` (Nocedal &
+    // Wright 7.20).  If the line search failed and produced a zero step --
+    // in which case `x_diff = grad_diff = 0` -- we have no information to
+    // update `H_0`, so keep the previous scaling rather than clobber it with
+    // a huge fallback (which would cause the next iteration to take a
+    // catastrophic step).  We also keep the previous scaling when the new
+    // estimate is non-finite or wildly large.
     constexpr ScalarType fallback_value = ScalarType(1e7);
     const ScalarType grad_diff_norm_sq = grad_diff.dot(grad_diff);
-    if (std::abs(grad_diff_norm_sq) > eps) {
-      ScalarType temp_scaling = grad_diff.dot(x_diff) / grad_diff_norm_sq;
-      if (!std::isfinite(temp_scaling) ||
-          std::abs(temp_scaling) > fallback_value) {
-        scaling_factor_ = fallback_value;
-      } else {
+    if (grad_diff_norm_sq > eps) {
+      const ScalarType temp_scaling = grad_diff.dot(x_diff) / grad_diff_norm_sq;
+      if (std::isfinite(temp_scaling) &&
+          std::abs(temp_scaling) <= fallback_value) {
         scaling_factor_ = std::max(temp_scaling, eps);
       }
-    } else {
-      scaling_factor_ = fallback_value;
+      // else: keep previous scaling_factor_.
     }
+    // else: grad_diff is effectively zero -- no new curvature info, keep
+    // previous scaling_factor_.
 
     return next;
   }
