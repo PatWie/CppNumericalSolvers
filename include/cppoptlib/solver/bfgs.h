@@ -27,6 +27,8 @@
 #ifndef INCLUDE_CPPOPTLIB_SOLVER_BFGS_H_
 #define INCLUDE_CPPOPTLIB_SOLVER_BFGS_H_
 
+#include <cmath>
+#include <limits>
 #include <utility>
 
 #include "../linesearch/more_thuente.h"
@@ -64,48 +66,88 @@ class Bfgs
     dim_ = initial_state.x.rows();
     inverse_hessian_ =
         MatrixType::Identity(initial_state.x.rows(), initial_state.x.rows());
+    fresh_inverse_hessian_ = true;
   }
 
   StateType OptimizationStep(const FunctionType &function,
                              const StateType &current,
                              const ProgressType & /*progress*/) override {
+    constexpr ScalarType eps = std::numeric_limits<ScalarType>::epsilon();
+
     VectorType current_gradient;
-    function(current.x, &current_gradient);
+    const ScalarType current_value = function(current.x, &current_gradient);
 
     VectorType search_direction = -inverse_hessian_ * current_gradient;
 
-    // If not positive definite re-initialize Hessian.
+    // Reset to steepest descent when the approximation is not positive
+    // definite (or numerically sick).  Recompute `search_direction` and mark
+    // the approximation as fresh so the initial line-search step below is
+    // scaled by `1 / ||d||` rather than the quasi-Newton default of `1`.
     const ScalarType phi = current_gradient.dot(search_direction);
     if ((phi > 0) || std::isnan(phi)) {
-      // no, we reset the hessian approximation
       inverse_hessian_ = MatrixType::Identity(dim_, dim_);
       search_direction = -current_gradient;
+      fresh_inverse_hessian_ = true;
     }
 
-    const ScalarType rate = linesearch::MoreThuente<FunctionType, 1>::Search(
-        current.x, search_direction, function);
+    // Initial line-search step.  On a freshly initialized (identity) inverse
+    // Hessian the direction is the raw gradient whose magnitude has no
+    // relation to the objective's scale; normalize to `1 / ||d||`.  Once the
+    // inverse Hessian carries real curvature information, `alpha_init = 1`
+    // is the standard quasi-Newton choice that the Wolfe line search accepts
+    // in one evaluation for well-conditioned problems.
+    ScalarType alpha_init = ScalarType{1};
+    if (fresh_inverse_hessian_) {
+      const ScalarType search_direction_norm = search_direction.norm();
+      alpha_init = (search_direction_norm > eps)
+                       ? ScalarType{1} / search_direction_norm
+                       : ScalarType{1};
+    }
 
-    const StateType next = StateType(current.x + rate * search_direction);
+    // Line search reuses the cached `(current_value, current_gradient)` and
+    // reports `(next_x, next_gradient)` from its last internal evaluation,
+    // so we avoid two redundant full function evaluations per iteration
+    // (one at the starting point, one at the accepted step).
+    VectorType next_x;
     VectorType next_gradient;
-    function(next.x, &next_gradient);
+    linesearch::MoreThuente<FunctionType, 1>::Search(
+        current.x, current_value, current_gradient, search_direction, function,
+        alpha_init, &next_x, /*f_out=*/nullptr, &next_gradient);
 
-    // Update inverse Hessian estimate.
-    const VectorType s = rate * search_direction;
+    const StateType next = StateType(next_x);
+
+    // Update the inverse Hessian approximation (Nocedal & Wright eqn. 6.17).
+    //
+    // Guard against degenerate curvature: when `y^T s` is non-positive or
+    // effectively zero (which happens if the line search failed and returned
+    // `rate = 0`, or if the Wolfe conditions were only marginally met),
+    // performing the BFGS update divides by a near-zero `rho` and produces
+    // `inf`/`nan` entries that permanently destroy the approximation.  In
+    // that case skip the update and keep the previous inverse Hessian.
+    const VectorType s = next.x - current.x;
     const VectorType y = next_gradient - current_gradient;
-    const ScalarType rho = 1.0 / y.dot(s);
-
-    inverse_hessian_ =
-        inverse_hessian_ -
-        rho * (s * (y.transpose() * inverse_hessian_) +
-               (inverse_hessian_ * y) * s.transpose()) +
-        rho * (rho * y.dot(inverse_hessian_ * y) + 1.0) * (s * s.transpose());
+    const ScalarType ys = y.dot(s);
+    if (ys > eps * s.norm() * y.norm()) {
+      const ScalarType rho = ScalarType{1} / ys;
+      const VectorType Hy = inverse_hessian_ * y;
+      const ScalarType yHy = y.dot(Hy);
+      inverse_hessian_ =
+          inverse_hessian_ -
+          rho * (s * Hy.transpose() + Hy * s.transpose()) +
+          rho * (rho * yHy + ScalarType{1}) * (s * s.transpose());
+      fresh_inverse_hessian_ = false;
+    }
+    // else: keep the previous inverse_hessian_ -- it was valid last step.
 
     return next;
   }
 
  private:
-  int dim_;
+  int dim_ = 0;
   MatrixType inverse_hessian_;
+  // `true` after `InitializeSolver` and after any reset to the identity.
+  // Used to scale the initial line-search step.
+  bool fresh_inverse_hessian_ = true;
 };
 
 }  // namespace cppoptlib::solver
