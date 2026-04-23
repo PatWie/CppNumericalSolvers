@@ -49,9 +49,9 @@ template <class, class = void>
 struct IsFunctionState : std::false_type {};
 
 template <class S>
-struct IsFunctionState<
-    S, std::void_t<decltype(std::declval<S>().value),
-                   decltype(std::declval<S>().gradient)>> : std::true_type {};
+struct IsFunctionState<S, std::void_t<decltype(std::declval<S>().value),
+                                      decltype(std::declval<S>().gradient)>>
+    : std::true_type {};
 
 // Returns a callback function that prints progress to the specified stream.
 // The output stream (e.g., std::cout, std::cerr, or an std::ofstream)
@@ -71,9 +71,22 @@ auto PrintProgressCallback(std::ostream& output_stream) {
                   << progress.num_iterations << " ---\n";
 
     // --- Function & State Information ---
-    output_stream << std::left << std::setw(label_width)
-                  << "  Value:" << std::right << std::setw(num_width)
-                  << function(state.x) << "\n";
+    // Read the cached value/gradient from the populated FunctionState.
+    // Fall back to one `function()` call only if the state isn't populated
+    // (e.g. first iteration with a user-supplied state that didn't go
+    // through `Solver::Minimize`'s initial evaluating constructor).
+    if constexpr (IsFunctionState<StateType>::value) {
+      const auto value = (state.gradient.size() == state.x.size())
+                             ? state.value
+                             : function(state.x);
+      output_stream << std::left << std::setw(label_width)
+                    << "  Value:" << std::right << std::setw(num_width) << value
+                    << "\n";
+    } else {
+      output_stream << std::left << std::setw(label_width)
+                    << "  Value:" << std::right << std::setw(num_width)
+                    << function(state.x) << "\n";
+    }
 
     // Format vector/matrix output using a stringstream to avoid messing up
     // widths easily
@@ -86,8 +99,18 @@ auto PrintProgressCallback(std::ostream& output_stream) {
     // --- Gradient (Conditional) ---
     if constexpr (FunctionType::Differentiability >=
                   cppoptlib::function::DifferentiabilityMode::First) {
-      typename FunctionType::VectorType gradient(state.x.size());
-      function(state.x, &gradient);
+      typename FunctionType::VectorType gradient;
+      if constexpr (IsFunctionState<StateType>::value) {
+        if (state.gradient.size() == state.x.size()) {
+          gradient = state.gradient;
+        } else {
+          gradient.resize(state.x.size());
+          function(state.x, &gradient);
+        }
+      } else {
+        gradient.resize(state.x.size());
+        function(state.x, &gradient);
+      }
       std::stringstream ss_grad;
       ss_grad << gradient.transpose();
       output_stream << std::left << std::setw(label_width) << "  Gradient:"
