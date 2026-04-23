@@ -33,6 +33,7 @@
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 
 namespace cppoptlib::function {
 
@@ -168,13 +169,55 @@ FunctionExpr(const Expr&)
 //   ptr = expr.clone(); // Assuming your expressions have a clone() method.
 // }
 
+// A point along the optimization trajectory, together with the objective
+// value and gradient at that point.  The invariant callers rely on is:
+// **every FunctionState carries the value and gradient at its `x`.**  Only
+// two places construct a FunctionState that leaves this invariant intact:
+//
+//   1. The `(function, x)` constructor below, which evaluates once and
+//      stores all fields.
+//   2. The `(x, value, gradient)` "trust-me" constructor, used by the line
+//      search to hand back the accepted step without re-evaluating: the
+//      line search already computed those numbers on its last internal
+//      trial point.
+//
+// Components that consume a FunctionState (Progress::Update, callbacks,
+// the outer solver loop) therefore read `state.value` and `state.gradient`
+// directly instead of calling `function(state.x, ...)` again.  This
+// eliminates the "three redundant function calls per iteration" pattern
+// that showed up in traces against libLBFGS and L-BFGS-B Fortran 3.0.
 template <typename TScalar, int TDimension = Eigen::Dynamic>
 struct FunctionState {
   static constexpr int NumConstraints = 0;
+  using ScalarType = TScalar;
   using VectorType = Eigen::Matrix<TScalar, TDimension, 1>;
-  VectorType x;
 
-  explicit FunctionState(VectorType x) : x(x) {}
+  VectorType x;
+  ScalarType value = ScalarType{0};
+  VectorType gradient;  // empty for DifferentiabilityMode::None.
+
+  // Legacy x-only constructor.  Leaves value = 0 and gradient = empty; the
+  // caller must populate them before the state is consumed by the new
+  // eval-free code paths.  Kept so existing user code that writes
+  // `FunctionState(x0)` continues to compile; the outer solver `Minimize`
+  // will evaluate `function(x)` once and rebuild a fully-populated state.
+  explicit FunctionState(VectorType x_in) : x(std::move(x_in)) {}
+
+  // Evaluate `function` at `x` once and populate all fields.
+  template <class FunctionT>
+  FunctionState(const FunctionT& function, VectorType x_in)
+      : x(std::move(x_in)) {
+    if constexpr (FunctionT::Differentiability == DifferentiabilityMode::None) {
+      value = function(x);
+    } else {
+      value = function(x, &gradient);
+    }
+  }
+
+  // Trust-me constructor: caller has already computed `value` and `gradient`
+  // at `x` (typically the line search's last internal evaluation).
+  FunctionState(VectorType x_in, ScalarType value_in, VectorType gradient_in)
+      : x(std::move(x_in)), value(value_in), gradient(std::move(gradient_in)) {}
 };
 
 template <typename TScalar, int TDimension>
