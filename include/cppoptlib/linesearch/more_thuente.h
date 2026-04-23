@@ -29,6 +29,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
+
+#include "../function_base.h"
 
 namespace cppoptlib::solver::linesearch {
 
@@ -101,6 +104,34 @@ class MoreThuente {
     if (f_out) *f_out = f;
     if (g_out) *g_out = std::move(g);
     return alpha;
+  }
+
+  /**
+   * @brief Run the More-Thuente search from a fully-evaluated starting state
+   * and return a fully-evaluated accepted state.
+   *
+   * This is the preferred overload for solvers that keep `FunctionState`
+   * populated along the trajectory.  The input state provides `x`, `value`,
+   * and `gradient` (no starting-point re-evaluation); the returned state
+   * carries the final `(x, value, gradient)` captured from the line
+   * search's last internal evaluation (no post-search re-evaluation).
+   * `alpha_out`, if non-null, receives the accepted step width.
+   */
+  template <class State>
+  static State Search(const State& start, const VectorType& search_direction,
+                      const FunctionType& function,
+                      const ScalarType alpha_init = ScalarType{1},
+                      ScalarType* alpha_out = nullptr) {
+    ScalarType alpha = alpha_init;
+    ScalarType f = start.value;
+    VectorType g = start.gradient;
+    VectorType s = search_direction.eval();
+    VectorType xx = start.x;
+
+    cvsrch(function, &xx, &f, &g, &alpha, s);
+
+    if (alpha_out) *alpha_out = alpha;
+    return State(std::move(xx), f, std::move(g));
   }
 
   static int cvsrch(const FunctionType& function, VectorType* x, ScalarType* f,
