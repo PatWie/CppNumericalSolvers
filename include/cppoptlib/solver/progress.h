@@ -96,6 +96,14 @@ struct Progress {
   Progress() = default;
 
   // Updates state from function information.
+  //
+  // For plain `FunctionState`, the `(value, gradient)` invariant means we
+  // can read the numbers we need directly from the two state arguments
+  // instead of calling `function()` again.  The `AugmentedLagrangeState`
+  // branch still re-evaluates because the augmented-Lagrangian objective
+  // is a *composite* built from `function`, the multipliers, and the
+  // penalty, none of which are stored as a cached `(value, gradient)` on
+  // the state itself.
   void Update(const FunctionType& function,
               const StateType& previous_function_state,
               const StateType& current_function_state,
@@ -105,27 +113,30 @@ struct Progress {
     VectorType previous_gradient, current_gradient;
     ScalarType previous_value;
     ScalarType current_value;
-    if constexpr (FunctionType::Differentiability >=
-                  cppoptlib::function::DifferentiabilityMode::First) {
-      if constexpr (StateType::NumConstraints > 0) {
-        const auto previous_function =
-            cppoptlib::function::ToAugmentedLagrangian(
-                function, previous_function_state.multiplier_state,
-                previous_function_state.penalty_state);
-        const auto current_function =
-            cppoptlib::function::ToAugmentedLagrangian(
-                function, current_function_state.multiplier_state,
-                current_function_state.penalty_state);
+    if constexpr (StateType::NumConstraints > 0) {
+      // Augmented-Lagrangian path: value/gradient live in the composite
+      // objective, not on the state, so we still evaluate here.
+      const auto previous_function = cppoptlib::function::ToAugmentedLagrangian(
+          function, previous_function_state.multiplier_state,
+          previous_function_state.penalty_state);
+      const auto current_function = cppoptlib::function::ToAugmentedLagrangian(
+          function, current_function_state.multiplier_state,
+          current_function_state.penalty_state);
 
-        previous_value = previous_function(previous_x, &previous_gradient);
-        current_value = current_function(current_x, &current_gradient);
-      } else {
-        previous_value = function(previous_x, &previous_gradient);
-        current_value = function(current_x, &current_gradient);
-      }
+      previous_value = previous_function(previous_x, &previous_gradient);
+      current_value = current_function(current_x, &current_gradient);
+    } else if constexpr (FunctionType::Differentiability >=
+                         cppoptlib::function::DifferentiabilityMode::First) {
+      // FunctionState path: read cached (value, gradient) populated by the
+      // solver/line search -- no redundant function() calls.
+      previous_value = previous_function_state.value;
+      current_value = current_function_state.value;
+      previous_gradient = previous_function_state.gradient;
+      current_gradient = current_function_state.gradient;
     } else {
-      previous_value = function(previous_x);
-      current_value = function(current_x);
+      // None-mode FunctionState: only value is tracked.
+      previous_value = previous_function_state.value;
+      current_value = current_function_state.value;
     }
 
     num_iterations++;

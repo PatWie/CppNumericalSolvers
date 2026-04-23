@@ -208,7 +208,10 @@ class Lbfgsb
   std::tuple<StateType, ProgressType> Minimize(
       const FunctionType& function, const StateType& function_state) override {
     ProgressType solver_state;
-    StateType current_function_state = function_state;
+    // Establish the `(value, gradient)` invariant on `current_function_state`
+    // so `Progress::Update` can read cached fields instead of re-evaluating.
+    // Mirrors the base-class `Minimize` loop.
+    StateType current_function_state(function, function_state.x);
 
     // Stash the caller's gradient-norm tolerance, then suppress the base
     // class's full-gradient test so only our projected-gradient test drives
@@ -225,6 +228,12 @@ class Lbfgsb
       const StateType previous_function_state = current_function_state;
       current_function_state = this->OptimizationStep(
           function, previous_function_state, solver_state);
+      // Repopulate the state's fields at the new iterate so
+      // `Progress::Update` sees the right numbers.  The same temporary
+      // extra eval that the base loop pays: it will go away once
+      // `OptimizationStep` below is migrated to return a populated state
+      // directly from its line search.
+      current_function_state = StateType(function, current_function_state.x);
 
       solver_state.Update(function, previous_function_state,
                           current_function_state, this->stopping_progress);
