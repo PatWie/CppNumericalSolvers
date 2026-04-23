@@ -34,12 +34,24 @@
 #include <iostream>
 #include <sstream>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 
 #include "../function.h"
 #include "progress.h"
 
 namespace cppoptlib::solver {
+
+// Trait: true if `StateType` is a `FunctionState` (and thus participates in
+// the `(value, gradient)` invariant) rather than a separate state like
+// `AugmentedLagrangeState`.
+template <class, class = void>
+struct IsFunctionState : std::false_type {};
+
+template <class S>
+struct IsFunctionState<
+    S, std::void_t<decltype(std::declval<S>().value),
+                   decltype(std::declval<S>().gradient)>> : std::true_type {};
 
 // Returns a callback function that prints progress to the specified stream.
 // The output stream (e.g., std::cout, std::cerr, or an std::ofstream)
@@ -147,7 +159,14 @@ class Solver {
       const FunctionType& function, const StateType& function_state) {
     // Solver state during the optimization.
     ProgressType solver_state;
+    // Evaluate `function` once at the user-supplied starting point so the
+    // `(value, gradient)` invariant on `FunctionState` is established.  For
+    // `AugmentedLagrangeState` and other non-FunctionState types this
+    // `if constexpr` branch is skipped and we keep the caller's state as-is.
     StateType current_function_state = function_state;
+    if constexpr (IsFunctionState<StateType>::value) {
+      current_function_state = StateType(function, function_state.x);
+    }
 
     this->InitializeSolver(function, function_state);
 
@@ -157,6 +176,18 @@ class Solver {
       StateType previous_function_state = current_function_state;
       current_function_state = this->OptimizationStep(
           function, previous_function_state, solver_state);
+
+      // Until every solver is migrated to produce a fully-populated state
+      // from its line search, rebuild `current_function_state` so the
+      // `(value, gradient)` invariant holds for the callback and
+      // `Progress::Update` below.  This trades one temporary extra eval
+      // per iteration for an interface contract; solvers that migrate
+      // first to produce populated states incur no such overhead (the
+      // re-evaluation just overwrites identical numbers).
+      if constexpr (IsFunctionState<StateType>::value) {
+        current_function_state =
+            StateType(function, current_function_state.x);
+      }
 
       solver_state.Update(function, previous_function_state,
                           current_function_state, stopping_progress);
