@@ -103,17 +103,19 @@ class Lbfgs
         FunctionType::Differentiability ==
         cppoptlib::function::DifferentiabilityMode::Second;
     VectorType preconditioner_diagonal = VectorType::Ones(current.x.size());
-    VectorType current_gradient;
-    ScalarType current_value;
+    // Read the cached (value, gradient) from the populated FunctionState.
+    // For second-order mode we still need the Hessian diagonal, which is
+    // not stored on the state, so evaluate once to get it alongside a
+    // fresh gradient.  For first-order the gradient is read from the
+    // cache and no evaluation happens here.
+    VectorType current_gradient = current.gradient;
     if constexpr (FunctionType::Differentiability ==
                   cppoptlib::function::DifferentiabilityMode::Second) {
       MatrixType current_hessian;
-      current_value = function(current.x, &current_gradient, &current_hessian);
+      function(current.x, &current_gradient, &current_hessian);
       preconditioner_diagonal =
           current_hessian.diagonal().cwiseAbs().array() + eps;
       preconditioner_diagonal = preconditioner_diagonal.cwiseInverse();
-    } else {
-      current_value = function(current.x, &current_gradient);
     }
 
     // --- Two-Loop Recursion ---
@@ -199,22 +201,17 @@ class Lbfgs
           (gradient_norm > eps) ? ScalarType{1} / gradient_norm : ScalarType{1};
     }
 
-    // Perform a line search.  The cached `(current_value, current_gradient)`
-    // at `current.x` is passed in so the line search doesn't re-evaluate the
-    // starting point, and `(next.x, next_gradient)` are captured from the
-    // final internal line-search evaluation -- together avoiding two
-    // redundant full function evaluations per iteration.
-    VectorType next_x;
-    VectorType next_gradient;
-    linesearch::MoreThuente<FunctionType, 1>::Search(
-        current.x, current_value, current_gradient, -search_direction, function,
-        alpha_init, &next_x, /*f_out=*/nullptr, &next_gradient);
-
-    const StateType next = StateType(next_x);
+    // Perform a line search.  The incoming `current` already carries
+    // `(value, gradient)` at `current.x`, and the `State`-returning
+    // overload of `Search` produces a `next` whose `(value, gradient)` are
+    // captured from the line search's last internal evaluation.  No
+    // redundant evaluations in either direction.
+    const StateType next = linesearch::MoreThuente<FunctionType, 1>::Search(
+        current, -search_direction, function, alpha_init);
 
     // Compute the differences for the new correction pair.
     const VectorType x_diff = next.x - current.x;
-    const VectorType grad_diff = next_gradient - current_gradient;
+    const VectorType grad_diff = next.gradient - current_gradient;
 
     // --- Curvature Condition Check with Cautious Update ---
     // We require:

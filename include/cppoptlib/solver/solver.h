@@ -177,16 +177,19 @@ class Solver {
       current_function_state = this->OptimizationStep(
           function, previous_function_state, solver_state);
 
-      // Until every solver is migrated to produce a fully-populated state
-      // from its line search, rebuild `current_function_state` so the
-      // `(value, gradient)` invariant holds for the callback and
-      // `Progress::Update` below.  This trades one temporary extra eval
-      // per iteration for an interface contract; solvers that migrate
-      // first to produce populated states incur no such overhead (the
-      // re-evaluation just overwrites identical numbers).
+      // Re-establish the `(value, gradient)` invariant on
+      // `current_function_state`.  Solvers that already return a populated
+      // state from their line search leave `gradient.size() == x.size()`
+      // -- in that case skip the rebuild so the optimization loop pays no
+      // redundant evaluation.  Unmigrated solvers return a state with an
+      // empty `gradient`; rebuild to keep `Update` and the callback
+      // consistent.
       if constexpr (IsFunctionState<StateType>::value) {
-        current_function_state =
-            StateType(function, current_function_state.x);
+        if (current_function_state.gradient.size() !=
+            current_function_state.x.size()) {
+          current_function_state =
+              StateType(function, current_function_state.x);
+        }
       }
 
       solver_state.Update(function, previous_function_state,

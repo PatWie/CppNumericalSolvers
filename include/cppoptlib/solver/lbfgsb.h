@@ -228,12 +228,13 @@ class Lbfgsb
       const StateType previous_function_state = current_function_state;
       current_function_state = this->OptimizationStep(
           function, previous_function_state, solver_state);
-      // Repopulate the state's fields at the new iterate so
-      // `Progress::Update` sees the right numbers.  The same temporary
-      // extra eval that the base loop pays: it will go away once
-      // `OptimizationStep` below is migrated to return a populated state
-      // directly from its line search.
-      current_function_state = StateType(function, current_function_state.x);
+      // Repopulate the state only if the solver returned an unpopulated
+      // one (legacy path).  See the analogous comment in
+      // `Solver::Minimize`.
+      if (current_function_state.gradient.size() !=
+          current_function_state.x.size()) {
+        current_function_state = StateType(function, current_function_state.x);
+      }
 
       solver_state.Update(function, previous_function_state,
                           current_function_state, this->stopping_progress);
