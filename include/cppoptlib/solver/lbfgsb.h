@@ -101,15 +101,19 @@ class Lbfgsb
   StateType OptimizationStep(const FunctionType& function,
                              const StateType& current,
                              const ProgressType& /*progress*/) override {
-    // Project current point to bounds (handles infeasible initial points)
-    const VectorType x =
-        current.x.cwiseMin(upper_bound_).cwiseMax(lower_bound_);
+    // Project current point to bounds (handles infeasible initial points).
+    // If the current iterate was already feasible (which it is from the
+    // second iteration onward) the cached `(value, gradient)` remain valid;
+    // otherwise we have to re-evaluate after the clip.
+    VectorType x = current.x.cwiseMin(upper_bound_).cwiseMax(lower_bound_);
+    ScalarType current_value = current.value;
+    VectorType current_gradient = current.gradient;
+    if (x != current.x) {
+      current_value = function(x, &current_gradient);
+    }
 
     // STEP 2: compute the cauchy point
     VectorType cauchy_point = VectorType::Zero(x.rows());
-
-    VectorType current_gradient;
-    const ScalarType current_value = function(x, &current_gradient);
 
     // Record the projected-gradient norm at the current iterate so the
     // overridden Minimize loop can test it against
@@ -130,41 +134,36 @@ class Lbfgsb
         SubspaceMinimization(x, current_gradient, cauchy_point, c);
 
     // STEP 4: perform linesearch and STEP 5: compute gradient.  The
-    // three-output overload of `MoreThuente::Search` reuses the cached
-    // `(current_value, current_gradient)` at the starting point and reports
-    // `(next_x, next_gradient)` at the accepted step, so we avoid two
-    // redundant function evaluations per iteration.
-    VectorType next_x;
-    VectorType next_gradient;
+    // `State`-returning overload of `MoreThuente::Search` consumes the
+    // cached `(value, gradient)` from the starting state and captures the
+    // accepted step's `(value, gradient)` from its final internal
+    // evaluation -- no redundant evaluations per iteration.
+    //
+    // When `do_line_search` is false (no free variables, Cauchy point is
+    // already the quadratic minimizer subject to active bounds), we still
+    // have to evaluate once at the Cauchy point to populate the returned
+    // state.
+    StateType next = StateType(x, current_value, current_gradient);
     if (do_line_search) {
       const VectorType direction = subspace_min - x;
-      linesearch::MoreThuente<FunctionType, 1>::Search(
-          x, current_value, current_gradient, direction, function,
-          /*alpha_init=*/ScalarType{1}, &next_x, /*f_out=*/nullptr,
-          &next_gradient);
+      next = linesearch::MoreThuente<FunctionType, 1>::Search(
+          next, direction, function, /*alpha_init=*/ScalarType{1});
     } else {
-      // No free variables: the Cauchy point is already the quadratic
-      // minimizer subject to active bounds; take it unchanged.
-      next_x = subspace_min;
-      next_gradient.resize(next_x.size());
-      function(next_x, &next_gradient);
+      next = StateType(function, subspace_min);
     }
 
     // If the step crossed a bound (line search overshoots, or subspace min
     // extrapolates past the box), project back into the feasible region.
-    // After a projection `next_gradient` is no longer "the gradient at
-    // `next_x`", so re-evaluate in that case.
+    // After a projection the cached `(value, gradient)` are no longer
+    // correct for `next.x`, so re-evaluate in that case.
     const VectorType clipped_next_x =
-        next_x.cwiseMin(upper_bound_).cwiseMax(lower_bound_);
-    if (clipped_next_x != next_x) {
-      next_x = clipped_next_x;
-      function(next_x, &next_gradient);
+        next.x.cwiseMin(upper_bound_).cwiseMax(lower_bound_);
+    if (clipped_next_x != next.x) {
+      next = StateType(function, clipped_next_x);
     }
 
-    const StateType next = StateType(next_x);
-
     // prepare for next iteration
-    const VectorType new_y = next_gradient - current_gradient;
+    const VectorType new_y = next.gradient - current_gradient;
     const VectorType new_s = next.x - x;
 
     // STEP 6: Only update if positive curvature (s'*y > 0)

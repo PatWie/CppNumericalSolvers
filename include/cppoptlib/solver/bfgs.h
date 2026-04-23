@@ -74,8 +74,8 @@ class Bfgs
                              const ProgressType& /*progress*/) override {
     constexpr ScalarType eps = std::numeric_limits<ScalarType>::epsilon();
 
-    VectorType current_gradient;
-    const ScalarType current_value = function(current.x, &current_gradient);
+    // Read the cached gradient from the populated FunctionState (no eval).
+    const VectorType& current_gradient = current.gradient;
 
     VectorType search_direction = -inverse_hessian_ * current_gradient;
 
@@ -104,17 +104,11 @@ class Bfgs
                        : ScalarType{1};
     }
 
-    // Line search reuses the cached `(current_value, current_gradient)` and
-    // reports `(next_x, next_gradient)` from its last internal evaluation,
-    // so we avoid two redundant full function evaluations per iteration
-    // (one at the starting point, one at the accepted step).
-    VectorType next_x;
-    VectorType next_gradient;
-    linesearch::MoreThuente<FunctionType, 1>::Search(
-        current.x, current_value, current_gradient, search_direction, function,
-        alpha_init, &next_x, /*f_out=*/nullptr, &next_gradient);
-
-    const StateType next = StateType(next_x);
+    // Line search consumes the populated `current` and returns a populated
+    // `next` whose `(value, gradient)` are captured from its final internal
+    // trial evaluation -- no redundant evaluations at either end.
+    const StateType next = linesearch::MoreThuente<FunctionType, 1>::Search(
+        current, search_direction, function, alpha_init);
 
     // Update the inverse Hessian approximation (Nocedal & Wright eqn. 6.17).
     //
@@ -125,7 +119,7 @@ class Bfgs
     // `inf`/`nan` entries that permanently destroy the approximation.  In
     // that case skip the update and keep the previous inverse Hessian.
     const VectorType s = next.x - current.x;
-    const VectorType y = next_gradient - current_gradient;
+    const VectorType y = next.gradient - current_gradient;
     const ScalarType ys = y.dot(s);
     if (ys > eps * s.norm() * y.norm()) {
       const ScalarType rho = ScalarType{1} / ys;
