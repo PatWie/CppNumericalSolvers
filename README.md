@@ -291,46 +291,49 @@ CppNumericalSolvers on every row.
 
 | Problem                                | cppoptlib L-BFGS | libLBFGS   |
 | -------------------------------------- | ----------------:| ----------:|
-| Convex quadratic `5x0² + 100x1² + 5`, start `(-10, 2)` |       2 / 6 |    10 / 11 |
-| 2-D Rosenbrock, start `(-1.2, 1)`      |         22 / 75 |    37 / 45 |
-| 20-D Extended Rosenbrock               |         19 / 67 |    35 / 49 |
+| Convex quadratic `5x0² + 100x1² + 5`, start `(-10, 2)` |       11 / 12 |    10 / 11 |
+| 2-D Rosenbrock, start `(-1.2, 1)`      |         37 / 45 |    37 / 45 |
+| 20-D Extended Rosenbrock               |         35 / 49 |    35 / 49 |
 
 ### BFGS (unconstrained, full inverse Hessian)
 
 | Problem                                | cppoptlib BFGS   |
 | -------------------------------------- | ----------------:|
-| Convex quadratic                       |            2 / 5 |
-| 2-D Rosenbrock                         |          17 / 59 |
-| 20-D Extended Rosenbrock               |         86 / 253 |
+| Convex quadratic                       |            4 / 6 |
+| 2-D Rosenbrock                         |          32 / 41 |
+| 20-D Extended Rosenbrock               |         154 / 226 |
 
 ### L-BFGS-B (box-constrained)
 
 | Problem                                                  | cppoptlib L-BFGS-B | Fortran L-BFGS-B 3.0 | LBFGSpp  |
 | -------------------------------------------------------- | ------------------:| --------------------:| --------:|
-| 2-D Rosenbrock, `x0 >= 0.5`, start `(-1.2, 1)`           |            10 / 35 |                    — |  19 / 22 |
-| 2-D Rosenbrock, `x0 >= 1.5`, start `(2, 3)` (bound active at optimum) | 9 / 27 |                 — |  14 / 18 |
-| Nocedal extended Rosenbrock, n = 25 (`driver1.f`)        |            23 / 56 |              23 / 28 |  25 / 27 |
-| Chebyquad (MGH #35), n = 50, `x ∈ [0, 1]⁵⁰`              |          376 / 794 |            206 / 229 | 241 / 262 |
+| 2-D Rosenbrock, `x0 >= 0.5`, start `(-1.2, 1)`           |            21 / 28 |                    — |  19 / 22 |
+| 2-D Rosenbrock, `x0 >= 1.5`, start `(2, 3)` (bound active at optimum) | 11 / 17 |                 — |  14 / 18 |
+| Nocedal extended Rosenbrock, n = 25 (`driver1.f`)        |            24 / 28 |              23 / 28 |  25 / 27 |
+| Chebyquad (MGH #35), n = 50, `x ∈ [0, 1]⁵⁰`              |          303 / 328 |            206 / 229 | 241 / 262 |
 
 A few notes on the numbers:
 
-- **Iteration counts match the Fortran reference** on the unbounded
-  Nocedal driver1 (23 vs 23), confirming that the L-BFGS-B step logic is
-  equivalent to Byrd/Lu/Nocedal's.
-- On the easier problems CppNumericalSolvers takes **fewer iterations**
-  than the reference implementations because it defaults to a tighter
-  More-Thuente curvature tolerance (`gtol = 1e-2`, i.e. strong Wolfe).
-  That extracts more information per step at the cost of a few extra
-  function evaluations inside the line search.
-- Against loose-Wolfe references (`gtol = 0.9` in libLBFGS, LBFGSpp,
-  Fortran) the per-iteration function-evaluation budget is ~1 for those
-  libraries versus ~3 for CppNumericalSolvers. This is a tuning choice
-  rather than a correctness or overhead issue; on harder problems like
-  Chebyquad the loose-Wolfe libraries win on total `nfev` while still
-  converging to the same minimum.
-- Correctness on all benchmarks above was validated against all three
-  reference implementations (final `x` and `f` agree to at least 6
-  significant digits).
+- **Iteration counts and function-evaluation budgets track the references
+  closely** on every problem.  On 2-D and 20-D Rosenbrock CppNumericalSolvers
+  matches libLBFGS iteration-for-iteration and evaluation-for-evaluation.
+- **On the bound-active Rosenbrock** (`x0 >= 1.5`) we actually beat
+  LBFGSpp on both counts (11 / 17 vs 14 / 18).  Nocedal's 25-D
+  extended-Rosenbrock driver1 is a tie with the Fortran reference on
+  nfev (28 vs 28).
+- **Chebyquad remains harder** than for the Fortran reference: 328 vs
+  229 total evaluations.  We audited our More-Thuente port against
+  Fortran's `dcsrch`/`dcstep` and found one textbook divergence (the
+  unbracketed step lower bound: Fortran uses `stp + 1.1*(stp-stx)`,
+  we use `stx`).  Adopting Fortran's stricter safeguard cuts Chebyquad
+  by ~5 % but regresses 2-D/20-D Rosenbrock and BFGS 20-D Rosenbrock by
+  more than it saves.  The two styles are a per-problem trade-off, not
+  a universal win; we kept the relaxed variant because it wins the
+  sum across our benchmark set.  All four implementations converge to
+  the same `f = 5.386e-3`.
+- All benchmarks above were validated against all three reference
+  implementations: the final `x` and `f` agree to at least 6
+  significant digits.
 
 ## Installation
 

@@ -141,7 +141,7 @@ class MoreThuente {
     int infoc = 1;
     constexpr ScalarType xtol = 1e-15;
     constexpr ScalarType ftol = 1e-4;
-    constexpr ScalarType gtol = 1e-2;
+    constexpr ScalarType gtol = 0.9;
     constexpr ScalarType stpmin = 1e-15;
     constexpr ScalarType stpmax = 1e15;
     constexpr ScalarType xtrapf = 4;
