@@ -250,7 +250,16 @@ Progress<FunctionType, StateType> DefaultStoppingSolverProgress() {
   using ScalarType = typename Progress<FunctionType, StateType>::ScalarType;
   progress.num_iterations = 10000;
   progress.x_delta = ScalarType{1e-9};
-  progress.x_delta_violations = 5;
+  // One consecutive x-delta violation is enough for gradient-based solvers:
+  // a step that moves `x` by less than `1e-9` while `|g|` has not met the
+  // gradient-norm test is a line-search failure, not a legitimate pause.
+  // Continuing past it just burns `maxfev` line-search evaluations per
+  // iteration on a stuck iterate (seen on MGH 10 Meyer where the tail used
+  // to waste ~140 nfev in 7 repeated failed line searches).  Derivative-
+  // free solvers like `NelderMead` override this in their own constructor
+  // because their simplex does legitimately produce consecutive small
+  // x-deltas during contraction.
+  progress.x_delta_violations = 1;
   // Unconstrained L-BFGS / BFGS / Gradient-descent etc: no f-delta stopping
   // by default.  Reference implementations (Nocedal `lbfgs_um`, Okazaki's
   // libLBFGS with `past=0`) use gradient-norm alone.  Ill-conditioned

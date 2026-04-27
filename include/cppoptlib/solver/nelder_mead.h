@@ -65,6 +65,23 @@ class NelderMead
 
   using Superclass::Superclass;
 
+  // Nelder-Mead is derivative-free: it cannot use a gradient-norm test to
+  // confirm "we really are at a minimum", so the solver relies on
+  // `x_delta`/`f_delta` alone.  Its simplex naturally produces consecutive
+  // iterations with very small x-deltas during legitimate progress
+  // (e.g. inside-contraction sequences while shrinking around a plateau),
+  // so the gradient-aware default of one-strike termination yields false
+  // positives here.  Restore the five-strike threshold used historically
+  // by the library's other derivative-free convergence paths.  Gradient-
+  // based solvers keep the one-strike default because a zero-step with
+  // non-zero gradient is a genuine line-search failure, not a pause.
+  NelderMead()
+      : Superclass(
+            cppoptlib::solver::DefaultStoppingSolverProgress<FunctionType,
+                                                             StateType>()) {
+    this->stopping_progress.x_delta_violations = 5;
+  }
+
   // Initialize the solver with the starting point.
   void InitializeSolver(const FunctionType& /*function*/,
                         const StateType& initial_state) override {
