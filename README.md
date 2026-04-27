@@ -1,330 +1,204 @@
-# CppNumericalSolvers: A Modern C++17 Header-Only Optimization Library
+# CppNumericalSolvers
 
-CppNumericalSolvers is a lightweight, header-only C++17 library for numerical
-optimization. It provides a suite of modern, efficient solvers for both
-unconstrained and constrained problems, designed for easy integration and high
-performance. Where it matters, its performance holds up: it matches or beats
-the canonical reference and original implementations on most problems. A key
-feature is its use of function expression templates, which allow you to build
-complex objective functions on-the-fly without writing boilerplate code.
+A header-only C++17 optimization library that is fast, reliable, and
+easy to integrate.  On an [82-problem benchmark][bench] it converges on 98% of
+problems (tied for best) with the lowest mean function-evaluation count
+of any solver tested -- ahead of Nocedal's Fortran L-BFGS, libLBFGS,
+and LBFGSpp.
 
-The library is built on Eigen3 and is distributed under the permissive MIT
-license, making it suitable for both academic and commercial projects.
+[bench]: https://github.com/PatWie/CppNumericalSolversBenchmark
 
-## Benchmarked against the references
-
-On the full 34-problem Moré-Garbow-Hillstrom (1981) unconstrained test
-set plus MGH-35 Chebyquad with box bounds, CppNumericalSolvers is
-competitive with -- and on most problems faster than -- the canonical
-reference implementations (Nocedal's Fortran L-BFGS and L-BFGS-B 3.0,
-Naoaki Okazaki's [libLBFGS](https://github.com/chokkan/liblbfgs), and
-Yixuan Qiu's [LBFGSpp](https://github.com/yixuan/LBFGSpp)).  Across
-the 31 problems where cppoptlib converges, it takes 1st place on 18
-(7 outright, 11 tied with a reference), 2nd on 4, 3rd on 3, and 4th
-on 6, measured vs the three reference libraries.  A Hager-Zhang line
-search is available behind a template parameter as an alternative to
-the default Moré-Thuente.  cppoptlib converges to the same minimum as
-the reference libraries on every row.  The full reproducible benchmark
--- with per-library driver sources, submodule-pinned reference
-libraries, and auto-generated results -- lives in
-**[CppNumericalSolversBenchmark](https://github.com/PatWie/CppNumericalSolversBenchmark)**.
-
-## Core Features
-
-- **Header-Only & Easy Integration**: Simply include the headers in your
-    project. No complex build steps required.
-- **Modern C++17 Design**: Utilizes modern C++ features for a clean, type-safe,
-    and expressive API.
-- **Powerful Expression Templates**: Compose complex objective functions from
-    simpler parts using operator overloading (`+`, `-`, `*`). This avoids manual
-    implementation of wrapper classes and promotes reusable code.
-- **Comprehensive Solver Suite**:
-  - **Unconstrained Solvers**: Gradient Descent, Conjugate Gradient, Newton's
-      Method, BFGS, L-BFGS, and Nelder-Mead.
-  - **Constrained Solvers**: L-BFGS-B (for box constraints) and the Augmented
-      Lagrangian method (for general equality and inequality constraints).
-- **Automatic Differentiation Utilities**: Includes tools to verify the
-    correctness of your analytical gradients and Hessians using finite difference
-    approximations.
-- **Permissive MIT License**: Free to use in any project, including commercial
-    applications.
-
-## Quick Start: Basic Minimization
-
-Here’s how to solve a simple unconstrained optimization problem. We'll minimize
-the function *f(x)=5x₀² + 100x₁² + 5*.
-
-### 1. Define the Objective Function
-
-First, create a class for your objective function that inherits from
-`cppoptlib::function::FunctionCRTP`. You need to implement `operator()` which
-returns the function value and optionally computes the gradient and Hessian.
+## Quick Start
 
 ```cpp
-#include <iostream>
 #include "cppoptlib/function.h"
 #include "cppoptlib/solver/lbfgs.h"
 
-// Use a CRTP-based class to define a 2D function with second-order derivatives.
-class MyObjective : public cppoptlib::function::FunctionCRTP<MyObjective, double, cppoptlib::function::DifferentiabilityMode::Second, 2> {
+// f(x) = 5*x0^2 + 100*x1^2 + 5
+class Quadratic : public cppoptlib::function::FunctionCRTP<
+    Quadratic, double, cppoptlib::function::DifferentiabilityMode::First, 2> {
  public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-  // The objective function: f(x) = 5*x₀² + 100*x₁² + 5
-  ScalarType operator()(const VectorType &x, VectorType *gradient, MatrixType *hessian) const {
-    if (gradient) {
-      *gradient = Eigen::Vector2d(10, 200).cwiseProduct(x);
-    }
-    if (hessian) {
-      hessian->setZero();
-      hessian->diagonal() << 10, 200;
-    }
-    return VectorType(5, 100).dot(x.cwiseProduct(x)) + 5;
+  ScalarType operator()(const VectorType &x, VectorType *grad) const {
+    if (grad) *grad = Eigen::Vector2d(10 * x[0], 200 * x[1]);
+    return 5 * x[0] * x[0] + 100 * x[1] * x[1] + 5;
   }
 };
-```
 
-### 2. Solve the Problem
-
-Instantiate your function, pick a solver, set a starting point, and run the minimization.
-
-```cpp
 int main() {
-  MyObjective f;
-  Eigen::Vector2d x_init;
-  x_init << -10, 2;
-
-  // Choose a solver (L-BFGS is a great all-rounder)
-  cppoptlib::solver::Lbfgs<MyObjective> solver;
-
-  // Create the initial state for the solver
-  auto initial_state = cppoptlib::function::FunctionState(x_init);
-
-  // Set a callback to print progress
-  solver.SetCallback(cppoptlib::solver::PrintProgressCallback<MyObjective, decltype(initial_state)>(std::cout));
-
-  // Run the minimization
-  auto [solution, solver_state] = solver.Minimize(f, initial_state);
-
-  std::cout << "\nSolver finished!" << std::endl;
-  std::cout << "Final Status: " << solver_state.status << std::endl;
-  std::cout << "Found minimum at: " << solution.x.transpose() << std::endl;
-  std::cout << "Function value: " << f(solution.x) << std::endl;
-
-  return 0;
+  Quadratic f;
+  Eigen::Vector2d x0(-10, 2);
+  cppoptlib::solver::Lbfgs<Quadratic> solver;
+  auto [solution, state] = solver.Minimize(f, cppoptlib::function::FunctionState(x0));
+  // solution.x ≈ (0, 0), solution.value ≈ 5
 }
 ```
 
-# The Power of Function Expression Templates
+Add to your project via CMake FetchContent:
 
-Manually creating a new C++ class for every objective function is tedious,
-especially when objectives are just different combinations of standard cost
-terms. CppNumericalSolvers uses expression templates to let you build complex
-objective functions from modular, reusable "cost functions".
+```cmake
+include(FetchContent)
+FetchContent_Declare(cppoptlib
+  GIT_REPOSITORY https://github.com/PatWie/CppNumericalSolvers.git
+  GIT_TAG main)
+FetchContent_MakeAvailable(cppoptlib)
+target_link_libraries(your_target PRIVATE CppNumericalSolvers)
+```
 
-Let's demonstrate this with a practical example: **Ridge Regression**. The goal
-is to find model parameters, `x`, that minimize a combination of two terms:
+Or clone and add `include/` to your include path.  The only dependency
+is Eigen3.
 
-- **Data Fidelity**: How well does the model fit the data? We measure this with
-    the squared error: ∥Ax−y∥².
-- **Regularization**: How complex is the model? We penalize complexity with the
-    L2 norm: ∥x∥².
+## Solvers
 
-The final objective is a weighted sum: **F(x) = ∥Ax−y∥² + λ∥x∥²**, where `λ` is
-a scalar weight that controls the trade-off.
+| Solver | Header | Order | Constraints |
+|---|---|---|---|
+| Gradient Descent | `solver/gradient_descent.h` | 1st | — |
+| Conjugate Gradient | `solver/conjugated_gradient_descent.h` | 1st | — |
+| L-BFGS | `solver/lbfgs.h` | 1st | — |
+| BFGS | `solver/bfgs.h` | 1st | — |
+| Newton | `solver/newton_descent.h` | 2nd | — |
+| Nelder-Mead | `solver/nelder_mead.h` | 0th | — |
+| L-BFGS-B | `solver/lbfgsb.h` | 1st | box |
+| Augmented Lagrangian | `solver/augmented_lagrangian.h` | any | equality / inequality |
 
-With expression templates, we can define each term as a separate, reusable
-class and then combine them with a single line of C++: **DataTerm + lambda *
-RegularizationTerm**.
-
----
-
-## 1. Define the Building Blocks
-
-First, we create classes for our two cost terms. Each is a self-contained, differentiable function.
+L-BFGS supports two line searches via a template parameter: Moré-Thuente
+(default) and Hager-Zhang.
 
 ```cpp
-#include <iostream>
+#include "cppoptlib/linesearch/hager_zhang.h"
+using HZSolver = cppoptlib::solver::Lbfgs<MyFunc, 10, cppoptlib::solver::linesearch::HagerZhang>;
+```
+
+## Expression Templates
+
+Build complex objectives from reusable parts without boilerplate.
+Example: Ridge Regression *F(x) = ||Ax - y||² + λ||x||²*.
+
+```cpp
 #include "cppoptlib/function.h"
 #include "cppoptlib/solver/lbfgs.h"
 
-// The first term: Data Fidelity as Squared Error: f(x) = ||Ax - y||^2
-class SquaredError : public cppoptlib::function::FunctionCRTP<SquaredError, double, cppoptlib::function::DifferentiabilityMode::Second> {
-private:
-    const Eigen::MatrixXd &A;
-    const Eigen::VectorXd &y;
-
-public:
-    SquaredError(const Eigen::MatrixXd &A, const Eigen::VectorXd &y) : A(A), y(y) {}
-
-    int GetDimension() const { return A.cols(); }
-
-    ScalarType operator()(const VectorType &x, VectorType *grad, MatrixType *hess) const {
-        Eigen::VectorXd residual = A * x - y;
-        if (grad) {
-            *grad = 2 * A.transpose() * residual;
-        }
-        if (hess) {
-            *hess = 2 * A.transpose() * A;
-        }
-        return residual.squaredNorm();
-    }
+class SquaredError : public cppoptlib::function::FunctionCRTP<
+    SquaredError, double, cppoptlib::function::DifferentiabilityMode::Second> {
+  const Eigen::MatrixXd &A;
+  const Eigen::VectorXd &y;
+ public:
+  SquaredError(const Eigen::MatrixXd &A, const Eigen::VectorXd &y) : A(A), y(y) {}
+  int GetDimension() const { return A.cols(); }
+  ScalarType operator()(const VectorType &x, VectorType *grad, MatrixType *hess) const {
+    Eigen::VectorXd r = A * x - y;
+    if (grad) *grad = 2 * A.transpose() * r;
+    if (hess) *hess = 2 * A.transpose() * A;
+    return r.squaredNorm();
+  }
 };
 
-// The second term: L2 Regularization: g(x) = ||x||^2
-class L2Regularization : public cppoptlib::function::FunctionCRTP<L2Regularization, double, cppoptlib::function::DifferentiabilityMode::Second> {
-public:
-    int dim;
-    explicit L2Regularization(int d) : dim(d) {}
-
-    int GetDimension() const { return dim; }
-
-    ScalarType operator()(const VectorType &x, VectorType *grad, MatrixType *hess) const {
-        if (grad) {
-            *grad = 2 * x;
-        }
-        if (hess) {
-            hess->setIdentity(dim, dim);
-            *hess *= 2;
-        }
-        return x.squaredNorm();
-    }
+class L2Reg : public cppoptlib::function::FunctionCRTP<
+    L2Reg, double, cppoptlib::function::DifferentiabilityMode::Second> {
+  int dim;
+ public:
+  explicit L2Reg(int d) : dim(d) {}
+  int GetDimension() const { return dim; }
+  ScalarType operator()(const VectorType &x, VectorType *grad, MatrixType *hess) const {
+    if (grad) *grad = 2 * x;
+    if (hess) { hess->setIdentity(dim, dim); *hess *= 2; }
+    return x.squaredNorm();
+  }
 };
-```
 
-## 2. Compose and Solve in `main`
-
-Now, we can combine these building blocks to create our final objective function and solve the problem.
-
-```cpp
 int main() {
-    // 1. Define the problem data
-    Eigen::MatrixXd A(3, 2);
-    A << 1, 2,
-         3, 4,
-         5, 6;
-    Eigen::VectorXd y(3);
-    y << 7, 8, 9;
+  Eigen::MatrixXd A(3, 2);  A << 1,2, 3,4, 5,6;
+  Eigen::VectorXd y(3);     y << 7, 8, 9;
+  double lambda = 0.1;
 
-    const double lambda = 0.1; // Regularization weight
+  // Compose: F(x) = ||Ax-y||^2 + 0.1 * ||x||^2
+  cppoptlib::function::FunctionExpr objective(SquaredError(A, y) + lambda * L2Reg(A.cols()));
 
-    // 2. Create instances of our reusable cost functions
-    auto data_term = SquaredError(A, y);
-    auto reg_term = L2Regularization(A.cols());
-
-    // 3. Compose the final objective using expression templates!
-    // F(x) = (||Ax - y||^2) + lambda * (||x||^2)
-    auto objective_expr = data_term + lambda * reg_term;
-
-    // 4. Wrap the expression for the solver. The library automatically handles
-    // the combination of values, gradients, and Hessians.
-    cppoptlib::function::FunctionExpr objective(objective_expr);
-
-    // 5. Solve as usual
-    Eigen::VectorXd x_init = Eigen::VectorXd::Zero(A.cols());
-    cppoptlib::solver::Lbfgs<decltype(objective)> solver;
-
-    auto [solution, solver_state] = solver.Minimize(objective, cppoptlib::function::FunctionState(x_init));
-
-    std::cout << "Found minimum at: " << solution.x.transpose() << std::endl;
-    std::cout << "Function value: " << objective(solution.x) << std::endl;
+  Eigen::VectorXd x0 = Eigen::VectorXd::Zero(A.cols());
+  cppoptlib::solver::Lbfgs<decltype(objective)> solver;
+  auto [sol, state] = solver.Minimize(objective, cppoptlib::function::FunctionState(x0));
+  std::cout << "x* = " << sol.x.transpose() << ", f* = " << sol.value << "\n";
 }
 ```
 
 ## Constrained Optimization
 
-Solve constrained problems using the Augmented Lagrangian method. Here, we
-solve *min f(x) = x₀ + x₁* subject to the equality constraint *x₀² + x₁² - 2 =
-0*. The optimal solution lies on the circle of radius √2 at the point (-1, -1).
+Solve *min x₀ + x₁* subject to *x₀² + x₁² = 2* using the Augmented
+Lagrangian method:
 
 ```cpp
 #include "cppoptlib/function.h"
 #include "cppoptlib/solver/augmented_lagrangian.h"
 #include "cppoptlib/solver/lbfgs.h"
 
-// Objective: f(x) = x_0 + x_1
-class SumObjective : public cppoptlib::function::FunctionXd<SumObjective> {
+class Sum : public cppoptlib::function::FunctionXd<Sum> {
  public:
-  ScalarType operator()(const VectorType &x, VectorType *grad) const {
-    if (grad) *grad = VectorType::Ones(x.size());
+  ScalarType operator()(const VectorType &x, VectorType *g) const {
+    if (g) *g = VectorType::Ones(x.size());
     return x.sum();
   }
 };
 
-// Constraint: c(x) = x_0^2 + x_1^2
-class Circle : public cppoptlib::function::FunctionXd<Circle> {
+class CircleNorm : public cppoptlib::function::FunctionXd<CircleNorm> {
  public:
-  ScalarType operator()(const VectorType &x, VectorType *grad) const {
-    if (grad) *grad = 2 * x;
+  ScalarType operator()(const VectorType &x, VectorType *g) const {
+    if (g) *g = 2 * x;
     return x.squaredNorm();
   }
 };
 
 int main() {
-  cppoptlib::function::FunctionExpr objective = SumObjective();
-  cppoptlib::function::FunctionExpr circle_constraint_base = Circle();
+  cppoptlib::function::FunctionExpr objective = Sum();
+  cppoptlib::function::FunctionExpr constraint = cppoptlib::function::FunctionExpr(CircleNorm()) - 2.0;
 
-  cppoptlib::function::FunctionExpr equality_constraint = circle_constraint_base - 2.0;
+  cppoptlib::function::ConstrainedOptimizationProblem problem(objective, {constraint});
 
-  cppoptlib::function::ConstrainedOptimizationProblem problem(
-      objective, {equality_constraint});
+  cppoptlib::solver::Lbfgs<decltype(problem)::ObjectiveFunctionType> inner;
+  cppoptlib::solver::AugmentedLagrangian solver(problem, inner);
 
-  cppoptlib::solver::Lbfgs<decltype(problem)::ObjectiveFunctionType> inner_solver;
-  cppoptlib::solver::AugmentedLagrangian solver(problem, inner_solver);
-
-  Eigen::VectorXd x_init(2);
-  x_init << 5, -3;
-
-  cppoptlib::solver::AugmentedLagrangeState<double> state(x_init, 1, 0, 10.0);
-
-  auto [solution, solver_state] = solver.Minimize(problem, state);
-
-  std::cout << "Solver finished!" << std::endl;
-  std::cout << "Found minimum at: " << solution.x.transpose() << std::endl;
-  std::cout << "Function value: " << objective(solution.x) << std::endl;
-
-  return 0;
+  Eigen::VectorXd x0(2);  x0 << 5, -3;
+  auto [sol, state] = solver.Minimize(problem,
+      cppoptlib::solver::AugmentedLagrangeState<double>(x0, 1, 0, 10.0));
+  // sol.x ≈ (-1, -1), f* ≈ -2
 }
 ```
 
-## Installation
+## Defining Functions
 
-CppNumericalSolvers is header-only. You just need a C++17 compatible compiler
-and Eigen3.
+Inherit from `FunctionCRTP` and implement `operator()`.  The template
+parameters control scalar type, differentiability order, and
+(optionally) compile-time dimension.
 
-### Recommended: CMake FetchContent
+```cpp
+// Dynamic-dimension, first-order:
+class MyFunc : public cppoptlib::function::FunctionCRTP<
+    MyFunc, double, cppoptlib::function::DifferentiabilityMode::First> { ... };
 
-Add this to your `CMakeLists.txt`:
-
-```cmake
-include(FetchContent)
-
-FetchContent_Declare(
-  cppoptlib
-  GIT_REPOSITORY https://github.com/PatWie/CppNumericalSolvers.git
-  GIT_TAG main # Or a specific commit/tag
-)
-
-FetchContent_MakeAvailable(cppoptlib)
-
-# ... then in your target:
-target_link_libraries(your_target PRIVATE CppNumericalSolvers)
+// Fixed 3D, second-order:
+class My3D : public cppoptlib::function::FunctionCRTP<
+    My3D, double, cppoptlib::function::DifferentiabilityMode::Second, 3> { ... };
 ```
 
-### Manual Integration
+Use `cppoptlib::utils::IsGradientCorrect` and `IsHessianCorrect` to
+verify your derivatives against finite differences during development.
 
-Clone the repository:
+## Benchmark
 
-```bash
-git clone https://github.com/PatWie/CppNumericalSolvers.git
-```
+Tested on the 35-problem Moré-Garbow-Hillstrom (1981) set plus 47
+unconstrained Hock-Schittkowski / Toint-Petrova problems from
+NLSProblems.jl, against Nocedal's Fortran L-BFGS, libLBFGS, and
+LBFGSpp:
 
-Add the `include/` directory to your project's include path.
-Ensure Eigen3 is available in your include path.
+| Metric | cppoptlib | Fortran L-BFGS | libLBFGS | LBFGSpp |
+|---|---|---|---|---|
+| Convergence | 80/82 (98%) | 80/82 (98%) | 78/81 (96%) | 78/82 (95%) |
+| 1st-place wins | 37 | 36 | 37 | 29 |
+| Mean nfev | **63.7** | 84.7 | 69.0 | 72.1 |
+
+Full reproducible benchmark with driver sources and auto-generated
+results:
+[CppNumericalSolversBenchmark](https://github.com/PatWie/CppNumericalSolversBenchmark).
 
 ## Citation
-
-If you use this library in your research, please cite it:
 
 ```bibtex
 @misc{wieschollek2016cppoptimizationlibrary,
@@ -335,3 +209,6 @@ If you use this library in your research, please cite it:
 }
 ```
 
+## License
+
+MIT.  See [LICENSE](LICENSE) for details.
