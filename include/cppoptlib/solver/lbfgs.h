@@ -214,13 +214,21 @@ class Lbfgs
     const VectorType x_diff = next.x - current.x;
     const VectorType grad_diff = next.gradient - current_gradient;
 
-    // --- Curvature Condition Check with Cautious Update ---
-    // We require:
-    //   x_diff.dot(grad_diff) > ||x_diff||^2 * ||current.gradient|| *
-    //   cautious_factor_
-    const ScalarType threshold =
-        x_diff.squaredNorm() * current_gradient.norm() * cautious_factor_;
-    if (x_diff.dot(grad_diff) > threshold) {
+    // --- Curvature Condition Check ---
+    // L-BFGS requires `s^T y > 0` for every stored `(s, y)` pair so the
+    // implicit inverse-Hessian approximation stays positive definite
+    // (Nocedal & Wright 7.4).  The More-Thuente line search enforces this
+    // analytically via its curvature condition, but finite-precision noise
+    // can still produce a tiny negative or zero `s^T y` near convergence;
+    // accept the pair iff `s^T y > eps_machine * ||s|| * ||y||`.  This
+    // matches the (unconditional in exact arithmetic) update used by
+    // Nocedal's Fortran L-BFGS and libLBFGS.  The earlier cautious update
+    // `s^T y > ||s||^2 * ||g|| * 1e-6` was too aggressive on badly-scaled
+    // problems with large `||g||` (e.g. MGH 10 Meyer rejected 76% of
+    // otherwise-valid pairs, crippling the history buffer).
+    const ScalarType sy = x_diff.dot(grad_diff);
+    const ScalarType sy_threshold = eps * x_diff.norm() * grad_diff.norm();
+    if (sy > sy_threshold) {
       // Add the new correction pair into the circular buffer.
       if (mem_count_ < static_cast<size_t>(m)) {
         // Still have free space.
@@ -268,9 +276,6 @@ class Lbfgs
   memory_VectorType
       alpha;  // Storage for the coefficients in the two-loop recursion.
   ScalarType scaling_factor_ = 1;
-  // Cautious factor to determine whether to accept a new correction pair.
-  // You may want to expose this parameter or adjust its default value.
-  ScalarType cautious_factor_ = 1e-6;
 };
 
 }  // namespace cppoptlib::solver
