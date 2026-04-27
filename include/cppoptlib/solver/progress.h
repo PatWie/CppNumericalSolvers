@@ -94,6 +94,16 @@ struct Progress {
   // constructor to match Fortran's convergence test exactly.
   bool f_delta_relative = false;
   ScalarType gradient_norm = ScalarType{0};  // Minimum norm of gradient vector.
+  // When true, `gradient_norm` is interpreted as a relative tolerance against
+  // the current iterate: the solver stops when
+  //     `|g|_inf < gradient_norm * max(1, |x|_inf)`.
+  // This matches the convergence tests used by Nocedal's Fortran L-BFGS
+  // (`gnorm/xnorm <= eps`) and libLBFGS (`||g|| < epsilon * max(1, ||x||)`)
+  // and handles badly-scaled problems where `|x|` is large but the residual
+  // is already at its floor (e.g. MGH-10 Meyer converges around
+  // |x| ~ 6e3, |g|_inf ~ 6e-2).  When false, `gradient_norm` is an absolute
+  // threshold, matching LBFGSpp.
+  bool gradient_norm_relative = true;
   ScalarType condition_hessian =
       ScalarType{0};  // Maximum condition number of hessian_t.
   ScalarType constraint_threshold =
@@ -205,10 +215,21 @@ struct Progress {
     }
     if constexpr (FunctionType::Differentiability >=
                   cppoptlib::function::DifferentiabilityMode::First) {
-      if ((stop_progress.gradient_norm > 0) &&
-          (gradient_norm < stop_progress.gradient_norm)) {
-        status = Status::GradientNormViolation;
-        return;
+      if (stop_progress.gradient_norm > 0) {
+        // Scale the gradient-norm threshold by `max(1, |x|_inf)` when the
+        // relative test is enabled (default) so badly-scaled problems do
+        // not waste line-search evaluations trying to drive `|g|_inf` below
+        // an absolute floor that is unachievable at finite precision.
+        const ScalarType scale =
+            stop_progress.gradient_norm_relative
+                ? std::max<ScalarType>(
+                      ScalarType{1},
+                      current_x.template lpNorm<Eigen::Infinity>())
+                : ScalarType{1};
+        if (gradient_norm < stop_progress.gradient_norm * scale) {
+          status = Status::GradientNormViolation;
+          return;
+        }
       }
     }
     if constexpr (FunctionType::Differentiability ==
@@ -241,6 +262,14 @@ Progress<FunctionType, StateType> DefaultStoppingSolverProgress() {
   // `factr*epsmch*max(|f_k|,|f_{k+1}|,1)` convergence test.
   progress.f_delta = ScalarType{0};
   progress.f_delta_violations = 1;
+  // Gradient-norm convergence: `|g|_inf < gradient_norm * max(1, |x|_inf)`.
+  // The `gradient_norm_relative = true` default matches Nocedal's
+  // `lbfgs_um` (`gnorm/xnorm <= eps`, eps = 1e-5) and libLBFGS
+  // (`||g|| < epsilon * max(1, ||x||)`, epsilon = 1e-5).  We keep a
+  // slightly tighter default threshold of 1e-6 -- still in the same
+  // convergence class as those libraries but one order of magnitude
+  // tighter, which matters for well-scaled problems whose `|x|` is
+  // O(1) and where a looser threshold leaves measurable residual error.
   progress.gradient_norm = ScalarType{1e-6};
   progress.condition_hessian = ScalarType{0};
   progress.constraint_threshold = ScalarType{1e-5};
