@@ -13,25 +13,20 @@ license, making it suitable for both academic and commercial projects.
 
 ## Benchmarked against the references
 
-On the Moré-Garbow-Hillstrom (1981) test set CppNumericalSolvers is
-competitive with, and on several problems faster than, the canonical
-reference implementations (Nocedal's Fortran L-BFGS / L-BFGS-B 3.0,
-Naoaki Okazaki's [libLBFGS](https://github.com/chokkan/liblbfgs),
-Yixuan Qiu's [LBFGSpp](https://github.com/yixuan/LBFGSpp)).  A small
-sample with default tolerances, `iters / nfev`:
-
-| Problem                  | cppoptlib | Fortran | libLBFGS | LBFGSpp |
-| ------------------------ | --------- | ------- | -------- | ------- |
-| MGH 1  Rosenbrock 2D     | 37 / 45   | 47 / 48 | 37 / 45  | 40 / 55 |
-| MGH 14 Wood 4D           | 87 / 114  | 117/118 | 88 / 116 | 95 /133 |
-| MGH 20 Watson 6D         | 55 / 60   | 86 / 87 | 63 / 71  | 67 / 79 |
-| MGH 35 Chebyquad 50D (B) | 179 / 199 | 206/229 | —        | 241/262 |
-
-Across 12 Moré-Garbow-Hillstrom problems CppNumericalSolvers wins 3
-outright, ties 4, and loses the rest by small margins while converging
-to the same minimum on every row.  The full reproducible benchmark --
-with per-library driver sources, submodule-pinned reference libraries,
-and auto-generated results -- lives in
+On the full 34-problem Moré-Garbow-Hillstrom (1981) unconstrained test
+set plus MGH-35 Chebyquad with box bounds, CppNumericalSolvers is
+competitive with -- and on most problems faster than -- the canonical
+reference implementations (Nocedal's Fortran L-BFGS and L-BFGS-B 3.0,
+Naoaki Okazaki's [libLBFGS](https://github.com/chokkan/liblbfgs), and
+Yixuan Qiu's [LBFGSpp](https://github.com/yixuan/LBFGSpp)).  Across
+the 31 problems where cppoptlib converges, it takes 1st place on 18
+(7 outright, 11 tied with a reference), 2nd on 4, 3rd on 3, and 4th
+on 6, measured vs the three reference libraries.  A Hager-Zhang line
+search is available behind a template parameter as an alternative to
+the default Moré-Thuente.  cppoptlib converges to the same minimum as
+the reference libraries on every row.  The full reproducible benchmark
+-- with per-library driver sources, submodule-pinned reference
+libraries, and auto-generated results -- lives in
 **[CppNumericalSolversBenchmark](https://github.com/PatWie/CppNumericalSolversBenchmark)**.
 
 ## Core Features
