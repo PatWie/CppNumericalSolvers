@@ -71,6 +71,19 @@ class Lbfgsb
 
   using Superclass::Superclass;
 
+  // Inherit `Solver`'s default constructor, then re-enable the
+  // factr-equivalent f-delta stopping test.  Plain L-BFGS/BFGS leave
+  // `f_delta = 0` (reference-compatible) and converge on gradient norm
+  // alone; Fortran L-BFGS-B 3.0 adds a `|Δf| <= factr * epsmch *
+  // max(|f_k|, |f_{k+1}|, 1)` test on top, with `factr = 1e7` by
+  // default, i.e. `2.22e-9` scaled relative to the current function
+  // magnitude.  Match that exactly by setting `f_delta_relative = true`
+  // and `f_delta = 2.22e-9`.
+  Lbfgsb() : Superclass() {
+    this->stopping_progress.f_delta = ScalarType{2.22e-9};
+    this->stopping_progress.f_delta_relative = true;
+  }
+
   void SetBounds(const VectorType& lower_bound, const VectorType& upper_bound) {
     lower_bound_ = lower_bound;
     upper_bound_ = upper_bound;

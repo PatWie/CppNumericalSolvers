@@ -86,6 +86,13 @@ struct Progress {
   int x_delta_violations = 0;  // Number of violations in pareameter vector.
   ScalarType f_delta = ScalarType{0};  // Minimum change in cost function.
   int f_delta_violations = 0;          // Number of violations in cost function.
+  // When true, `f_delta` is interpreted as `factr * epsmch` in Fortran
+  // L-BFGS-B 3.0's `|f_k - f_{k+1}| <= factr * epsmch * max(|f_k|,
+  // |f_{k+1}|, 1)` convergence test (i.e. a *relative* tolerance scaled
+  // by the current function magnitude).  When false, `f_delta` is an
+  // absolute threshold.  Default false; `Lbfgsb` sets it true in its own
+  // constructor to match Fortran's convergence test exactly.
+  bool f_delta_relative = false;
   ScalarType gradient_norm = ScalarType{0};  // Minimum norm of gradient vector.
   ScalarType condition_hessian =
       ScalarType{0};  // Maximum condition number of hessian_t.
@@ -181,7 +188,13 @@ struct Progress {
     } else {
       x_delta_violations = 0;
     }
-    if ((stop_progress.f_delta > 0) && (f_delta < stop_progress.f_delta)) {
+    if ((stop_progress.f_delta > 0) &&
+        (f_delta <
+         stop_progress.f_delta *
+             (stop_progress.f_delta_relative
+                  ? std::max({std::abs(current_value), std::abs(previous_value),
+                              ScalarType{1}})
+                  : ScalarType{1}))) {
       f_delta_violations++;
       if (f_delta_violations >= stop_progress.f_delta_violations) {
         status = Status::FDeltaViolation;
@@ -217,8 +230,17 @@ Progress<FunctionType, StateType> DefaultStoppingSolverProgress() {
   progress.num_iterations = 10000;
   progress.x_delta = ScalarType{1e-9};
   progress.x_delta_violations = 5;
-  progress.f_delta = ScalarType{1e-9};
-  progress.f_delta_violations = 5;
+  // Unconstrained L-BFGS / BFGS / Gradient-descent etc: no f-delta stopping
+  // by default.  Reference implementations (Nocedal `lbfgs_um`, Okazaki's
+  // libLBFGS with `past=0`) use gradient-norm alone.  Ill-conditioned
+  // unconstrained problems like MGH-03 Powell badly scaled stall the line
+  // search with `|Δf| < 1e-9` on the first step while the gradient is
+  // still O(1), so an absolute f-delta test fires as a false positive.
+  // `Lbfgsb` re-enables it in its own constructor with
+  // `f_delta_relative = true` to match Fortran L-BFGS-B's
+  // `factr*epsmch*max(|f_k|,|f_{k+1}|,1)` convergence test.
+  progress.f_delta = ScalarType{0};
+  progress.f_delta_violations = 1;
   progress.gradient_norm = ScalarType{1e-6};
   progress.condition_hessian = ScalarType{0};
   progress.constraint_threshold = ScalarType{1e-5};

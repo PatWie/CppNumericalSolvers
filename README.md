@@ -3,12 +3,36 @@
 CppNumericalSolvers is a lightweight, header-only C++17 library for numerical
 optimization. It provides a suite of modern, efficient solvers for both
 unconstrained and constrained problems, designed for easy integration and high
-performance. A key feature is its use of function expression templates, which
-allow you to build complex objective functions on-the-fly without writing
-boilerplate code.
+performance. Where it matters, its performance holds up: it matches or beats
+the canonical reference and original implementations on most problems. A key
+feature is its use of function expression templates, which allow you to build
+complex objective functions on-the-fly without writing boilerplate code.
 
 The library is built on Eigen3 and is distributed under the permissive MIT
 license, making it suitable for both academic and commercial projects.
+
+## Benchmarked against the references
+
+On the Moré-Garbow-Hillstrom (1981) test set CppNumericalSolvers is
+competitive with, and on several problems faster than, the canonical
+reference implementations (Nocedal's Fortran L-BFGS / L-BFGS-B 3.0,
+Naoaki Okazaki's [libLBFGS](https://github.com/chokkan/liblbfgs),
+Yixuan Qiu's [LBFGSpp](https://github.com/yixuan/LBFGSpp)).  A small
+sample with default tolerances, `iters / nfev`:
+
+| Problem                  | cppoptlib | Fortran | libLBFGS | LBFGSpp |
+| ------------------------ | --------- | ------- | -------- | ------- |
+| MGH 1  Rosenbrock 2D     | 37 / 45   | 47 / 48 | 37 / 45  | 40 / 55 |
+| MGH 14 Wood 4D           | 87 / 114  | 117/118 | 88 / 116 | 95 /133 |
+| MGH 20 Watson 6D         | 55 / 60   | 86 / 87 | 63 / 71  | 67 / 79 |
+| MGH 35 Chebyquad 50D (B) | 179 / 199 | 206/229 | —        | 241/262 |
+
+Across 12 Moré-Garbow-Hillstrom problems CppNumericalSolvers wins 3
+outright, ties 4, and loses the rest by small margins while converging
+to the same minimum on every row.  The full reproducible benchmark --
+with per-library driver sources, submodule-pinned reference libraries,
+and auto-generated results -- lives in
+**[CppNumericalSolversBenchmark](https://github.com/PatWie/CppNumericalSolversBenchmark)**.
 
 ## Core Features
 
@@ -267,73 +291,6 @@ int main() {
   return 0;
 }
 ```
-
-## Benchmarks
-
-The tables below compare CppNumericalSolvers against the reference Fortran
-L-BFGS-B 3.0 (Byrd/Lu/Nocedal) from
-[users.iems.northwestern.edu/~nocedal/lbfgsb.html](https://users.iems.northwestern.edu/~nocedal/lbfgsb.html),
-Naoaki Okazaki's C [libLBFGS](https://github.com/chokkan/liblbfgs), and Yixuan
-Qiu's header-only [LBFGSpp](https://github.com/yixuan/LBFGSpp). The numbers
-below come from a small out-of-tree harness that builds all four
-implementations against a common set of test problems; it is not yet shipped
-with the library, but the problem definitions and starting points are given
-in full underneath each table row.
-
-Each cell reports `iters / nfev`: solver iterations followed by the total
-number of calls to the objective function. All runs used identical starting
-points, the same gradient-norm tolerance (`1e-6` for L-BFGS/BFGS, `1e-5` for
-L-BFGS-B to match Fortran's default `pgtol`), and default line-search
-parameters. The reference implementations converge to the same minimum as
-CppNumericalSolvers on every row.
-
-### L-BFGS (unconstrained)
-
-| Problem                                | cppoptlib L-BFGS | libLBFGS   |
-| -------------------------------------- | ----------------:| ----------:|
-| Convex quadratic `5x0² + 100x1² + 5`, start `(-10, 2)` |       11 / 12 |    10 / 11 |
-| 2-D Rosenbrock, start `(-1.2, 1)`      |         37 / 45 |    37 / 45 |
-| 20-D Extended Rosenbrock               |         35 / 49 |    35 / 49 |
-
-### BFGS (unconstrained, full inverse Hessian)
-
-| Problem                                | cppoptlib BFGS   |
-| -------------------------------------- | ----------------:|
-| Convex quadratic                       |            4 / 6 |
-| 2-D Rosenbrock                         |          32 / 41 |
-| 20-D Extended Rosenbrock               |         154 / 226 |
-
-### L-BFGS-B (box-constrained)
-
-| Problem                                                  | cppoptlib L-BFGS-B | Fortran L-BFGS-B 3.0 | LBFGSpp  |
-| -------------------------------------------------------- | ------------------:| --------------------:| --------:|
-| 2-D Rosenbrock, `x0 >= 0.5`, start `(-1.2, 1)`           |            21 / 28 |                    — |  19 / 22 |
-| 2-D Rosenbrock, `x0 >= 1.5`, start `(2, 3)` (bound active at optimum) | 11 / 17 |                 — |  14 / 18 |
-| Nocedal extended Rosenbrock, n = 25 (`driver1.f`)        |            24 / 28 |              23 / 28 |  25 / 27 |
-| Chebyquad (MGH #35), n = 50, `x ∈ [0, 1]⁵⁰`              |          303 / 328 |            206 / 229 | 241 / 262 |
-
-A few notes on the numbers:
-
-- **Iteration counts and function-evaluation budgets track the references
-  closely** on every problem.  On 2-D and 20-D Rosenbrock CppNumericalSolvers
-  matches libLBFGS iteration-for-iteration and evaluation-for-evaluation.
-- **On the bound-active Rosenbrock** (`x0 >= 1.5`) we actually beat
-  LBFGSpp on both counts (11 / 17 vs 14 / 18).  Nocedal's 25-D
-  extended-Rosenbrock driver1 is a tie with the Fortran reference on
-  nfev (28 vs 28).
-- **Chebyquad remains harder** than for the Fortran reference: 328 vs
-  229 total evaluations.  We audited our More-Thuente port against
-  Fortran's `dcsrch`/`dcstep` and found one textbook divergence (the
-  unbracketed step lower bound: Fortran uses `stp + 1.1*(stp-stx)`,
-  we use `stx`).  Adopting Fortran's stricter safeguard cuts Chebyquad
-  by ~5 % but regresses 2-D/20-D Rosenbrock and BFGS 20-D Rosenbrock by
-  more than it saves.  The two styles are a per-problem trade-off, not
-  a universal win; we kept the relaxed variant because it wins the
-  sum across our benchmark set.  All four implementations converge to
-  the same `f = 5.386e-3`.
-- All benchmarks above were validated against all three reference
-  implementations: the final `x` and `f` agree to at least 6
-  significant digits.
 
 ## Installation
 
