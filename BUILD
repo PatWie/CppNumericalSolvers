@@ -7,4 +7,5 @@ build_example("constrained_simple2")
 build_example("linear_regression")
 build_test("verify")
 build_test("cstep_test")
+build_test("hager_zhang_test")
 

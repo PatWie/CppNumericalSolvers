@@ -40,7 +40,8 @@
 
 namespace cppoptlib::solver {
 
-template <typename FunctionType, int m = 5>
+template <typename FunctionType, int m = 5,
+          template <class, int> class LineSearch = linesearch::MoreThuente>
 class Lbfgsb
     : public Solver<FunctionType, typename cppoptlib::function::FunctionState<
                                       typename FunctionType::ScalarType,
@@ -159,8 +160,8 @@ class Lbfgsb
     StateType next = StateType(x, current_value, current_gradient);
     if (do_line_search) {
       const VectorType direction = subspace_min - x;
-      next = linesearch::MoreThuente<FunctionType, 1>::Search(
-          next, direction, function, /*alpha_init=*/ScalarType{1});
+      next = LineSearch<FunctionType, 1>::Search(next, direction, function,
+                                                 /*alpha_init=*/ScalarType{1});
     } else {
       next = StateType(function, subspace_min);
     }
