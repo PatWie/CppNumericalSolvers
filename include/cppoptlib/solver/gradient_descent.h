@@ -34,7 +34,8 @@
 #include "solver.h"  // NOLINT
 
 namespace cppoptlib::solver {
-template <typename FunctionType>
+template <typename FunctionType,
+          template <class, int> class LineSearch = linesearch::MoreThuente>
 class GradientDescent
     : public Solver<FunctionType, typename cppoptlib::function::FunctionState<
                                       typename FunctionType::ScalarType,
@@ -65,8 +66,8 @@ class GradientDescent
                              const ProgressType& /*progress*/) override {
     VectorType gradient;
     function(current.x, &gradient);
-    const ScalarType rate = linesearch::MoreThuente<FunctionType, 1>::Search(
-        current.x, -gradient, function);
+    const ScalarType rate =
+        LineSearch<FunctionType, 1>::Search(current.x, -gradient, function);
 
     return StateType(current.x - rate * gradient);
   }

@@ -36,7 +36,8 @@
 #include "solver.h"  // NOLINT
 
 namespace cppoptlib::solver {
-template <typename FunctionType>
+template <typename FunctionType,
+          template <class, int> class LineSearch = linesearch::MoreThuente>
 class Bfgs
     : public Solver<FunctionType, typename cppoptlib::function::FunctionState<
                                       typename FunctionType::ScalarType,
@@ -107,7 +108,7 @@ class Bfgs
     // Line search consumes the populated `current` and returns a populated
     // `next` whose `(value, gradient)` are captured from its final internal
     // trial evaluation -- no redundant evaluations at either end.
-    const StateType next = linesearch::MoreThuente<FunctionType, 1>::Search(
+    const StateType next = LineSearch<FunctionType, 1>::Search(
         current, search_direction, function, alpha_init);
 
     // Update the inverse Hessian approximation (Nocedal & Wright eqn. 6.17).

@@ -37,7 +37,8 @@
 
 namespace cppoptlib::solver {
 
-template <typename FunctionType, int m = 10>
+template <typename FunctionType, int m = 10,
+          template <class, int> class LineSearch = linesearch::MoreThuente>
 class Lbfgs
     : public Solver<FunctionType, typename cppoptlib::function::FunctionState<
                                       typename FunctionType::ScalarType,
@@ -206,7 +207,7 @@ class Lbfgs
     // overload of `Search` produces a `next` whose `(value, gradient)` are
     // captured from the line search's last internal evaluation.  No
     // redundant evaluations in either direction.
-    const StateType next = linesearch::MoreThuente<FunctionType, 1>::Search(
+    const StateType next = LineSearch<FunctionType, 1>::Search(
         current, -search_direction, function, alpha_init);
 
     // Compute the differences for the new correction pair.
