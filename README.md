@@ -6,7 +6,7 @@ problems (tied for best) with the lowest mean function-evaluation count
 of any solver tested -- ahead of Nocedal's Fortran L-BFGS, libLBFGS,
 and LBFGSpp.
 
-[bench]: https://github.com/PatWie/CppNumericalSolversBenchmark
+[bench]: https://patwie.github.io/CppNumericalSolversBenchmark/
 
 ## Quick Start
 
@@ -194,9 +194,10 @@ LBFGSpp:
 | 1st-place wins | 37 | 36 | 37 | 29 |
 | Mean nfev | **63.7** | 84.7 | 69.0 | 72.1 |
 
-Full reproducible benchmark with driver sources and auto-generated
-results:
-[CppNumericalSolversBenchmark](https://github.com/PatWie/CppNumericalSolversBenchmark).
+Full reproducible benchmark with driver sources, per-iteration
+convergence traces, and interactive results:
+**[View results](https://patwie.github.io/CppNumericalSolversBenchmark/)** ·
+[Source](https://github.com/PatWie/CppNumericalSolversBenchmark).
 
 ## Citation
 
