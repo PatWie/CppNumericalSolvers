@@ -29,6 +29,9 @@
 #include <stdint.h>
 
 #include <Eigen/Core>
+#include <cmath>
+#include <cstdlib>
+#include <vector>
 namespace cppoptlib::solver {
 // Status of the solver state.
 enum class Status {
@@ -109,6 +112,19 @@ struct Progress {
   ScalarType constraint_threshold =
       ScalarType{0};                   // Minimum norm of constraint violations.
   Status status = Status::NotStarted;  // Status of state.
+
+  // Past-delta stopping: stop when the function value has not decreased
+  // meaningfully over the last `past` iterations.  The test fires when
+  //     |f_{k-past} - f_k| / max(1, |f_k|) < past_delta.
+  // Set `past = 0` to disable (default for backward compatibility).
+  // LBFGS-Lite uses past=3, delta=1e-6 and this is a major contributor
+  // to its lower nfev count on well-behaved problems.
+  int past = 0;
+  ScalarType past_delta = ScalarType{1e-6};
+
+  // Ring buffer for the past-delta stopping test (internal state).
+  std::vector<ScalarType> past_f_ring_;
+  int past_f_pos_ = 0;
 
   Progress() = default;
 
@@ -213,6 +229,27 @@ struct Progress {
     } else {
       f_delta_violations = 0;
     }
+    // Past-delta stopping: compare current f against f from `past`
+    // iterations ago.  The ring buffer is lazily initialized on first use.
+    if (stop_progress.past > 0) {
+      const int p = stop_progress.past;
+      if (static_cast<int>(past_f_ring_.size()) != p) {
+        past_f_ring_.assign(p, current_value);
+        past_f_pos_ = 0;
+      }
+      if (static_cast<int>(num_iterations) > p) {
+        const ScalarType past_f = past_f_ring_[past_f_pos_];
+        const ScalarType rate =
+            std::abs(past_f - current_value) /
+            std::max(ScalarType{1}, std::abs(current_value));
+        if (rate < stop_progress.past_delta) {
+          status = Status::FDeltaViolation;
+          return;
+        }
+      }
+      past_f_ring_[past_f_pos_] = current_value;
+      past_f_pos_ = (past_f_pos_ + 1) % p;
+    }
     if constexpr (FunctionType::Differentiability >=
                   cppoptlib::function::DifferentiabilityMode::First) {
       if (stop_progress.gradient_norm > 0) {
@@ -249,6 +286,31 @@ Progress<FunctionType, StateType> DefaultStoppingSolverProgress() {
   Progress<FunctionType, StateType> progress;
   using ScalarType = typename Progress<FunctionType, StateType>::ScalarType;
   progress.num_iterations = 10000;
+
+#ifdef CPPOPT_SWEEP
+  // Parameter sweep mode: read stopping criteria from environment
+  // variables so a single binary can be re-run with different settings
+  // without recompilation.  See scripts/sweep_params.py.
+  auto env_or = [](const char* name, double fallback) -> double {
+    const char* v = std::getenv(name);
+    return v ? std::atof(v) : fallback;
+  };
+  auto env_int_or = [](const char* name, int fallback) -> int {
+    const char* v = std::getenv(name);
+    return v ? std::atoi(v) : fallback;
+  };
+  progress.x_delta = static_cast<ScalarType>(env_or("CPPOPT_X_DELTA", 1e-9));
+  progress.x_delta_violations = env_int_or("CPPOPT_X_DELTA_VIOL", 1);
+  progress.f_delta = ScalarType{0};
+  progress.f_delta_violations = 1;
+  progress.gradient_norm =
+      static_cast<ScalarType>(env_or("CPPOPT_GRAD_NORM", 1e-6));
+  progress.condition_hessian = ScalarType{0};
+  progress.constraint_threshold = ScalarType{1e-5};
+  progress.past = env_int_or("CPPOPT_PAST", 5);
+  progress.past_delta =
+      static_cast<ScalarType>(env_or("CPPOPT_PAST_DELTA", 1e-10));
+#else
   progress.x_delta = ScalarType{1e-9};
   // One consecutive x-delta violation is enough for gradient-based solvers:
   // a step that moves `x` by less than `1e-9` while `|g|` has not met the
@@ -282,6 +344,9 @@ Progress<FunctionType, StateType> DefaultStoppingSolverProgress() {
   progress.gradient_norm = ScalarType{1e-6};
   progress.condition_hessian = ScalarType{0};
   progress.constraint_threshold = ScalarType{1e-5};
+  progress.past = 5;
+  progress.past_delta = ScalarType{1e-10};
+#endif  // CPPOPT_SWEEP
   progress.status = Status::NotStarted;
   return progress;
 }
