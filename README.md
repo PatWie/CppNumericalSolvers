@@ -1,10 +1,10 @@
 # CppNumericalSolvers
 
 A header-only C++17 optimization library that is fast, reliable, and
-easy to integrate.  On an [82-problem benchmark][bench] it converges on 98% of
-problems (tied for best) with the lowest mean function-evaluation count
-of any solver tested -- ahead of Nocedal's Fortran L-BFGS, libLBFGS,
-and LBFGSpp.
+easy to integrate.  On an [83-problem benchmark][bench] it converges on 95% of
+problems with the most first-place wins and the lowest mean
+function-evaluation count of any solver tested -- ahead of Nocedal's
+Fortran L-BFGS, libLBFGS, LBFGSpp, and LBFGS-Lite.
 
 [bench]: https://patwie.github.io/CppNumericalSolversBenchmark/
 
@@ -185,14 +185,14 @@ verify your derivatives against finite differences during development.
 
 Tested on the 35-problem Moré-Garbow-Hillstrom (1981) set plus 47
 unconstrained Hock-Schittkowski / Toint-Petrova problems from
-NLSProblems.jl, against Nocedal's Fortran L-BFGS, libLBFGS, and
-LBFGSpp:
+NLSProblems.jl plus logistic regression on Iris, against Nocedal's
+Fortran L-BFGS, libLBFGS, LBFGSpp, and LBFGS-Lite:
 
-| Metric | cppoptlib | Fortran L-BFGS | libLBFGS | LBFGSpp |
-|---|---|---|---|---|
-| Convergence | 80/82 (98%) | 80/82 (98%) | 78/81 (96%) | 78/82 (95%) |
-| 1st-place wins | 37 | 36 | 37 | 29 |
-| Mean nfev | **63.7** | 84.7 | 69.0 | 72.1 |
+| Metric | cppoptlib | Fortran L-BFGS | libLBFGS | LBFGSpp | LBFGS-Lite |
+|---|---|---|---|---|---|
+| Convergence | 79/83 (95%) | 78/83 (94%) | 76/82 (93%) | 76/83 (92%) | 59/83 (71%) |
+| 1st-place wins | **45** | 34 | 28 | 23 | 32 |
+| Mean nfev | **56.9** | 81.9 | 65.6 | 67.4 | 51.1 |
 
 Full reproducible benchmark with driver sources, per-iteration
 convergence traces, and interactive results:
