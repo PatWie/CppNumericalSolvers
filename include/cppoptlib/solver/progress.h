@@ -341,7 +341,7 @@ Progress<FunctionType, StateType> DefaultStoppingSolverProgress() {
   // convergence class as those libraries but one order of magnitude
   // tighter, which matters for well-scaled problems whose `|x|` is
   // O(1) and where a looser threshold leaves measurable residual error.
-  progress.gradient_norm = ScalarType{1e-6};
+  progress.gradient_norm = ScalarType{5e-6};
   progress.condition_hessian = ScalarType{0};
   progress.constraint_threshold = ScalarType{1e-5};
   progress.past = 5;
