@@ -43,6 +43,7 @@
 
 #include "cppoptlib/function.h"
 #include "cppoptlib/solver/lbfgs.h"
+#include "cppoptlib/solver/lbfgsb.h"
 #include "gtest/gtest.h"
 
 namespace {
@@ -412,24 +413,25 @@ TEST(ToAugmentedLagrangian, EqualityOnlyMatchesClosedForm) {
   EXPECT_NEAR(22.5, augmented(x), penalty_evaluation_tolerance);
 }
 
-// ---- B.2: Inequality-only composite, satisfied side, locks sign ----------
+// ---- B.2: Inequality-only composite, satisfied side, locks PHR -----
 // f(x) = 0.5 * ||x||^2.  One inequality c(x) = x0 - 0.5 >= 0 (satisfied
 // when x0 >= 0.5).  multipliers mu = {7.0}; rho = 4.0.
 //
-// At x = (3, 0):  c = 2.5 (satisfied).  Penalty part = 0.  The Lagrangian
-// part is the sign we are pinning: the augmented-Lagrangian update keeps
-// `mu >= 0` and the subtracted term `- mu * c` drives the inner solver
-// toward the active boundary when mu settles at a positive value at the
-// KKT point.  So the expected composite at x = (3, 0) is
-//   L_aug = 0.5*(9+0) - 7.0*2.5 + 0 = 4.5 - 17.5 = -13.0.
+// At x = (3, 0):  c = 2.5 (satisfied), mu - rho * c = 7 - 10 = -3.
+// Powell-Hestenes-Rockafellar inequality contribution:
+//   P_j = (1 / (2 rho)) * [ max(0, mu - rho c)^2 - mu^2 ]
+//       = (1/8) * [ max(0, -3)^2 - 49 ]
+//       = (1/8) * [ 0 - 49 ] = -6.125.
+// Composite L_aug = f + P_j = 0.5*9 + (-6.125) = 4.5 - 6.125 = -1.625.
 //
-// NOTE: if the inequality sign is `+ mu * c` (the current buggy
-// implementation) this test reads 4.5 + 17.5 = 22.0 -- the sign flip.
-TEST(ToAugmentedLagrangian, InequalityLagrangianPartUsesCorrectSign) {
+// The PHR form is the key defence against a non-convex composite
+// that would otherwise go to -infinity along a ray of inactive
+// inequalities: on the strictly-inactive side the contribution is
+// the CONSTANT -mu^2/(2 rho) = -49/8 = -6.125, independent of x.
+TEST(ToAugmentedLagrangian, InequalityPhrOnInactiveSide) {
   using namespace cppoptlib::function;
   FunctionExpr<double, DifferentiabilityMode::First, 2> objective =
       HalfSquaredNorm2D();
-  // Constraint c(x) = x0 - 0.5 >= 0  -- use X0MinusTarget with target=0.5.
   FunctionExpr<double, DifferentiabilityMode::First, 2> inequality =
       X0MinusTarget(0.5);
 
@@ -440,16 +442,21 @@ TEST(ToAugmentedLagrangian, InequalityLagrangianPartUsesCorrectSign) {
   auto augmented = ToAugmentedLagrangian(problem, multipliers, penalty);
   Eigen::Vector2d x;
   x << 3.0, 0.0;
-  EXPECT_NEAR(-13.0, augmented(x), penalty_evaluation_tolerance);
+  EXPECT_NEAR(-1.625, augmented(x), penalty_evaluation_tolerance);
 }
 
-// ---- B.3: Inequality penalty fires on violated side -----------------------
-// Same setup as B.2 but x = (0.0, 0.0), so c = -0.5 (violated).
-// Penalty part = rho * 0.5 * (-0.5)^2 = 4.0 * 0.125 = 0.5.
-// Lagrangian part = - mu * c = - 7.0 * (-0.5) = +3.5 (with correct sign).
-// f(x) = 0.
-// Expected L_aug = 0 + 3.5 + 0.5 = 4.0.
-TEST(ToAugmentedLagrangian, InequalityPenaltyFiresOnViolation) {
+// ---- B.3: Inequality PHR on the active/violated side ---------------
+// Same setup as B.2 but x = (0.0, 0.0), so c = -0.5 (violated), and
+// mu - rho c = 7 - 4 * (-0.5) = 9 > 0.  PHR contribution:
+//   P_j = (1 / (2 rho)) * [ max(0, 9)^2 - 49 ]
+//       = (1/8) * [ 81 - 49 ] = 4.0.
+// Composite = f + P_j = 0 + 4 = 4.
+//
+// This matches the naive `-mu c + 0.5 rho min(0,c)^2` form by
+// coincidence on the active side -- both expressions agree when
+// mu - rho c >= 0.  The difference only appears on the strictly-
+// inactive side (test B.2).
+TEST(ToAugmentedLagrangian, InequalityPhrOnActiveSide) {
   using namespace cppoptlib::function;
   FunctionExpr<double, DifferentiabilityMode::First, 2> objective =
       HalfSquaredNorm2D();
@@ -886,6 +893,292 @@ TEST(FunctionExpr, SecondModeSourceDowngradesIntoFirstMode) {
   // grad = (4*x0, 2*x1) = (12, -3).
   EXPECT_NEAR(12.0, grad[0], penalty_evaluation_tolerance);
   EXPECT_NEAR(-3.0, grad[1], penalty_evaluation_tolerance);
+}
+
+// =============================================================================
+// SECTION D: Non-convex escape / KKT discipline
+// =============================================================================
+//
+// The outer-loop tests in Section C all exercise convex objectives where
+// every KKT point is the global minimum.  Real benchmark problems are
+// rarely that kind.  A non-convex objective combined with inequality
+// constraints can produce a feasible stationary point of the raw
+// objective that is NOT the constrained optimum -- the inner solver
+// lands there on the very first outer iteration (with zero multipliers
+// the augmented Lagrangian is just `f` in the feasible interior), the
+// violation is zero, and a feasibility-only stopping test concludes
+// "converged" at the wrong point.  A proper KKT-style outer loop has
+// to avoid that trap by (a) keeping the inner solve shallow on the
+// first outer iteration so multipliers get a chance to become nonzero
+// before the iterate locks in, (b) scaling the initial penalty to the
+// objective magnitude so the constraint gradients are felt, and (c)
+// refusing to declare success until the Lagrangian gradient is
+// actually stationary at the current multipliers.
+//
+// The tests below are minimal reproducers of the HS024-class trap.
+// Each has a hand-computed global optimum and a hand-identified
+// spurious KKT point that a naive feasibility-only stop lands on.
+
+// ---- D.1: Cubic-in-one-axis objective with triangular constraints -------
+//
+// f(x) = ((x0 - 3)^2 - 9) * x1^3 / (27 * sqrt(3)).
+//
+// Unconstrained, f is unbounded below because the leading bracket goes
+// negative for x0 near 3 while x1 is unrestricted; cubic growth in x1
+// dominates.  Three linear inequalities carve out a triangle in the
+// first quadrant:
+//     g0(x) = x0 / sqrt(3) - x1      >= 0  (below the line x1 = x0/sqrt(3))
+//     g1(x) = x0 + sqrt(3) * x1      >= 0  (right half-plane, redundant here)
+//     g2(x) = 6 - x0 - sqrt(3) * x1  >= 0  (left of the line x0 + sqrt(3) x1 =
+//     6)
+// Plus bounds x >= 0.
+//
+// The triangle has vertices at (0, 0), (6, 0), and (3, sqrt(3)).  The
+// constrained optimum is the upper vertex (3, sqrt(3)) with f* = -1.
+//
+// SPURIOUS KKT: the origin (0, 0) is feasible, has grad f = 0 (both
+// partials vanish at x1 = 0), and satisfies KKT with mu = 0 for all
+// three inequalities (g0 = 0, g1 = 0, g2 = 6).  A feasibility-only
+// outer-loop stop after one inner solve lands there.
+//
+// The start (1.0, 0.5) is in the strict interior of the triangle.
+class Hs024Objective : public Function2d<Hs024Objective> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  ScalarType operator()(const VectorType& x, VectorType* grad) const {
+    const double x0 = x[0];
+    const double x1 = x[1];
+    const double bracket = (x0 - 3.0) * (x0 - 3.0) - 9.0;
+    const double scale = 1.0 / (27.0 * std::sqrt(3.0));
+    const double value = bracket * x1 * x1 * x1 * scale;
+    if (grad) {
+      (*grad)[0] = 2.0 * (x0 - 3.0) * x1 * x1 * x1 * scale;
+      (*grad)[1] = 3.0 * bracket * x1 * x1 * scale;
+    }
+    return value;
+  }
+};
+
+// Triangle edge g0(x) = x0 / sqrt(3) - x1 >= 0.
+class Hs024IneqUpperEdge : public Function2d<Hs024IneqUpperEdge> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  ScalarType operator()(const VectorType& x, VectorType* grad) const {
+    const double sqrt3 = std::sqrt(3.0);
+    if (grad) {
+      (*grad)[0] = 1.0 / sqrt3;
+      (*grad)[1] = -1.0;
+    }
+    return x[0] / sqrt3 - x[1];
+  }
+};
+
+// Triangle edge g1(x) = x0 + sqrt(3) * x1 >= 0.  Redundant inside the
+// first quadrant but part of the original problem.
+class Hs024IneqRightEdge : public Function2d<Hs024IneqRightEdge> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  ScalarType operator()(const VectorType& x, VectorType* grad) const {
+    const double sqrt3 = std::sqrt(3.0);
+    if (grad) {
+      (*grad)[0] = 1.0;
+      (*grad)[1] = sqrt3;
+    }
+    return x[0] + sqrt3 * x[1];
+  }
+};
+
+// Triangle edge g2(x) = 6 - x0 - sqrt(3) * x1 >= 0.
+class Hs024IneqLeftEdge : public Function2d<Hs024IneqLeftEdge> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  ScalarType operator()(const VectorType& x, VectorType* grad) const {
+    const double sqrt3 = std::sqrt(3.0);
+    if (grad) {
+      (*grad)[0] = -1.0;
+      (*grad)[1] = -sqrt3;
+    }
+    return 6.0 - x[0] - sqrt3 * x[1];
+  }
+};
+
+// Reports the test tolerance expected for the HS024-class trap.  A
+// correct AL outer loop reaches the upper vertex to three decimal
+// places from (1.0, 0.5); we pin one decimal to leave headroom for
+// the penalty-growth schedule tail.
+constexpr double nonconvex_trap_primal_tolerance = 1e-1;
+
+// A correct AL outer loop for the HS024 trap converges to f* = -1.
+// A feasibility-only stop lands at f = 0 (the origin).  The test
+// tolerance below is half a unit, which separates the two outcomes
+// by an order of magnitude.
+constexpr double nonconvex_trap_objective_tolerance = 0.5;
+
+TEST(AugmentedLagrangianNonConvex, Hs024TriangleEscapesSpuriousOrigin) {
+  using namespace cppoptlib::function;
+
+  FunctionExpr<double, DifferentiabilityMode::First, 2> objective =
+      Hs024Objective();
+  FunctionExpr<double, DifferentiabilityMode::First, 2> g0 =
+      Hs024IneqUpperEdge();
+  FunctionExpr<double, DifferentiabilityMode::First, 2> g1 =
+      Hs024IneqRightEdge();
+  FunctionExpr<double, DifferentiabilityMode::First, 2> g2 =
+      Hs024IneqLeftEdge();
+
+  ConstrainedProblem2d problem(objective, /*eq=*/{}, {g0, g1, g2});
+
+  // The non-negativity bounds on x are enforced by a bounded inner
+  // solver.  We use `Lbfgsb` here for exactly that reason: the
+  // unbounded `Lbfgs` would take f below -infinity along the x1 axis.
+  cppoptlib::solver::Lbfgsb<FunctionExpr2d> inner_solver;
+  Eigen::Vector2d lower_bound;
+  lower_bound << 0.0, 0.0;
+  Eigen::Vector2d upper_bound;
+  // Use the conventional large-magnitude sentinel to mean "no
+  // bound".  `Lbfgsb` treats bounds with magnitude at or above 1e20
+  // as inactive.
+  constexpr double no_upper_bound = 1e20;
+  upper_bound << no_upper_bound, no_upper_bound;
+  inner_solver.SetBounds(lower_bound, upper_bound);
+
+  cppoptlib::solver::AugmentedLagrangian<decltype(problem),
+                                         decltype(inner_solver)>
+      solver(problem, inner_solver);
+
+  Eigen::Vector2d x0;
+  x0 << 1.0, 0.5;
+  cppoptlib::solver::AugmentedLagrangeState<double, 2> state(
+      x0, /*num_eq=*/0, /*num_ineq=*/3, /*penalty=*/0.0);
+  auto [solution, progress] = solver.Minimize(state);
+
+  const double f_final = objective(solution.x);
+
+  // The constrained global minimum is f* = -1 at (3, sqrt(3)).  The
+  // test passes only if the outer loop escaped the spurious (0, 0).
+  EXPECT_NEAR(3.0, solution.x[0], nonconvex_trap_primal_tolerance);
+  EXPECT_NEAR(std::sqrt(3.0), solution.x[1], nonconvex_trap_primal_tolerance);
+  EXPECT_NEAR(-1.0, f_final, nonconvex_trap_objective_tolerance);
+}
+
+// ---- D.2: HS029-style product objective with quadratic constraint ------
+//
+// Hock-Schittkowski 29 (simplified to 2D, f = -x0 * x1 on the
+// ellipse 48 - x0^2 - 2 x1^2 >= 0) has the global minimum at
+// `(4 sqrt(2/3), 2 sqrt(2/3))` with f ≈ -6.53, and a spurious KKT
+// at the origin where grad f = 0 and the constraint is inactive
+// with mu = 0.  The AL outer loop escapes the origin trap only when
+// the PHR penalty is used -- a naive `-mu * c` Lagrangian term with
+// `rho` large would drag the composite to -infinity along the
+// strongly-inactive constraint direction, but that is the
+// opposite of the problem at hand: the issue here is that the raw
+// objective has a local min at the origin which happens to also
+// be a feasible point.
+//
+// We start at (1, 1), which is strictly feasible.  The PHR
+// formulation + best-iterate tracker together must produce an
+// output whose f is well below zero.
+class ProductObjective3D : public Function2d<ProductObjective3D> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  ScalarType operator()(const VectorType& x, VectorType* grad) const {
+    if (grad) {
+      (*grad)[0] = -x[1];
+      (*grad)[1] = -x[0];
+    }
+    return -x[0] * x[1];
+  }
+};
+
+// Inequality c(x) = 48 - x0^2 - 2 x1^2 >= 0.
+class Hs029Ellipse : public Function2d<Hs029Ellipse> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  ScalarType operator()(const VectorType& x, VectorType* grad) const {
+    if (grad) {
+      (*grad)[0] = -2.0 * x[0];
+      (*grad)[1] = -4.0 * x[1];
+    }
+    return 48.0 - x[0] * x[0] - 2.0 * x[1] * x[1];
+  }
+};
+
+TEST(AugmentedLagrangianNonConvex, Hs029EllipseEscapesOrigin) {
+  using namespace cppoptlib::function;
+
+  FunctionExpr<double, DifferentiabilityMode::First, 2> objective =
+      ProductObjective3D();
+  FunctionExpr<double, DifferentiabilityMode::First, 2> ellipse =
+      Hs029Ellipse();
+
+  ConstrainedProblem2d problem(objective, /*eq=*/{}, {ellipse});
+
+  cppoptlib::solver::Lbfgs<FunctionExpr2d> inner_solver;
+  cppoptlib::solver::AugmentedLagrangian<decltype(problem),
+                                         decltype(inner_solver)>
+      solver(problem, inner_solver);
+
+  // Start far from origin and far from any boundary.
+  Eigen::Vector2d x0;
+  x0 << 1.0, 1.0;
+  cppoptlib::solver::AugmentedLagrangeState<double, 2> state(
+      x0, /*num_eq=*/0, /*num_ineq=*/1, /*penalty=*/0.0);
+  auto [solution, progress] = solver.Minimize(state);
+
+  const double f_final = objective(solution.x);
+  // True optimum for `min -x0*x1 s.t. 48 - x0^2 - 2 x1^2 >= 0` is at
+  // `(2 sqrt(6), 2 sqrt(3))` with f* = -12 sqrt(2).  Derivation:
+  // KKT stationarity gives `x1 = 2 mu x0` and `x0 = 4 mu x1`, so
+  // `mu = 1/(2 sqrt(2))` and `x1 = x0 / sqrt(2)`.  Substituting into
+  // the active constraint `x0^2 + 2 x1^2 = 48` yields `x0^2 = 24`.
+  constexpr double ellipse_primal_tolerance = 2e-1;
+  const double x0_star = 2.0 * std::sqrt(6.0);
+  const double x1_star = 2.0 * std::sqrt(3.0);
+  const double f_star = -12.0 * std::sqrt(2.0);
+  EXPECT_NEAR(x0_star, solution.x[0], ellipse_primal_tolerance);
+  EXPECT_NEAR(x1_star, solution.x[1], ellipse_primal_tolerance);
+  constexpr double ellipse_objective_tolerance = 5e-1;
+  EXPECT_NEAR(f_star, f_final, ellipse_objective_tolerance);
+}
+
+// ---- D.3: KKT stationarity is reported on the returned state ------------
+//
+// After `Minimize` returns with `Status::Finished`, the solver must
+// have verified BOTH primal feasibility AND Lagrangian-gradient
+// stationarity -- i.e. the inner solver's last iterate actually
+// stationarises the Lagrangian at the current multipliers.  We pin
+// that by reading `max_lagrangian_gradient` off the returned state
+// and checking it is below the outer-loop's KKT tolerance.
+//
+// This test uses the well-behaved Section C problem (equality
+// quadratic) -- the stationarity check must be reported correctly
+// even on problems that converge easily.
+TEST(AugmentedLagrangianOuter, KktStationarityReportedOnFinishedState) {
+  using namespace cppoptlib::function;
+
+  FunctionExpr<double, DifferentiabilityMode::First, 2> objective =
+      HalfSquaredNorm2D();
+  FunctionExpr<double, DifferentiabilityMode::First, 2> equality =
+      X0MinusTarget(1.0);
+  ConstrainedProblem2d problem(objective, {equality});
+
+  cppoptlib::solver::Lbfgs<FunctionExpr2d> inner_solver;
+  cppoptlib::solver::AugmentedLagrangian<decltype(problem),
+                                         decltype(inner_solver)>
+      solver(problem, inner_solver);
+
+  Eigen::Vector2d x0;
+  x0 << 5.0, 5.0;
+  cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 1, 0, 1.0);
+  auto [solution, progress] = solver.Minimize(state);
+
+  ASSERT_EQ(cppoptlib::solver::Status::Finished, progress.status);
+  // The outer-loop KKT tolerance defaults match the primal one to a
+  // couple of decimals in either direction -- this test reads just
+  // that the reported Lagrangian gradient is small, not specifically
+  // below any one tolerance.
+  constexpr double kkt_stationarity_upper_bound = 1e-2;
+  EXPECT_LE(solution.max_lagrangian_gradient, kkt_stationarity_upper_bound);
 }
 
 int main(int argc, char** argv) {

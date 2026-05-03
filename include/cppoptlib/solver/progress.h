@@ -110,7 +110,20 @@ struct Progress {
   ScalarType condition_hessian =
       ScalarType{0};  // Maximum condition number of hessian_t.
   ScalarType constraint_threshold =
-      ScalarType{0};                   // Minimum norm of constraint violations.
+      ScalarType{0};  // Minimum norm of constraint violations.
+  // Outer-loop KKT-stationarity tolerance.  The constrained solver
+  // (`AugmentedLagrangian`) reports `Status::Finished` only when
+  // primal feasibility AND Lagrangian-gradient stationarity both
+  // hold; `kkt_stationarity_threshold` is the threshold on the
+  // measured Lagrangian gradient sup-norm.  A non-positive value
+  // disables the check and falls back to feasibility-only stopping.
+  //
+  // The default is deliberately looser than the inner-solver
+  // `gradient_norm` threshold: the outer-loop Lagrangian gradient
+  // accumulates roundoff from all constraint evaluations, so a
+  // Lagrangian gradient at the `1e-6` level is often unattainable
+  // even when every per-constraint residual is at machine epsilon.
+  ScalarType kkt_stationarity_threshold = ScalarType{1e-4};
   Status status = Status::NotStarted;  // Status of state.
 
   // Past-delta stopping: stop when the function value has not decreased
@@ -197,12 +210,28 @@ struct Progress {
       return;
     }
     if constexpr (StateType::IsConstrained) {
-      if (std::abs(current_function_state.max_violation) >
-          stop_progress.constraint_threshold) {
-        status = Status::Continue;
+      // KKT-aware outer-loop stopping.  Declare success only when
+      // primal feasibility AND stationarity of the Lagrangian hold.
+      // The feasibility-only form of this test is unsafe for
+      // non-convex objectives: a feasible stationary point of the
+      // raw objective satisfies `max_violation = 0` with zero
+      // multipliers without being an optimum.
+      //
+      // A non-positive `kkt_stationarity_threshold` disables the
+      // KKT check and falls back to feasibility-only behaviour --
+      // used by legacy callers that never saw the KKT machinery.
+      const bool primal_feasible =
+          std::abs(current_function_state.max_violation) <=
+          stop_progress.constraint_threshold;
+      const bool kkt_stationary =
+          (stop_progress.kkt_stationarity_threshold <= ScalarType{0}) ||
+          (current_function_state.max_lagrangian_gradient <=
+           stop_progress.kkt_stationarity_threshold);
+      if (primal_feasible && kkt_stationary) {
+        status = Status::Finished;
         return;
       }
-      status = Status::Finished;  // All constraints satisfied
+      status = Status::Continue;
       return;
     }
     if ((stop_progress.x_delta > 0) && (x_delta < stop_progress.x_delta)) {
