@@ -73,3 +73,6 @@ CppNumericalSolvers.config
 tensorflow/solve
 compile_commands.json
 bench/out
+
+# Private per-contributor deferred-work notes; not a repo artefact.
+SESSION.md

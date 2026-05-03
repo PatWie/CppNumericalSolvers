@@ -56,6 +56,7 @@ is Eigen3.
 | L-BFGS | `solver/lbfgs.h` | 1st | — |
 | BFGS | `solver/bfgs.h` | 1st | — |
 | Newton | `solver/newton_descent.h` | 2nd | — |
+| Trust-Region Newton | `solver/trust_region_newton.h` | 2nd | — |
 | Nelder-Mead | `solver/nelder_mead.h` | 0th | — |
 | L-BFGS-B | `solver/lbfgsb.h` | 1st | box |
 | Augmented Lagrangian | `solver/augmented_lagrangian.h` | any | equality / inequality |
