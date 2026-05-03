@@ -220,6 +220,18 @@ struct Progress {
       // A non-positive `kkt_stationarity_threshold` disables the
       // KKT check and falls back to feasibility-only behaviour --
       // used by legacy callers that never saw the KKT machinery.
+      //
+      // NaN-guard: a pathological subproblem can produce NaN
+      // violations / gradients (e.g. HS019's unbounded cubic under
+      // penalty blow-up).  We treat that as a hard stop: there is
+      // no recovering iterate information from NaN, and the
+      // best-iterate tracker in the outer solver keeps any prior
+      // finite iterate for the return value.
+      if (!std::isfinite(current_function_state.max_violation) ||
+          !std::isfinite(current_function_state.max_lagrangian_gradient)) {
+        status = Status::IterationLimit;
+        return;
+      }
       const bool primal_feasible =
           std::abs(current_function_state.max_violation) <=
           stop_progress.constraint_threshold;

@@ -91,6 +91,31 @@ class Lbfgsb
     bounds_initialized_ = true;
   }
 
+  // Sup-norm of the box-projected gradient: |g_j| zeroed at any
+  // coordinate where `x_j` has hit an active bound and `g_j` points
+  // out of the box.  This is the standard convergence measure for
+  // box-constrained problems (Nocedal & Wright 16.7) and is what the
+  // outer augmented-Lagrangian loop reads to decide KKT
+  // stationarity at a box-constrained inner optimum.
+  //
+  // Callable even if `SetBounds` was never invoked -- the
+  // `bounds_initialized_` check falls back to an unbounded box and
+  // the projected norm degenerates to `gradient.lpNorm<Inf>()`.
+  ScalarType ProjectedGradientInfNorm(const VectorType& x,
+                                      const VectorType& gradient) const {
+    if (!bounds_initialized_) {
+      return gradient.template lpNorm<Eigen::Infinity>();
+    }
+    ScalarType norm = ScalarType{0};
+    for (int j = 0; j < x.size(); ++j) {
+      ScalarType gj = gradient(j);
+      if (x(j) <= lower_bound_(j) && gj > 0) gj = ScalarType{0};
+      if (x(j) >= upper_bound_(j) && gj < 0) gj = ScalarType{0};
+      norm = std::max<ScalarType>(norm, std::abs(gj));
+    }
+    return norm;
+  }
+
   void InitializeSolver(const FunctionType& /*function*/,
                         const StateType& initial_state) override {
     dim_ = initial_state.x.rows();
@@ -266,22 +291,6 @@ class Lbfgsb
   }
 
  private:
-  // Max over `|g_i|` with components zeroed for coordinates where the
-  // gradient points out of the feasible box at an active bound.  This is
-  // the standard "projected gradient" convergence measure for box-
-  // constrained problems (see Nocedal & Wright section 16.7).
-  ScalarType ProjectedGradientInfNorm(const VectorType& x,
-                                      const VectorType& gradient) const {
-    ScalarType norm = ScalarType{0};
-    for (int j = 0; j < x.size(); ++j) {
-      ScalarType gj = gradient(j);
-      if (x(j) <= lower_bound_(j) && gj > 0) gj = ScalarType{0};
-      if (x(j) >= upper_bound_(j) && gj < 0) gj = ScalarType{0};
-      norm = std::max<ScalarType>(norm, std::abs(gj));
-    }
-    return norm;
-  }
-
   /**
    * @brief sort pairs (k,v) according v ascending
    */

@@ -1181,6 +1181,104 @@ TEST(AugmentedLagrangianOuter, KktStationarityReportedOnFinishedState) {
   EXPECT_LE(solution.max_lagrangian_gradient, kkt_stationarity_upper_bound);
 }
 
+// HS016-class regression: optimum pinned to the inner solver's box
+// boundary.  The feasible region is `{x in [-0.5, 0.5] x [-inf, 1] :
+// x0^2 + x1 >= 0, x0 + x1^2 >= 0}` and the minimum of the Rosenbrock
+// objective sits at `(0.5, 0.25)` -- on the upper bound of `x0`.  At
+// that point the raw Lagrangian gradient is NOT zero (it has a
+// component pointing out of the box), so a KKT test that reads the
+// unprojected sup-norm refuses to declare convergence and the outer
+// loop burns through its iteration cap.  After the projected-gradient
+// fix, the outer loop must finish in a handful of iterations.
+//
+// This test guards against re-introducing the old feasibility-only or
+// unprojected-gradient logic: if either regression lands, the outer
+// loop falls out via `IterationLimit` and the assertion on
+// `progress.status == Finished` fails.
+TEST(AugmentedLagrangianBoxInterface, BoxPinnedOptimumStopsOnKkt) {
+  using cppoptlib::function::FunctionExpr;
+  using VectorType = Eigen::Matrix<double, 2, 1>;
+
+  class Rosenbrock : public cppoptlib::function::FunctionCRTP<
+                         Rosenbrock, double,
+                         cppoptlib::function::DifferentiabilityMode::First, 2> {
+   public:
+    ScalarType operator()(const VectorType& x, VectorType* grad) const {
+      const double a = x[0] - 1.0;
+      const double b = x[0] * x[0] - x[1];
+      if (grad) {
+        (*grad)[0] = 2 * a + 400 * b * x[0];
+        (*grad)[1] = -200 * b;
+      }
+      return a * a + 100 * b * b;
+    }
+  };
+
+  class Ineq0 : public cppoptlib::function::FunctionCRTP<
+                    Ineq0, double,
+                    cppoptlib::function::DifferentiabilityMode::First, 2> {
+   public:
+    ScalarType operator()(const VectorType& x, VectorType* grad) const {
+      if (grad) {
+        (*grad)[0] = 2 * x[0];
+        (*grad)[1] = 1;
+      }
+      return x[0] * x[0] + x[1];
+    }
+  };
+
+  class Ineq1 : public cppoptlib::function::FunctionCRTP<
+                    Ineq1, double,
+                    cppoptlib::function::DifferentiabilityMode::First, 2> {
+   public:
+    ScalarType operator()(const VectorType& x, VectorType* grad) const {
+      if (grad) {
+        (*grad)[0] = 1;
+        (*grad)[1] = 2 * x[1];
+      }
+      return x[0] + x[1] * x[1];
+    }
+  };
+
+  using FExpr =
+      FunctionExpr<double, cppoptlib::function::DifferentiabilityMode::First,
+                   2>;
+  FExpr objective = Rosenbrock{};
+  FExpr i0 = Ineq0{};
+  FExpr i1 = Ineq1{};
+  cppoptlib::function::ConstrainedOptimizationProblem problem(objective, {},
+                                                              {i0, i1});
+
+  cppoptlib::solver::Lbfgsb<FExpr> inner;
+  Eigen::Vector2d lower(-0.5, -1e20);
+  Eigen::Vector2d upper(0.5, 1.0);
+  inner.SetBounds(lower, upper);
+
+  cppoptlib::solver::AugmentedLagrangian<decltype(problem), decltype(inner)>
+      solver(problem, inner);
+
+  Eigen::Vector2d x0(-2.0, 1.0);
+  cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 0, 2, 0.0);
+
+  auto [solution, progress] = solver.Minimize(state);
+
+  // The outer loop must reach `Finished` status on its own -- an
+  // `IterationLimit` exit would signal regression of the projected-
+  // gradient fix.
+  ASSERT_EQ(cppoptlib::solver::Status::Finished, progress.status);
+  // Bound the iteration count loosely -- two or three outer
+  // iterations are expected in practice; anything below twenty
+  // leaves ample headroom while still catching regressions that
+  // blow the iteration count past the cap.
+  EXPECT_LT(progress.num_iterations, static_cast<std::size_t>(20));
+  // The converged iterate must sit within numerical tolerance of
+  // the known HS016 optimum (0.5, 0.25); the upper bound on `x0` is
+  // the active box constraint.
+  constexpr double position_tolerance = 1e-4;
+  EXPECT_NEAR(solution.x[0], 0.5, position_tolerance);
+  EXPECT_NEAR(solution.x[1], 0.25, position_tolerance);
+}
+
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

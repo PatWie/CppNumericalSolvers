@@ -41,6 +41,25 @@
 
 namespace cppoptlib::solver {
 
+// Detection trait: true if `InnerSolver::ProjectedGradientInfNorm(x,
+// gradient)` is a valid expression.  Used by `AugmentedLagrangian`
+// to switch its KKT-stationarity measurement between the projected
+// and unprojected forms without imposing a runtime interface on
+// every inner solver.  Box-constrained solvers such as `Lbfgsb`
+// satisfy the trait; purely unconstrained solvers like `Lbfgs` do
+// not, and the outer loop falls back to the raw sup-norm for them.
+template <class InnerSolver, class = void>
+struct HasProjectedGradientInfNorm : std::false_type {};
+
+template <class InnerSolver>
+struct HasProjectedGradientInfNorm<
+    InnerSolver,
+    std::void_t<
+        decltype(std::declval<const InnerSolver&>().ProjectedGradientInfNorm(
+            std::declval<typename InnerSolver::VectorType>(),
+            std::declval<typename InnerSolver::VectorType>()))>>
+    : std::true_type {};
+
 // Tunable knobs for the augmented-Lagrangian outer loop.  The defaults
 // are tuned to escape the "feasible-start, non-convex objective" trap
 // where the inner subproblem, with zero multipliers, converges to a
@@ -326,7 +345,7 @@ class AugmentedLagrangian
     // keeps its own stopping_progress intact -- callers using the
     // inner solver independently see no change.
     solver_t working_inner = unconstrained_solver_template_;
-    ConfigureInnerSubproblem(working_inner);
+    ConfigureInnerSubproblem(function, working_inner);
 
     const auto solved_inner_state = std::get<0>(working_inner.Minimize(
         unconstrained_function,
@@ -370,14 +389,24 @@ class AugmentedLagrangian
     // --- Step 5: measure Lagrangian-gradient stationarity ---
     //
     // The Lagrangian is L(x, lambda, mu) = f(x) + sum lambda_i c_i(x)
-    // - sum mu_j g_j(x).  A KKT point has |grad_x L|_inf ≈ 0.  This
-    // differs from the augmented-Lagrangian gradient by the penalty
-    // terms, and it is the one that enters the convergence test at
-    // the outer-loop level (the augmented-Lagrangian gradient at the
-    // inner solver's converged point is zero by construction, which
-    // carries no new information at the outer level).
+    // - sum mu_j g_j(x).  A KKT point has |grad_x L|_inf approximately
+    // zero.  This differs from the augmented-Lagrangian gradient by
+    // the penalty terms, and it is the one that enters the
+    // convergence test at the outer-loop level (the augmented-
+    // Lagrangian gradient at the inner solver's converged point is
+    // zero by construction, which carries no new information at the
+    // outer level).
+    //
+    // If the inner solver is box-constrained (e.g. `Lbfgsb`) we use
+    // its projected-gradient norm so the KKT test does not penalise
+    // a valid optimum pinned to a box edge: at such a point the
+    // unconstrained Lagrangian gradient can be nonzero in the
+    // out-of-box direction, but the true KKT condition accounts for
+    // the implicit box multiplier and is satisfied.  Inner solvers
+    // without a `ProjectedGradientInfNorm` method (plain `Lbfgs` et
+    // al.) fall back to the raw sup-norm.
     next_state.max_lagrangian_gradient =
-        ComputeLagrangianGradientSupNorm(function, next_state);
+        ComputeLagrangianGradientKktNorm(function, next_state);
     next_state.max_violation = max_violation;
 
     // --- Step 6: track the best iterate seen so far ---
@@ -470,13 +499,41 @@ class AugmentedLagrangian
   }
 
   // Install the subproblem stopping criteria on the provided inner
-  // solver clone.  On the first outer iteration we cap the
-  // iterations and loosen the gradient tolerance; on later
-  // iterations we leave the clone's stopping_progress untouched --
-  // it was copied from the user-provided template, so the user's
-  // desired inner-solver behaviour applies.
-  void ConfigureInnerSubproblem(solver_t& working_inner) const {
-    if (outer_iteration_count_ == 1 &&
+  // solver clone.  Two distinct modes:
+  //
+  //   - On outer iteration 1 of a problem that has at least one
+  //     general (equality or inequality) constraint, cap the inner
+  //     iterations and loosen the gradient tolerance so the coarse
+  //     result feeds the first multiplier update quickly and the
+  //     inner solver has no chance to commit to a spurious raw-
+  //     objective stationary point before the multipliers move.
+  //     Pure-box problems (no general constraints) skip this leg:
+  //     they have no multipliers to move, and an early stop would
+  //     install a premature iterate as "best" in the tracker.
+  //
+  //   - On every outer iteration we disable the inner solver's
+  //     `f_delta` stopping test.  `Lbfgsb`'s default `f_delta ==
+  //     2.22e-9` matches Fortran L-BFGS-B's `factr * epsmch` idiom,
+  //     which is appropriate for a standalone unconstrained solve
+  //     but not for augmented-Lagrangian subproblems whose
+  //     landscape is ill-conditioned by a large penalty `rho`.  The
+  //     stiff ρ makes `|Δf|` collapse long before the projected
+  //     gradient is small, causing the inner solver to return an
+  //     iterate at which the raw Lagrangian gradient is O(1e-3)
+  //     rather than O(eps) -- and the outer KKT test then refuses
+  //     to declare success.  Turning off `f_delta` on the clone
+  //     forces the inner solver to converge on projected-gradient,
+  //     which is the right KKT-equivalent signal to propagate.
+  //     The user's standalone inner solver (its
+  //     `stopping_progress`) is never mutated -- we work on a
+  //     clone.
+  void ConfigureInnerSubproblem(const ProblemType& function,
+                                solver_t& working_inner) const {
+    working_inner.stopping_progress.f_delta = ScalarType{0};
+    const bool has_general_constraints =
+        !function.equality_constraints.empty() ||
+        !function.inequality_constraints.empty();
+    if (outer_iteration_count_ == 1 && has_general_constraints &&
         config_.warmup_max_inner_iterations > 0) {
       working_inner.stopping_progress.num_iterations =
           static_cast<std::size_t>(config_.warmup_max_inner_iterations);
@@ -506,14 +563,19 @@ class AugmentedLagrangian
   }
 
   // Evaluate grad_x L(x, lambda, mu) at the current state and return
-  // its sup-norm.  L(x, lambda, mu) = f(x) + sum lambda_i c_i(x) -
-  // sum mu_j g_j(x).
+  // the sup-norm of its projected form.  L(x, lambda, mu) = f(x) +
+  // sum lambda_i c_i(x) - sum mu_j g_j(x).
   //
-  // This is *not* the augmented-Lagrangian gradient -- it is the
-  // gradient of the raw Lagrangian, which is what enters the
-  // convergence test at the outer-loop level.
-  static ScalarType ComputeLagrangianGradientSupNorm(
-      const ProblemType& function, const StateType& state) {
+  // If the inner solver exposes `ProjectedGradientInfNorm(x, grad)`
+  // (the contract `Lbfgsb` satisfies), the raw Lagrangian gradient
+  // is projected through the inner solver's feasibility box, which
+  // is the correct KKT stationarity measure at a box-constrained
+  // inner optimum: at a point pinned to a box edge, the true KKT
+  // condition allows a nonzero outward gradient because an implicit
+  // box multiplier absorbs it.  Inner solvers without that method
+  // (`Lbfgs` et al.) fall back to the raw sup-norm.
+  ScalarType ComputeLagrangianGradientKktNorm(const ProblemType& function,
+                                              const StateType& state) const {
     const std::size_t n = static_cast<std::size_t>(state.x.size());
     VectorType sum_grad(state.x.size());
     VectorType buf(state.x.size());
@@ -529,11 +591,16 @@ class AugmentedLagrangian
       const ScalarType mu_j = state.multiplier_state.inequality_multipliers[j];
       sum_grad.noalias() -= mu_j * buf;
     }
-    ScalarType sup = ScalarType{0};
-    for (std::size_t k = 0; k < n; ++k) {
-      sup = std::max<ScalarType>(sup, std::abs(sum_grad[k]));
+    if constexpr (HasProjectedGradientInfNorm<solver_t>::value) {
+      return unconstrained_solver_template_.ProjectedGradientInfNorm(state.x,
+                                                                     sum_grad);
+    } else {
+      ScalarType sup = ScalarType{0};
+      for (std::size_t k = 0; k < n; ++k) {
+        sup = std::max<ScalarType>(sup, std::abs(sum_grad[k]));
+      }
+      return sup;
     }
-    return sup;
   }
 
   ProblemType problem_;
@@ -591,6 +658,17 @@ class AugmentedLagrangian
     constexpr ScalarType filter_feasibility_tolerance = ScalarType{1e-5};
     const ScalarType candidate_objective = function.objective(candidate.x);
     const ScalarType candidate_violation = candidate.max_violation;
+    // NaN-guard: reject candidates whose `x`, objective, or violation
+    // are not finite.  A pathological subproblem (e.g. HS019's
+    // degenerate cubic with penalty blow-up) can produce NaN
+    // iterates; `std::max`, `std::min` and `operator<` all silently
+    // pass through NaN, which would let one corrupt the tracker.
+    bool candidate_finite = std::isfinite(candidate_objective) &&
+                            std::isfinite(candidate_violation);
+    for (int k = 0; candidate_finite && k < candidate.x.size(); ++k) {
+      candidate_finite = candidate_finite && std::isfinite(candidate.x[k]);
+    }
+    if (!candidate_finite) return;
     if (!best_iterate_recorded_) {
       RecordBestIterate(candidate, candidate_objective);
       return;
