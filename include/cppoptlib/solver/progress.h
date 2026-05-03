@@ -195,9 +195,14 @@ struct Progress {
       gradient_norm = current_gradient.template lpNorm<Eigen::Infinity>();
     }
     // Compute Hessian condition number if the function supports second-order
-    // derivatives
-    if constexpr (FunctionType::Differentiability ==
-                  cppoptlib::function::DifferentiabilityMode::Second) {
+    // derivatives.  Gated on `!StateType::IsConstrained` so
+    // constrained-solver state types (`AugmentedLagrangeState`) skip it:
+    // their `FunctionType` is `ConstrainedOptimizationProblem`, which
+    // has no `operator()` -- the solver evaluates objective and
+    // constraints separately via the struct's member fields.
+    if constexpr (!StateType::IsConstrained &&
+                  FunctionType::Differentiability ==
+                      cppoptlib::function::DifferentiabilityMode::Second) {
       MatrixType current_hessian;
       function(current_x, nullptr, &current_hessian);
       condition_hessian =

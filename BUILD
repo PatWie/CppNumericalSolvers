@@ -20,6 +20,7 @@ build_test("verify")
 build_test("cstep_test")
 build_test("hager_zhang_test")
 build_test("augmented_lagrangian_test")
+build_test("trust_region_newton_test")
 
 build_example("svm_primal_lbfgs", extra_deps = [":iris_data"])
 build_example("svm_primal_al", extra_deps = [":iris_data"])
