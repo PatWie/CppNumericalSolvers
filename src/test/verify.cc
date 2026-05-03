@@ -261,16 +261,16 @@ TYPED_TEST(Constrained, Simple) {
   cppoptlib::function::ConstrainedOptimizationProblem prob(
       objective,
       /* equality constraints */
-      {cppoptlib::function::FunctionExpr(circle - 2)},
+      {circle - 2.0},
       /* inequality constraints */
-      {cppoptlib::function::FunctionExpr(2 - circle)});
+      {2.0 - circle});
   cppoptlib::solver::Lbfgs<FunctionExpr2d1> inner_solver;
   cppoptlib::solver::AugmentedLagrangian<decltype(prob), decltype(inner_solver)>
-      solver(inner_solver);
+      solver(prob, inner_solver);
   cppoptlib::solver::AugmentedLagrangeState<double, 2> l_state(x, 1, 1, 1.0);
 
   // Run the solver.
-  auto [solution, solver_state] = solver.Minimize(prob, l_state);
+  auto [solution, solver_state] = solver.Minimize(l_state);
   EXPECT_NEAR(solution.x[0], -1, 1e-3);
   EXPECT_NEAR(solution.x[1], -1, 1e-3);
 }

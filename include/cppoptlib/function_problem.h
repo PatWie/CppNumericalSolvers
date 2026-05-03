@@ -31,7 +31,8 @@
 #include <type_traits>
 #include <vector>
 
-#include "function_problem.h"
+#include "function_base.h"
+#include "function_expressions.h"
 
 namespace cppoptlib::function {
 
@@ -39,8 +40,20 @@ namespace cppoptlib::function {
 //   minimize f(x)
 //   subject to: c(x) == 0  and  c(x) >= 0
 //
-template <typename TScalar, DifferentiabilityMode ModeObj,
-          DifferentiabilityMode ModeConstr, int TDimension>
+// A single `Mode` template parameter describes the differentiability of
+// both the objective and the constraints.  Earlier revisions allowed an
+// asymmetric `Second` objective with `First` constraints, but no code
+// path in the augmented-Lagrangian composite ever pulled on the extra
+// Hessian edge -- the inner solver consumes a composite whose mode is
+// the minimum of the two and therefore never calls the objective's
+// three-argument operator.  The separate `ModeConstr` parameter was
+// dead weight that also made CTAD ambiguous on the common case where
+// both modes agreed.  Users who want to mix modes can still wrap a
+// higher-mode expression into a lower-mode `FunctionExpr` (the
+// converting constructor accepts the downgrade).
+template <typename TScalar,
+          DifferentiabilityMode Mode = DifferentiabilityMode::First,
+          int TDimension = Eigen::Dynamic>
 struct ConstrainedOptimizationProblem {
   static constexpr int Dimension = TDimension;
 
@@ -48,45 +61,46 @@ struct ConstrainedOptimizationProblem {
   using VectorType = Eigen::Matrix<ScalarType, Dimension, 1>;
   using MatrixType = Eigen::Matrix<ScalarType, Dimension, Dimension>;
 
-  using ObjectiveFunctionType = FunctionExpr<TScalar, ModeObj, TDimension>;
-  using ConstraintFunctionType = FunctionExpr<TScalar, ModeConstr, TDimension>;
-  static constexpr DifferentiabilityMode Differentiability =
-      MinDifferentiabilityMode<ModeObj, ModeConstr>::value;
+  using ObjectiveFunctionType = FunctionExpr<TScalar, Mode, TDimension>;
+  using ConstraintFunctionType = FunctionExpr<TScalar, Mode, TDimension>;
+  static constexpr DifferentiabilityMode Differentiability = Mode;
 
-  const FunctionExpr<TScalar, ModeObj, TDimension> objective;  // f(x)
-  const std::vector<FunctionExpr<TScalar, ModeConstr, TDimension>>
+  const FunctionExpr<TScalar, Mode, TDimension> objective;  // f(x)
+  const std::vector<FunctionExpr<TScalar, Mode, TDimension>>
       equality_constraints;  // c(x) == 0
-  const std::vector<FunctionExpr<TScalar, ModeConstr, TDimension>>
+  const std::vector<FunctionExpr<TScalar, Mode, TDimension>>
       inequality_constraints;  // c(x) >= 0
 
   ConstrainedOptimizationProblem(
-      const FunctionExpr<TScalar, ModeObj, TDimension> obj,
-      const std::vector<FunctionExpr<TScalar, ModeConstr, TDimension>>
+      const FunctionExpr<TScalar, Mode, TDimension> obj,
+      const std::vector<FunctionExpr<TScalar, Mode, TDimension>>
           eq_constraints = {},
-      const std::vector<FunctionExpr<TScalar, ModeConstr, TDimension>>
+      const std::vector<FunctionExpr<TScalar, Mode, TDimension>>
           ineq_constraints = {})
       : objective(std::move(obj)),
         equality_constraints(std::move(eq_constraints)),
         inequality_constraints(std::move(ineq_constraints)) {}
 };
 
-// Deduction guide for two-argument constructor using an initializer list for
-// equality constraints.
-template <typename TScalar, DifferentiabilityMode ModeObj,
-          DifferentiabilityMode ModeConstr, int TDim>
-ConstrainedOptimizationProblem(
-    const FunctionExpr<TScalar, ModeObj, TDim>&,
-    std::initializer_list<FunctionExpr<TScalar, ModeConstr, TDim>>)
-    -> ConstrainedOptimizationProblem<TScalar, ModeObj, ModeConstr, TDim>;
+// Deduction guide: one-argument form (no constraints).
+template <typename TScalar, DifferentiabilityMode Mode, int TDim>
+ConstrainedOptimizationProblem(const FunctionExpr<TScalar, Mode, TDim>&)
+    -> ConstrainedOptimizationProblem<TScalar, Mode, TDim>;
 
-// Deduction guide for three-argument constructor using initializer lists.
-template <typename TScalar, DifferentiabilityMode ModeObj,
-          DifferentiabilityMode ModeConstr, int TDim>
+// Deduction guide: two-argument form (objective + equality constraints).
+template <typename TScalar, DifferentiabilityMode Mode, int TDim>
 ConstrainedOptimizationProblem(
-    const FunctionExpr<TScalar, ModeObj, TDim>&,
-    std::initializer_list<FunctionExpr<TScalar, ModeConstr, TDim>>,
-    std::initializer_list<FunctionExpr<TScalar, ModeConstr, TDim>>)
-    -> ConstrainedOptimizationProblem<TScalar, ModeObj, ModeConstr, TDim>;
+    const FunctionExpr<TScalar, Mode, TDim>&,
+    std::initializer_list<FunctionExpr<TScalar, Mode, TDim>>)
+    -> ConstrainedOptimizationProblem<TScalar, Mode, TDim>;
+
+// Deduction guide: three-argument form (objective + equality + inequality).
+template <typename TScalar, DifferentiabilityMode Mode, int TDim>
+ConstrainedOptimizationProblem(
+    const FunctionExpr<TScalar, Mode, TDim>&,
+    std::initializer_list<FunctionExpr<TScalar, Mode, TDim>>,
+    std::initializer_list<FunctionExpr<TScalar, Mode, TDim>>)
+    -> ConstrainedOptimizationProblem<TScalar, Mode, TDim>;
 
 }  // namespace cppoptlib::function
 

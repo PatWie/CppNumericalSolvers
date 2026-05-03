@@ -15,8 +15,8 @@ class LinearRegression : public FunctionXf<LinearRegression> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  ScalarType operator()(const VectorType &x,
-                        VectorType *gradient = nullptr) const {
+  ScalarType operator()(const VectorType& x,
+                        VectorType* gradient = nullptr) const {
     // Compute residuals for the two observations:
     // Observation 1: beta1 + 2*beta2 - 4
     // Observation 2: 3*beta1 + beta2 - 5
@@ -45,7 +45,7 @@ class BoundConstraint : public FunctionXf<BoundConstraint> {
 
   BoundConstraint(int i, ScalarType bound) : index(i), lower_bound(bound) {}
 
-  ScalarType operator()(const VectorType &x, VectorType *grad = nullptr) const {
+  ScalarType operator()(const VectorType& x, VectorType* grad = nullptr) const {
     if (grad) {
       grad->setZero();
       (*grad)[index] = 1.0;  // ∇(x[i] - lower_bound)
@@ -95,7 +95,7 @@ int main() {
   cppoptlib::solver::AugmentedLagrangeState l_state(x, 0, 4, 1.0f);
 
   // Run the agumented solver.
-  auto [aug_solution, aug_solver_state] = aug_solver.Minimize(prob, l_state);
+  auto [aug_solution, aug_solver_state] = aug_solver.Minimize(l_state);
   std::cout << "argmin " << aug_solution.x.transpose() << std::endl;
 
   return 0;

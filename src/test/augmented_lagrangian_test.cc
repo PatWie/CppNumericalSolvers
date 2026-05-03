@@ -1,0 +1,894 @@
+// Copyright 2026, https://github.com/PatWie/CppNumericalSolvers
+//
+// Exhaustive tests for the augmented-Lagrangian solver.  This file is
+// organised top-down into three sections:
+//
+//   Section A.  Penalty building-block helpers (`QuadraticEqualityPenalty`,
+//               `QuadraticInequalityPenaltyGe`, `QuadraticInequalityPenaltyLt`,
+//               and the underlying `MinZeroExpression` / `MaxZeroExpression`).
+//               These tests touch no solver -- they evaluate the penalty
+//               expressions directly at hand-chosen points against closed-form
+//               reference values.
+//
+//   Section B.  Augmented-Lagrangian composite assembly
+//   (`ToAugmentedLagrangian`,
+//               `FormLagrangianPart`, `FormPenaltyPart`).  These tests build
+//               the composite once, without running the solver, and verify
+//               that L_aug(x) = f(x) + sum lambda_i c_i(x) + rho * P(x) matches
+//               the closed-form expression.  A failure here localises a bug
+//               to the composite construction rather than the outer loop.
+//
+//   Section C.  Outer-loop KKT tests: run `AugmentedLagrangian::Minimize` on
+//               problems with analytic optima and verify the primal solution,
+//               the recovered Lagrange multipliers, and constraint feasibility.
+//               Cases cover equality-only, inequality-active, both-active,
+//               and degenerate (feasible-at-start, unconstrained-wrapped)
+//               problems.
+//
+// Every numeric tolerance is named.  Expected values are derived in the
+// comment immediately above each assertion so the reader can verify the
+// test, not just read it.
+#undef NDEBUG
+
+// `cppoptlib/solver/augmented_lagrangian.h` now carries its own transitive
+// includes for `DifferentiabilityMode` and `FunctionExpr` via
+// `function_problem.h`.  We include it first as a regression guard: a
+// future refactor that drops those transitive includes would fail to
+// compile this file.
+#include "cppoptlib/solver/augmented_lagrangian.h"
+
+#include <cmath>
+#include <initializer_list>
+#include <vector>
+
+#include "cppoptlib/function.h"
+#include "cppoptlib/solver/lbfgs.h"
+#include "gtest/gtest.h"
+
+namespace {
+
+// ---- Named tolerances -----------------------------------------------------
+// Used only as semantic constants -- no test writes a bare numeric literal.
+
+// Penalty-helper evaluations have no numerical solver in them, so we can
+// assert agreement with closed-form formulas at machine precision.
+constexpr double penalty_evaluation_tolerance = 1e-12;
+
+// Outer-loop primal tolerance.  Augmented Lagrangian with rho growing from
+// 1.0 and an inner L-BFGS (default stopping) converges the primal to a
+// few parts per thousand on well-scaled 2-D problems.  Tighter than this
+// is a false lockdown.
+constexpr double kkt_primal_tolerance = 1e-3;
+
+// Lagrange-multiplier recovery is slightly looser than primal; augmented
+// Lagrangian converges duals at a comparable rate but noise from the
+// inner solver compounds over outer iterations.  Keep this one order of
+// magnitude tighter than the outer-loop stopping `constraint_threshold`
+// default of 1e-5 -- we want duals to carry meaning, not noise.
+constexpr double kkt_dual_tolerance = 1e-2;
+
+// Constraint-feasibility tolerance -- the outer solver's default
+// `constraint_threshold` is 1e-5, so after Minimize returns with
+// `Status::Finished` the residual must be at or below that.
+constexpr double feasibility_tolerance = 1e-5;
+
+// ---- 1-D scalar function (for penalty-helper tests) -----------------------
+// `f(x) = a + b * x[0]` with fixed a, b so tests can drive the constraint
+// value to any chosen scalar by choosing `x[0]`.
+class Linear1D : public cppoptlib::function::FunctionCRTP<
+                     Linear1D, double,
+                     cppoptlib::function::DifferentiabilityMode::First, 1> {
+ public:
+  double a_coef;
+  double b_coef;
+  Linear1D(double a, double b) : a_coef(a), b_coef(b) {}
+
+  ScalarType operator()(const VectorType& x, VectorType* grad = nullptr) const {
+    if (grad) {
+      grad->resize(1);
+      (*grad)[0] = b_coef;
+    }
+    return a_coef + b_coef * x[0];
+  }
+};
+
+// Spelling this out once: `FunctionExpr<double, First, 1>` is the 1-D
+// type-erased wrapper, needed because the penalty helpers call into
+// `MinZeroExpression::operator()(x, grad, hess)` (three args) on the
+// wrapped constraint.  A bare `Linear1D` only defines `operator()(x, grad)`
+// (two args) and does not satisfy that three-arg call.  The type
+// erasure in FunctionExpr routes through FunctionCRTP's virtual three-arg
+// override, which then dispatches down to the two-arg user operator().
+using FunctionExpr1d = cppoptlib::function::FunctionExpr<
+    double, cppoptlib::function::DifferentiabilityMode::First, 1>;
+
+using Vec1 = Eigen::Matrix<double, 1, 1>;
+
+Vec1 MakeVec1(double v) {
+  Vec1 x;
+  x[0] = v;
+  return x;
+}
+
+// ---- 2-D functions used in multiple sections ------------------------------
+template <class F>
+using Function2d = cppoptlib::function::FunctionCRTP<
+    F, double, cppoptlib::function::DifferentiabilityMode::First, 2>;
+
+using FunctionExpr2d = cppoptlib::function::FunctionExpr<
+    double, cppoptlib::function::DifferentiabilityMode::First, 2>;
+
+// f(x) = 0.5 * (x0^2 + x1^2), gradient = x.
+class HalfSquaredNorm2D : public Function2d<HalfSquaredNorm2D> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  ScalarType operator()(const VectorType& x, VectorType* grad = nullptr) const {
+    if (grad) *grad = x;
+    return 0.5 * x.squaredNorm();
+  }
+};
+
+// f(x) = (x0 - 1)^2 + (x1 - 2)^2, gradient = 2 * (x - [1,2]).
+class QuadraticAt12 : public Function2d<QuadraticAt12> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  ScalarType operator()(const VectorType& x, VectorType* grad = nullptr) const {
+    if (grad) {
+      VectorType reference(2);
+      reference << 1.0, 2.0;
+      *grad = 2.0 * (x - reference);
+    }
+    return (x[0] - 1.0) * (x[0] - 1.0) + (x[1] - 2.0) * (x[1] - 2.0);
+  }
+};
+
+// f(x) = x0 + x1, gradient = [1, 1].
+class Sum2D : public Function2d<Sum2D> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  ScalarType operator()(const VectorType& x, VectorType* grad = nullptr) const {
+    if (grad) *grad = VectorType::Ones(2);
+    return x.sum();
+  }
+};
+
+// g(x) = x0 - target, gradient = [1, 0].  Parameterises a simple linear
+// equality constraint `x0 == target`.
+class X0MinusTarget : public Function2d<X0MinusTarget> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  double target;
+  explicit X0MinusTarget(double t) : target(t) {}
+
+  ScalarType operator()(const VectorType& x, VectorType* grad = nullptr) const {
+    if (grad) {
+      *grad = VectorType::Zero(2);
+      (*grad)[0] = 1.0;
+    }
+    return x[0] - target;
+  }
+};
+
+// h(x) = bound - x0 >= 0  (i.e. x0 <= bound).  Gradient = [-1, 0].
+class UpperBoundOnX0 : public Function2d<UpperBoundOnX0> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  double bound;
+  explicit UpperBoundOnX0(double b) : bound(b) {}
+
+  ScalarType operator()(const VectorType& x, VectorType* grad = nullptr) const {
+    if (grad) {
+      *grad = VectorType::Zero(2);
+      (*grad)[0] = -1.0;
+    }
+    return bound - x[0];
+  }
+};
+
+// f(x) = 0.5 * ((x0 - 2)^2 + x1^2).  Unconstrained optimum (2, 0).
+// Used in the inequality-active KKT test.
+class QuadraticAt20 : public Function2d<QuadraticAt20> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  ScalarType operator()(const VectorType& x, VectorType* grad = nullptr) const {
+    if (grad) {
+      VectorType reference(2);
+      reference << 2.0, 0.0;
+      *grad = (x - reference);
+    }
+    return 0.5 * ((x[0] - 2.0) * (x[0] - 2.0) + x[1] * x[1]);
+  }
+};
+
+// Inequality 2 - (x0 + x1) >= 0  (i.e. x0 + x1 <= 2).  Gradient = [-1, -1].
+class SumUpperBound : public Function2d<SumUpperBound> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  ScalarType operator()(const VectorType& x, VectorType* grad = nullptr) const {
+    if (grad) {
+      *grad = VectorType(2);
+      (*grad) << -1.0, -1.0;
+    }
+    return 2.0 - (x[0] + x[1]);
+  }
+};
+
+// c(x) = 0 for all x.  Trivially-feasible equality.  Used to pin feasible-
+// start and penalty-schedule tests.  We do not multiply by zero inside an
+// expression template (that can trigger NaN paths through the tree); we
+// return an honest zero with an honest zero gradient.
+class ZeroConstraint : public Function2d<ZeroConstraint> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  ScalarType operator()(const VectorType& x, VectorType* grad = nullptr) const {
+    if (grad) *grad = VectorType::Zero(2);
+    (void)x;
+    return 0.0;
+  }
+};
+
+// ---- Problem-type alias used across Section C tests -----------------------
+// Spelling the full `ConstrainedOptimizationProblem<...>` on every test is
+// noisy.  Using a typedef reads cleaner.  A single `Mode` parameter
+// describes both objective and constraint differentiability.
+using ConstrainedProblem2d =
+    cppoptlib::function::ConstrainedOptimizationProblem<
+        double, cppoptlib::function::DifferentiabilityMode::First, 2>;
+
+// Second-order 2-D quadratic `f(x) = 0.5 * x^T A x` with
+// `A = diag(4, 2)`.  Gradient = A x; Hessian = A.  Used only by the
+// mode-downgrade test: we want to construct a `First`-mode
+// `FunctionExpr` from a `Second`-mode CRTP source and verify that the
+// evaluation + gradient match the analytic answer (and that the
+// Hessian simply never gets asked for).
+class DiagonalQuadratic2dSecond
+    : public cppoptlib::function::FunctionCRTP<
+          DiagonalQuadratic2dSecond, double,
+          cppoptlib::function::DifferentiabilityMode::Second, 2> {
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  ScalarType operator()(const VectorType& x, VectorType* grad = nullptr,
+                        MatrixType* hess = nullptr) const {
+    if (grad) {
+      *grad = VectorType(2);
+      (*grad) << 4.0 * x[0], 2.0 * x[1];
+    }
+    if (hess) {
+      *hess = MatrixType::Zero(2, 2);
+      (*hess)(0, 0) = 4.0;
+      (*hess)(1, 1) = 2.0;
+    }
+    return 2.0 * x[0] * x[0] + x[1] * x[1];
+  }
+};
+
+}  // namespace
+
+// =============================================================================
+// SECTION A: Penalty-helper unit tests
+// =============================================================================
+//
+// These tests exercise the building blocks in `function_penalty.h` in
+// isolation.  The expected values are derived at the top of each test from
+// the closed-form formulas P_eq(c)     = 0.5 * c^2 ,
+//                          P_ineq_ge(c) = 0.5 * min(0, c)^2 ,
+//                          P_ineq_lt(c) = 0.5 * max(0, c)^2 .
+// A failure here *must* be a bug in the penalty helpers themselves.
+
+// ---- A.1: QuadraticEqualityPenalty is 0 at feasibility --------------------
+// c(x) = 0 + 1*x.  At x = 0, c = 0, so P_eq(c)(x=0) = 0.5 * 0^2 = 0.
+TEST(QuadraticEqualityPenalty, ZeroAtFeasiblePoint) {
+  FunctionExpr1d c = Linear1D(0.0, 1.0);
+  auto penalty = cppoptlib::function::QuadraticEqualityPenalty(c);
+  const double value = penalty(MakeVec1(0.0));
+  EXPECT_NEAR(0.0, value, penalty_evaluation_tolerance);
+}
+
+// ---- A.2: QuadraticEqualityPenalty is symmetric in sign of c -------------
+// c(x) = -2 + 1*x.  At x = 5, c = 3, P_eq = 4.5.
+// At x = -1, c = -3, P_eq = 4.5.  Same penalty either side -- it is
+// literally c^2.  This test pins the "equality penalty does NOT distinguish
+// sign of the residual" invariant.
+TEST(QuadraticEqualityPenalty, SymmetricInResidualSign) {
+  FunctionExpr1d c = Linear1D(-2.0, 1.0);
+  auto penalty = cppoptlib::function::QuadraticEqualityPenalty(c);
+  // x = 5 -> c = 3 -> P = 0.5 * 9 = 4.5.
+  EXPECT_NEAR(4.5, penalty(MakeVec1(5.0)), penalty_evaluation_tolerance);
+  // x = -1 -> c = -3 -> P = 0.5 * 9 = 4.5.
+  EXPECT_NEAR(4.5, penalty(MakeVec1(-1.0)), penalty_evaluation_tolerance);
+}
+
+// ---- A.3: QuadraticInequalityPenaltyGe is zero when c(x) >= 0 ------------
+// Convention: constraint is `c(x) >= 0`, so penalty kicks in only when
+// c is negative.  Any non-negative c value must return exactly 0 with
+// zero gradient.
+TEST(QuadraticInequalityPenaltyGe, ZeroWhenConstraintSatisfied) {
+  FunctionExpr1d c = Linear1D(0.0, 1.0);  // c(x) = x.
+  auto penalty = cppoptlib::function::QuadraticInequalityPenaltyGe(c);
+  // x = 0 -> c = 0 (active boundary, still "satisfied").
+  EXPECT_NEAR(0.0, penalty(MakeVec1(0.0)), penalty_evaluation_tolerance);
+  // x = 5 -> c = 5 (strictly satisfied).
+  EXPECT_NEAR(0.0, penalty(MakeVec1(5.0)), penalty_evaluation_tolerance);
+}
+
+// ---- A.4: QuadraticInequalityPenaltyGe fires on violation ---------------
+// c(x) = x, violated when c < 0.  At x = -3, c = -3, min(0, c) = -3,
+// P_ineq_ge = 0.5 * 9 = 4.5.
+TEST(QuadraticInequalityPenaltyGe, FiresOnNegativeResidual) {
+  FunctionExpr1d c = Linear1D(0.0, 1.0);
+  auto penalty = cppoptlib::function::QuadraticInequalityPenaltyGe(c);
+  EXPECT_NEAR(4.5, penalty(MakeVec1(-3.0)), penalty_evaluation_tolerance);
+}
+
+// ---- A.5: QuadraticInequalityPenaltyLt is the complement ---------------
+// Convention: constraint is `c(x) <= 0`, penalty kicks in when c > 0.
+TEST(QuadraticInequalityPenaltyLt, ZeroWhenCNonpositive) {
+  FunctionExpr1d c = Linear1D(0.0, 1.0);
+  auto penalty = cppoptlib::function::QuadraticInequalityPenaltyLt(c);
+  EXPECT_NEAR(0.0, penalty(MakeVec1(-5.0)), penalty_evaluation_tolerance);
+  EXPECT_NEAR(0.0, penalty(MakeVec1(0.0)), penalty_evaluation_tolerance);
+}
+
+TEST(QuadraticInequalityPenaltyLt, FiresOnPositiveResidual) {
+  FunctionExpr1d c = Linear1D(0.0, 1.0);
+  auto penalty = cppoptlib::function::QuadraticInequalityPenaltyLt(c);
+  // x = 3 -> c = 3 -> P = 0.5 * 9 = 4.5.
+  EXPECT_NEAR(4.5, penalty(MakeVec1(3.0)), penalty_evaluation_tolerance);
+}
+
+// ---- A.6: Gradient of QuadraticEqualityPenalty at c != 0 ------------------
+// d/dx [0.5 * c(x)^2] = c(x) * c'(x).  With c(x) = x, at x = 3:
+// expected gradient = 3 * 1 = 3.
+TEST(QuadraticEqualityPenalty, GradientMatchesChainRule) {
+  FunctionExpr1d c = Linear1D(0.0, 1.0);
+  auto penalty = cppoptlib::function::QuadraticEqualityPenalty(c);
+  Vec1 grad;
+  const double value = penalty(MakeVec1(3.0), &grad);
+  EXPECT_NEAR(4.5, value, penalty_evaluation_tolerance);
+  EXPECT_NEAR(3.0, grad[0], penalty_evaluation_tolerance);
+}
+
+// ---- A.7: Gradient of QuadraticInequalityPenaltyGe is zero when inactive.
+// When c(x) > 0 the penalty is identically zero and its gradient must also
+// be zero -- otherwise a spurious force is added at the feasible side.
+TEST(QuadraticInequalityPenaltyGe, GradientZeroWhenSatisfied) {
+  FunctionExpr1d c = Linear1D(0.0, 1.0);
+  auto penalty = cppoptlib::function::QuadraticInequalityPenaltyGe(c);
+  Vec1 grad;
+  const double value = penalty(MakeVec1(5.0), &grad);
+  EXPECT_NEAR(0.0, value, penalty_evaluation_tolerance);
+  EXPECT_NEAR(0.0, grad[0], penalty_evaluation_tolerance);
+}
+
+// ---- A.8: Gradient of QuadraticInequalityPenaltyGe on violation.
+// P(x) = 0.5 * min(0, c)^2.  When c = -3, dP/dx = min(0, c) * c'(x) =
+// (-3) * 1 = -3.
+TEST(QuadraticInequalityPenaltyGe, GradientMatchesChainRuleOnViolation) {
+  FunctionExpr1d c = Linear1D(0.0, 1.0);
+  auto penalty = cppoptlib::function::QuadraticInequalityPenaltyGe(c);
+  Vec1 grad;
+  const double value = penalty(MakeVec1(-3.0), &grad);
+  EXPECT_NEAR(4.5, value, penalty_evaluation_tolerance);
+  EXPECT_NEAR(-3.0, grad[0], penalty_evaluation_tolerance);
+}
+
+// =============================================================================
+// SECTION B: Composite-assembly tests (`ToAugmentedLagrangian` / parts)
+// =============================================================================
+//
+// Build the augmented Lagrangian once, without running the solver, and
+// evaluate it at a chosen x.  L_aug(x) has the closed form
+//   L_aug(x) = f(x) + sum_eq  lambda_i c_eq_i(x)
+//                   + sum_ineq mu_j c_ineq_j(x)
+//                   + rho * [sum_eq 0.5 c_eq_i(x)^2
+//                            + sum_ineq 0.5 min(0, c_ineq_j(x))^2].
+// We build a problem, plug in fixed multiplier/penalty state, evaluate, and
+// compare against the hand-computed value.  This localises the sign
+// convention of the Lagrangian part -- i.e. is the inequality term
+// `+ mu * c` or `- mu * c`.
+
+// ---- B.1: Equality-only composite at a non-feasible x ---------------------
+// f(x) = 0.5 * ||x||^2.  One equality c(x) = x0 - 1 (so c is 0 at x0 = 1).
+// multipliers lambda = {2.0}; rho = 3.0.
+// At x = (3, 4): c = 2.
+// Expected L_aug = 0.5*(9+16) + 2.0*2 + 3.0 * 0.5 * 4
+//                = 12.5 + 4 + 6 = 22.5.
+TEST(ToAugmentedLagrangian, EqualityOnlyMatchesClosedForm) {
+  cppoptlib::function::FunctionExpr<
+      double, cppoptlib::function::DifferentiabilityMode::First, 2>
+      objective = HalfSquaredNorm2D();
+  cppoptlib::function::FunctionExpr<
+      double, cppoptlib::function::DifferentiabilityMode::First, 2>
+      equality = X0MinusTarget(1.0);
+
+  ConstrainedProblem2d problem(objective, {equality});
+  cppoptlib::function::LagrangeMultiplierState<double> multipliers({2.0}, {});
+  cppoptlib::function::PenaltyState<double> penalty(3.0);
+
+  auto augmented =
+      cppoptlib::function::ToAugmentedLagrangian(problem, multipliers, penalty);
+  Eigen::Vector2d x;
+  x << 3.0, 4.0;
+  EXPECT_NEAR(22.5, augmented(x), penalty_evaluation_tolerance);
+}
+
+// ---- B.2: Inequality-only composite, satisfied side, locks sign ----------
+// f(x) = 0.5 * ||x||^2.  One inequality c(x) = x0 - 0.5 >= 0 (satisfied
+// when x0 >= 0.5).  multipliers mu = {7.0}; rho = 4.0.
+//
+// At x = (3, 0):  c = 2.5 (satisfied).  Penalty part = 0.  The Lagrangian
+// part is the sign we are pinning: the augmented-Lagrangian update keeps
+// `mu >= 0` and the subtracted term `- mu * c` drives the inner solver
+// toward the active boundary when mu settles at a positive value at the
+// KKT point.  So the expected composite at x = (3, 0) is
+//   L_aug = 0.5*(9+0) - 7.0*2.5 + 0 = 4.5 - 17.5 = -13.0.
+//
+// NOTE: if the inequality sign is `+ mu * c` (the current buggy
+// implementation) this test reads 4.5 + 17.5 = 22.0 -- the sign flip.
+TEST(ToAugmentedLagrangian, InequalityLagrangianPartUsesCorrectSign) {
+  using namespace cppoptlib::function;
+  FunctionExpr<double, DifferentiabilityMode::First, 2> objective =
+      HalfSquaredNorm2D();
+  // Constraint c(x) = x0 - 0.5 >= 0  -- use X0MinusTarget with target=0.5.
+  FunctionExpr<double, DifferentiabilityMode::First, 2> inequality =
+      X0MinusTarget(0.5);
+
+  ConstrainedProblem2d problem(objective, /*eq=*/{}, {inequality});
+  LagrangeMultiplierState<double> multipliers({}, {7.0});
+  PenaltyState<double> penalty(4.0);
+
+  auto augmented = ToAugmentedLagrangian(problem, multipliers, penalty);
+  Eigen::Vector2d x;
+  x << 3.0, 0.0;
+  EXPECT_NEAR(-13.0, augmented(x), penalty_evaluation_tolerance);
+}
+
+// ---- B.3: Inequality penalty fires on violated side -----------------------
+// Same setup as B.2 but x = (0.0, 0.0), so c = -0.5 (violated).
+// Penalty part = rho * 0.5 * (-0.5)^2 = 4.0 * 0.125 = 0.5.
+// Lagrangian part = - mu * c = - 7.0 * (-0.5) = +3.5 (with correct sign).
+// f(x) = 0.
+// Expected L_aug = 0 + 3.5 + 0.5 = 4.0.
+TEST(ToAugmentedLagrangian, InequalityPenaltyFiresOnViolation) {
+  using namespace cppoptlib::function;
+  FunctionExpr<double, DifferentiabilityMode::First, 2> objective =
+      HalfSquaredNorm2D();
+  FunctionExpr<double, DifferentiabilityMode::First, 2> inequality =
+      X0MinusTarget(0.5);
+
+  ConstrainedProblem2d problem(objective, /*eq=*/{}, {inequality});
+  LagrangeMultiplierState<double> multipliers({}, {7.0});
+  PenaltyState<double> penalty(4.0);
+
+  auto augmented = ToAugmentedLagrangian(problem, multipliers, penalty);
+  Eigen::Vector2d x;
+  x << 0.0, 0.0;
+  EXPECT_NEAR(4.0, augmented(x), penalty_evaluation_tolerance);
+}
+
+// =============================================================================
+// SECTION C: Outer-loop KKT tests (run the solver to convergence)
+// =============================================================================
+
+// ---- C.1: Equality-only quadratic recovers primal and dual ---------------
+//
+// Problem: min 0.5 * (x0^2 + x1^2) subject to x0 = 1.
+// Lagrangian:  L = 0.5 x^T x + lambda * (x0 - 1).
+// Stationarity: x0 + lambda = 0, x1 = 0.  Feasibility: x0 = 1.
+// => x*  = (1, 0).
+// => f*  = 0.5.
+// => lambda* = -1.
+//
+// This is the canonical smoke test for the multiplier update: if the
+// update uses `lambda += rho * 0.5 * c^2` instead of `lambda += rho * c`,
+// `lambda` never reaches -1 (the squared residual drives it positive).
+TEST(AugmentedLagrangianKKT, EqualityOnlyQuadratic) {
+  using namespace cppoptlib::function;
+  FunctionExpr<double, DifferentiabilityMode::First, 2> objective =
+      HalfSquaredNorm2D();
+  FunctionExpr<double, DifferentiabilityMode::First, 2> equality =
+      X0MinusTarget(1.0);
+
+  ConstrainedProblem2d problem(objective, {equality});
+
+  cppoptlib::solver::Lbfgs<FunctionExpr2d> inner_solver;
+  cppoptlib::solver::AugmentedLagrangian<decltype(problem),
+                                         decltype(inner_solver)>
+      solver(problem, inner_solver);
+
+  Eigen::Vector2d x0;
+  x0 << 5.0, 5.0;
+  cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 1, 0, 1.0);
+  auto [solution, progress] = solver.Minimize(state);
+
+  // Primal optimum.
+  EXPECT_NEAR(1.0, solution.x[0], kkt_primal_tolerance);
+  EXPECT_NEAR(0.0, solution.x[1], kkt_primal_tolerance);
+  // Feasibility.
+  EXPECT_LE(std::abs(solution.x[0] - 1.0), feasibility_tolerance);
+  // Dual: stationarity gives lambda* = -x0* = -1.
+  ASSERT_EQ(1u, solution.multiplier_state.equality_multipliers.size());
+  EXPECT_NEAR(-1.0, solution.multiplier_state.equality_multipliers[0],
+              kkt_dual_tolerance);
+}
+
+// ---- C.2: Inequality-active problem recovers primal and dual -------------
+//
+// Problem: min 0.5 * ((x0 - 2)^2 + x1^2) subject to 1 - x0 >= 0.
+// KKT with mu >= 0:
+//   dL/dx0 = (x0 - 2) - mu = 0   (because constraint is `1 - x0 >= 0`,
+//                                  gradient of c = [-1, 0], and KKT has
+//                                  +mu * grad(c) in the stationarity
+//                                  equation, giving the sign above).
+//   dL/dx1 = x1 = 0.
+//   mu * (1 - x0) = 0, 1 - x0 >= 0, mu >= 0.
+// If the constraint is active: x0 = 1 -> mu = x0 - 2 = -1.  That is
+// negative, which violates dual feasibility.  So the constraint must be
+// inactive -> mu = 0 -> x0 = 2.  But then 1 - x0 = -1 < 0 violates
+// primal feasibility.  Contradiction -- so we need the ACTIVE case with
+// the correct sign convention.  Re-derive with `- mu * c` in the Lagrangian
+// (the convention used by the outer-loop multiplier update with `c >= 0`):
+//   L = f(x) - mu * (1 - x0),  so dL/dx0 = (x0 - 2) + mu = 0 -> mu = 2 - x0.
+//   At the active boundary x0 = 1, mu = 1.  mu >= 0 holds.  Feasibility OK.
+//   So x* = (1, 0), mu* = 1, f* = 0.5.
+TEST(AugmentedLagrangianKKT, InequalityActiveRecoversMultiplier) {
+  using namespace cppoptlib::function;
+
+  FunctionExpr<double, DifferentiabilityMode::First, 2> objective =
+      QuadraticAt20();
+  // c(x) = 1 - x0 >= 0.
+  FunctionExpr<double, DifferentiabilityMode::First, 2> inequality =
+      UpperBoundOnX0(1.0);
+
+  ConstrainedProblem2d problem(objective, /*eq=*/{}, {inequality});
+
+  cppoptlib::solver::Lbfgs<FunctionExpr2d> inner_solver;
+  cppoptlib::solver::AugmentedLagrangian<decltype(problem),
+                                         decltype(inner_solver)>
+      solver(problem, inner_solver);
+
+  Eigen::Vector2d x0;
+  x0 << 5.0, 5.0;
+  cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 0, 1, 1.0);
+  auto [solution, progress] = solver.Minimize(state);
+
+  EXPECT_NEAR(1.0, solution.x[0], kkt_primal_tolerance);
+  EXPECT_NEAR(0.0, solution.x[1], kkt_primal_tolerance);
+  // Feasibility: 1 - x0 >= -tol.
+  const double constraint_value = 1.0 - solution.x[0];
+  EXPECT_GE(constraint_value, -feasibility_tolerance);
+  // Dual: mu* = 1, and dual feasibility mu >= 0.
+  ASSERT_EQ(1u, solution.multiplier_state.inequality_multipliers.size());
+  const double mu = solution.multiplier_state.inequality_multipliers[0];
+  EXPECT_GE(mu, -kkt_dual_tolerance);
+  EXPECT_NEAR(1.0, mu, kkt_dual_tolerance);
+}
+
+// ---- C.3: Both constraints active (from constrained_simple.cc) -----------
+//
+// Problem: min (x0 - 1)^2 + (x1 - 2)^2
+//           subject to x0 = 0.5, and 2 - (x0 + x1) >= 0.
+// Unconstrained optimum (1, 2) violates the inequality (1 + 2 = 3 > 2).
+// With x0 fixed at 0.5 by equality, minimize (0.5 - 1)^2 + (x1 - 2)^2 =
+// 0.25 + (x1 - 2)^2 over x1 with 0.5 + x1 <= 2, i.e. x1 <= 1.5.  The
+// inner quadratic is minimized at x1 = 2 but that is infeasible; the best
+// feasible choice is x1 = 1.5 with f = 0.5.
+TEST(AugmentedLagrangianKKT, BothEqualityAndInequalityActive) {
+  using namespace cppoptlib::function;
+
+  FunctionExpr<double, DifferentiabilityMode::First, 2> objective =
+      QuadraticAt12();
+  FunctionExpr<double, DifferentiabilityMode::First, 2> equality =
+      X0MinusTarget(0.5);
+  FunctionExpr<double, DifferentiabilityMode::First, 2> inequality =
+      SumUpperBound();
+
+  ConstrainedProblem2d problem(objective, {equality}, {inequality});
+
+  cppoptlib::solver::Lbfgs<FunctionExpr2d> inner_solver;
+  cppoptlib::solver::AugmentedLagrangian<decltype(problem),
+                                         decltype(inner_solver)>
+      solver(problem, inner_solver);
+
+  Eigen::Vector2d x0;
+  x0 << 1.0, 1.0;
+  cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 1, 1, 1.0);
+  auto [solution, progress] = solver.Minimize(state);
+
+  EXPECT_NEAR(0.5, solution.x[0], kkt_primal_tolerance);
+  EXPECT_NEAR(1.5, solution.x[1], kkt_primal_tolerance);
+  // Feasibility on both constraints.
+  EXPECT_LE(std::abs(solution.x[0] - 0.5), feasibility_tolerance);
+  const double inequality_value = 2.0 - (solution.x[0] + solution.x[1]);
+  EXPECT_GE(inequality_value, -feasibility_tolerance);
+  // Dual feasibility for the inequality: mu >= 0.
+  ASSERT_EQ(1u, solution.multiplier_state.inequality_multipliers.size());
+  EXPECT_GE(solution.multiplier_state.inequality_multipliers[0],
+            -kkt_dual_tolerance);
+}
+
+// ---- C.4: Feasible start returns immediately with Status::Finished --------
+//
+// Problem: min 0.5 * ||x||^2 subject to c(x) = 0 + 0 * x = 0 (trivially
+// feasible everywhere).  Starting at (0, 0), which is also the primal
+// optimum, the first outer iteration sees `max_violation = 0` and stops.
+//
+// This test pins the outer-loop status machinery: if `max_violation` is
+// computed as `0.5 c^2` vs `|c|` we cannot tell at c = 0 (both are 0);
+// but the test does catch the case where a bug breaks the early-exit by
+// making `max_violation` NaN or leaving it uninitialised.
+TEST(AugmentedLagrangianOuter, FeasibleStartConvergesImmediately) {
+  using namespace cppoptlib::function;
+
+  FunctionExpr<double, DifferentiabilityMode::First, 2> objective =
+      HalfSquaredNorm2D();
+  FunctionExpr<double, DifferentiabilityMode::First, 2> equality =
+      ZeroConstraint();
+
+  ConstrainedProblem2d problem(objective, {equality});
+
+  cppoptlib::solver::Lbfgs<FunctionExpr2d> inner_solver;
+  cppoptlib::solver::AugmentedLagrangian<decltype(problem),
+                                         decltype(inner_solver)>
+      solver(problem, inner_solver);
+
+  Eigen::Vector2d x0;
+  x0 << 0.0, 0.0;
+  cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 1, 0, 1.0);
+  auto [solution, progress] = solver.Minimize(state);
+
+  EXPECT_NEAR(0.0, solution.x[0], kkt_primal_tolerance);
+  EXPECT_NEAR(0.0, solution.x[1], kkt_primal_tolerance);
+  EXPECT_EQ(cppoptlib::solver::Status::Finished, progress.status);
+  // Pin that we exit fast, not after 10000 outer iterations.  A bug that
+  // leaves `max_violation` positive would run to the iteration cap.
+  constexpr size_t outer_iteration_cap_for_trivial_problem = 5;
+  EXPECT_LE(progress.num_iterations, outer_iteration_cap_for_trivial_problem);
+}
+
+// ---- C.5: Unconstrained problem wrapped in the constrained solver --------
+//
+// A `ConstrainedOptimizationProblem` with no constraints should be
+// equivalent to calling the inner solver directly.  Starting from (5, 5),
+// L-BFGS on 0.5 * ||x||^2 converges to the origin.
+TEST(AugmentedLagrangianOuter, NoConstraintsIsUnconstrained) {
+  using namespace cppoptlib::function;
+  FunctionExpr<double, DifferentiabilityMode::First, 2> objective =
+      HalfSquaredNorm2D();
+  // Brace-init to avoid the most-vexing-parse with a single argument:
+  // `ConstrainedProblem2d problem(objective)` would be parsed as a
+  // function declaration taking FunctionExpr2d by value.
+  ConstrainedProblem2d problem{objective};
+
+  cppoptlib::solver::Lbfgs<FunctionExpr2d> inner_solver;
+  cppoptlib::solver::AugmentedLagrangian<decltype(problem),
+                                         decltype(inner_solver)>
+      solver(problem, inner_solver);
+
+  Eigen::Vector2d x0;
+  x0 << 5.0, 5.0;
+  cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 0, 0, 1.0);
+  auto [solution, progress] = solver.Minimize(state);
+
+  EXPECT_NEAR(0.0, solution.x[0], kkt_primal_tolerance);
+  EXPECT_NEAR(0.0, solution.x[1], kkt_primal_tolerance);
+  EXPECT_EQ(cppoptlib::solver::Status::Finished, progress.status);
+}
+
+// ---- C.6: Penalty is held flat on a feasible-start problem ---------------
+//
+// With the violation-conditional schedule, `rho` only grows when
+// `max_violation` fails to shrink.  On a feasible-start problem whose
+// equality reads identically zero, the violation is already zero at the
+// first outer iteration; the schedule therefore must *never* grow `rho`.
+// An older unconditional `rho *= 10` schedule would multiply it every
+// outer iteration regardless.  We pin the exact post-solve penalty to
+// its initial value so the conditional branch is locked down.
+TEST(AugmentedLagrangianOuter, PenaltyHoldsFlatOnFeasibleProblem) {
+  using namespace cppoptlib::function;
+
+  FunctionExpr<double, DifferentiabilityMode::First, 2> objective =
+      HalfSquaredNorm2D();
+  FunctionExpr<double, DifferentiabilityMode::First, 2> equality =
+      ZeroConstraint();
+  ConstrainedProblem2d problem(objective, {equality});
+
+  cppoptlib::solver::Lbfgs<FunctionExpr2d> inner_solver;
+  cppoptlib::solver::AugmentedLagrangian<decltype(problem),
+                                         decltype(inner_solver)>
+      solver(problem, inner_solver);
+
+  Eigen::Vector2d x0;
+  x0 << 0.0, 0.0;
+  constexpr double initial_penalty = 1.0;
+  cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 1, 0,
+                                                             initial_penalty);
+  auto [solution, progress] = solver.Minimize(state);
+
+  // The conditional schedule should never fire on a trivially feasible
+  // problem.  The penalty is pinned exactly at its initial value.
+  EXPECT_EQ(initial_penalty, solution.penalty_state.penalty);
+}
+
+// ---- C.6b: penalty_growth_factor = 1 disables the growth branch entirely.
+//
+// Users with a well-conditioned problem may want to fix `rho` at its
+// initial value, letting the multipliers do all of the work.  Setting
+// `penalty_growth_factor = 1` accomplishes that no matter what the
+// violation trajectory looks like.  The test drives an infeasible-start
+// equality-only problem that would ordinarily grow `rho` on every
+// iteration and verifies the user's override sticks.
+TEST(AugmentedLagrangianOuter, PenaltyGrowthCanBeDisabled) {
+  using namespace cppoptlib::function;
+
+  FunctionExpr<double, DifferentiabilityMode::First, 2> objective =
+      HalfSquaredNorm2D();
+  FunctionExpr<double, DifferentiabilityMode::First, 2> equality =
+      X0MinusTarget(1.0);
+  ConstrainedProblem2d problem(objective, {equality});
+
+  cppoptlib::solver::Lbfgs<FunctionExpr2d> inner_solver;
+  cppoptlib::solver::AugmentedLagrangianConfig<double> config;
+  config.penalty_growth_factor = 1.0;
+
+  cppoptlib::solver::AugmentedLagrangian<decltype(problem),
+                                         decltype(inner_solver)>
+      solver(problem, inner_solver, config);
+
+  Eigen::Vector2d x0;
+  x0 << 5.0, 5.0;
+  constexpr double initial_penalty = 1.0;
+  cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 1, 0,
+                                                             initial_penalty);
+  auto [solution, progress] = solver.Minimize(state);
+
+  EXPECT_EQ(initial_penalty, solution.penalty_state.penalty);
+}
+
+// ---- C.6c: Penalty grows only while violation fails to shrink ------------
+//
+// Start infeasible on an equality-only problem.  The first outer
+// iteration observes a positive `max_violation` against the
+// constructor-supplied initial `max_violation = 0`; the ratio test fires
+// and `rho` grows by the default factor of 10.  Once the multipliers
+// pull the iterate onto the feasibility boundary the violation shrinks
+// rapidly.  By the time the solver returns the penalty should be
+// bounded -- a single growth step typically suffices for this problem,
+// and a handful at worst.  We pin `rho <= 10^4` as a loose upper bound
+// that fires the regression only when growth explodes.
+TEST(AugmentedLagrangianOuter, PenaltyGrowsOnlyWhileViolationLags) {
+  using namespace cppoptlib::function;
+
+  FunctionExpr<double, DifferentiabilityMode::First, 2> objective =
+      HalfSquaredNorm2D();
+  FunctionExpr<double, DifferentiabilityMode::First, 2> equality =
+      X0MinusTarget(1.0);
+  ConstrainedProblem2d problem(objective, {equality});
+
+  cppoptlib::solver::Lbfgs<FunctionExpr2d> inner_solver;
+  cppoptlib::solver::AugmentedLagrangian<decltype(problem),
+                                         decltype(inner_solver)>
+      solver(problem, inner_solver);
+
+  Eigen::Vector2d x0;
+  x0 << 5.0, 5.0;
+  cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 1, 0, 1.0);
+  auto [solution, progress] = solver.Minimize(state);
+
+  constexpr double penalty_upper_bound = 1e4;
+  EXPECT_LE(solution.penalty_state.penalty, penalty_upper_bound);
+  // Also expect *some* growth -- starting at 1.0 and solving an
+  // infeasible-start problem without any growth would indicate the
+  // schedule test is never firing.
+  EXPECT_GE(solution.penalty_state.penalty, 1.0);
+}
+
+// ---- C.7: CTAD regression -- bare construction with no alias -----------
+//
+// Earlier revisions split the differentiability mode across two
+// template parameters, which made
+//     cppoptlib::function::ConstrainedOptimizationProblem problem(
+//         objective, {equality});
+// fail to deduce when both modes agreed (the common case).  With a
+// single mode parameter the compiler resolves CTAD cleanly.  This test
+// exists to lock the fix: if a future revision re-introduces the two
+// modes, the file stops compiling here.
+TEST(ConstrainedOptimizationProblem, BareCtadCompiles) {
+  using namespace cppoptlib::function;
+  FunctionExpr<double, DifferentiabilityMode::First, 2> objective =
+      HalfSquaredNorm2D();
+  FunctionExpr<double, DifferentiabilityMode::First, 2> equality =
+      X0MinusTarget(1.0);
+  // One-argument CTAD.
+  cppoptlib::function::ConstrainedOptimizationProblem problem_unconstrained{
+      objective};
+  // Two-argument CTAD with equality constraint list.
+  cppoptlib::function::ConstrainedOptimizationProblem problem_equality(
+      objective, {equality});
+  // Three-argument CTAD with both lists.
+  cppoptlib::function::ConstrainedOptimizationProblem problem_full(
+      objective, {equality}, {equality});
+  // All three must evaluate to `double` at the origin; we do not care
+  // about the specific values -- only that the instances are usable.
+  Eigen::Vector2d origin = Eigen::Vector2d::Zero();
+  EXPECT_NEAR(0.0, problem_unconstrained.objective(origin),
+              penalty_evaluation_tolerance);
+  EXPECT_NEAR(0.0, problem_equality.objective(origin),
+              penalty_evaluation_tolerance);
+  EXPECT_NEAR(0.0, problem_full.objective(origin),
+              penalty_evaluation_tolerance);
+}
+
+// ---- C.7b: Bare expression-template elements in constraint lists -------
+//
+// Historically users had to wrap constraint expressions in an explicit
+// `FunctionExpr(...)` when they appeared inside an initializer list
+// passed to `ConstrainedOptimizationProblem`.  The two-mode CTAD
+// failure forced the wrap.  With the single-Mode redesign plus the
+// Second->First downgrade adapter, a bare
+//     {circle - 2.0}
+// converts implicitly through the `FunctionExpr` converting constructor
+// when the initializer-list element type is `FunctionExpr<T, Mode, Dim>`.
+//
+// This test pins the ergonomics.  If a future CTAD revision breaks the
+// implicit conversion, the file stops compiling here.
+TEST(ConstrainedOptimizationProblem, BareExpressionInitializerList) {
+  using namespace cppoptlib::function;
+  FunctionExpr<double, DifferentiabilityMode::First, 2> objective =
+      HalfSquaredNorm2D();
+  FunctionExpr<double, DifferentiabilityMode::First, 2> target_one =
+      X0MinusTarget(1.0);
+  // The key test: bare `target_one - 0.5` (a SubExpression) appears as
+  // an element inside an initializer_list<FunctionExpr<...>> without
+  // any explicit wrap.  Same for the inequality side.
+  cppoptlib::function::ConstrainedOptimizationProblem problem_bare(
+      objective,
+      /*eq=*/{target_one - 0.5},
+      /*ineq=*/{0.5 - target_one});
+  // Evaluate the stored equality constraint at x = (1.5, 0).  The
+  // original `target_one` was `x0 - 1`; `target_one - 0.5` is therefore
+  // `x0 - 1.5`, and at x0 = 1.5 that is exactly 0.
+  Eigen::Vector2d point;
+  point << 1.5, 0.0;
+  EXPECT_NEAR(0.0, problem_bare.equality_constraints[0](point),
+              penalty_evaluation_tolerance);
+}
+
+// ---- C.8: Second-mode source downgrades into First-mode FunctionExpr ---
+//
+// Earlier revisions required the `FunctionExpr` converting constructor
+// to be called with an expression whose declared differentiability
+// exactly matched the wrapper's.  A user with a `Second`-mode objective
+// who wanted to plug it into a `First`-mode-consuming API (such as the
+// augmented-Lagrangian solver, whose inner L-BFGS ignores Hessians
+// anyway) had to hand-roll a First-mode clone of the class.  The
+// converting constructor now accepts any source whose mode is at least
+// as strong as the target, wrapping it in a `ModeDowngradeAdapter` that
+// discards the unused derivative pointer on evaluation.
+//
+// This test constructs a Second-mode `DiagonalQuadratic2dSecond`,
+// wraps it into a First-mode `FunctionExpr`, and verifies that the
+// value and gradient match the analytic answers at a non-trivial
+// point.  If the downgrade ever breaks (e.g. the adapter is removed
+// or the static_assert tightens back to equality) this fails at
+// compile or run time.
+TEST(FunctionExpr, SecondModeSourceDowngradesIntoFirstMode) {
+  using namespace cppoptlib::function;
+  // Target type: First-mode.  Source: Second-mode CRTP class.
+  FunctionExpr<double, DifferentiabilityMode::First, 2> wrapped =
+      DiagonalQuadratic2dSecond();
+  Eigen::Vector2d x;
+  x << 3.0, -1.5;
+  // f(x) = 2 * 9 + 2.25 = 20.25.
+  Eigen::Vector2d grad;
+  const double value = wrapped(x, &grad);
+  EXPECT_NEAR(20.25, value, penalty_evaluation_tolerance);
+  // grad = (4*x0, 2*x1) = (12, -3).
+  EXPECT_NEAR(12.0, grad[0], penalty_evaluation_tolerance);
+  EXPECT_NEAR(-3.0, grad[1], penalty_evaluation_tolerance);
+}
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}

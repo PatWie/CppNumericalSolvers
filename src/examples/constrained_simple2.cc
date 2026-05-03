@@ -12,8 +12,8 @@ class SumObjective : public cppoptlib::function::FunctionXd<SumObjective> {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   // Return the sum of the components.
-  ScalarType operator()(const VectorType &x,
-                        VectorType *gradient = nullptr) const {
+  ScalarType operator()(const VectorType& x,
+                        VectorType* gradient = nullptr) const {
     if (gradient) {
       // The gradient is a vector of ones.
       *gradient = VectorType::Ones(2);
@@ -33,8 +33,8 @@ class Circle : public cppoptlib::function::FunctionXd<Circle> {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   // Compute the squared norm.
-  ScalarType operator()(const VectorType &x,
-                        VectorType *gradient = nullptr) const {
+  ScalarType operator()(const VectorType& x,
+                        VectorType* gradient = nullptr) const {
     if (gradient) {
       *gradient = 2 * x;
     }
@@ -65,9 +65,9 @@ int main() {
   cppoptlib::function::ConstrainedOptimizationProblem prob(
       objective,
       /* equality constraints */
-      {cppoptlib::function::FunctionExpr(circle - 2)},
+      {circle - 2.0},
       /* inequality constraints */
-      {cppoptlib::function::FunctionExpr(2 - circle)});
+      {2.0 - circle});
 
   // Set up an inner solver (LBFGS) for the unconstrained subproblems.
   cppoptlib::solver::Lbfgs<cppoptlib::function::FunctionExprXd> inner_solver;
@@ -79,7 +79,7 @@ int main() {
   cppoptlib::solver::AugmentedLagrangeState<double> l_state(x, 1, 1, 1.0);
 
   // Run the solver.
-  auto [solution, solver_state] = solver.Minimize(prob, l_state);
+  auto [solution, solver_state] = solver.Minimize(l_state);
 
   // Output the results.
   std::cout << "Optimal f(x): " << objective(solution.x) << std::endl;

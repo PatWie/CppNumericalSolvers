@@ -24,8 +24,8 @@ class QuadraticObjective2 : public Function2d<QuadraticObjective2> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  ScalarType operator()(const VectorType &x,
-                        VectorType *gradient = nullptr) const {
+  ScalarType operator()(const VectorType& x,
+                        VectorType* gradient = nullptr) const {
     if (gradient) {
       // Gradient: 2*(x - [1,2])
       VectorType ref(2);
@@ -46,8 +46,8 @@ class EqualityConstraint2 : public Function2d<EqualityConstraint2> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  ScalarType operator()(const VectorType &x,
-                        VectorType *gradient = nullptr) const {
+  ScalarType operator()(const VectorType& x,
+                        VectorType* gradient = nullptr) const {
     if (gradient) {
       // Gradient is [1, 0].
       *gradient = (VectorType(2) << 1, 0).finished();
@@ -66,8 +66,8 @@ class InequalityConstraint3 : public Function2d<InequalityConstraint3> {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  ScalarType operator()(const VectorType &x,
-                        VectorType *gradient = nullptr) const {
+  ScalarType operator()(const VectorType& x,
+                        VectorType* gradient = nullptr) const {
     if (gradient) {
       // Gradient is [-1, -1].
       *gradient = (VectorType(2) << -1, -1).finished();
@@ -119,7 +119,7 @@ int main() {
   cppoptlib::solver::AugmentedLagrangeState<double, 2> l_state(x, 1, 1, 1.0);
 
   // Run the solver.
-  auto [solution, solver_state] = solver.Minimize(prob, l_state);
+  auto [solution, solver_state] = solver.Minimize(l_state);
 
   // Output the results.
   std::cout << "Optimal f(x): " << objective(solution.x) << std::endl;

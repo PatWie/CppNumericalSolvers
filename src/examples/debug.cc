@@ -14,10 +14,10 @@ struct LinearFunction : public FunctionXd<LinearFunction> {
   Eigen::VectorXd m;
   double b;
 
-  LinearFunction(const Eigen::VectorXd &m_, double b_) : m(m_), b(b_) {}
+  LinearFunction(const Eigen::VectorXd& m_, double b_) : m(m_), b(b_) {}
 
   // Simplified operator(): only function value and gradient.
-  double operator()(const VectorType &x, VectorType *grad = nullptr) const {
+  double operator()(const VectorType& x, VectorType* grad = nullptr) const {
     double fx = m.dot(x) + b;
     if (grad) {
       *grad = m;
@@ -33,7 +33,7 @@ struct ConstantFunction
   double c;
   ConstantFunction(double c_) : c(c_) {}
 
-  double operator()(const VectorType &x) const {
+  double operator()(const VectorType& x) const {
     (void)x;
     return c;
   }
@@ -47,12 +47,12 @@ struct QuadraticFunction
   Eigen::VectorXd b;
   double c;
 
-  QuadraticFunction(const Eigen::MatrixXd &A_, const Eigen::VectorXd &b_,
+  QuadraticFunction(const Eigen::MatrixXd& A_, const Eigen::VectorXd& b_,
                     double c_)
       : A(A_), b(b_), c(c_) {}
 
-  double operator()(const VectorType &x, VectorType *grad = nullptr,
-                    MatrixType *hess = nullptr) const {
+  double operator()(const VectorType& x, VectorType* grad = nullptr,
+                    MatrixType* hess = nullptr) const {
     double fx = 0.5 * x.transpose() * A * x + b.dot(x) + c;
     if (grad) {
       *grad = A * x + b;
@@ -70,12 +70,12 @@ struct QuadraticFunction2
   Eigen::Vector2d b;
   double c;
 
-  QuadraticFunction2(const Eigen::Matrix2d &A_, const Eigen::Vector2d &b_,
+  QuadraticFunction2(const Eigen::Matrix2d& A_, const Eigen::Vector2d& b_,
                      double c_)
       : A(A_), b(b_), c(c_) {}
 
-  double operator()(const VectorType &x, VectorType *grad = nullptr,
-                    MatrixType *hess = nullptr) const {
+  double operator()(const VectorType& x, VectorType* grad = nullptr,
+                    MatrixType* hess = nullptr) const {
     double fx = 0.5 * x.transpose() * A * x + b.dot(x) + c;
     if (grad) {
       *grad = A * x + b;
@@ -214,7 +214,7 @@ int main() {
     m << 2, 1;
     double b_val = -3;
     FunctionExpr anyEqPenalty =
-        quadraticEqualityPenalty(LinearFunction(m, b_val));
+        QuadraticEqualityPenalty(LinearFunction(m, b_val));
 
     // Evaluate at x = (1, 2)
     VectorType x(2);
@@ -253,9 +253,17 @@ int main() {
     TScalar b2 = -1;
     FunctionExpr ineqConstraint = LinearFunction(m2, b2);
 
-    // Build the optimization problem.
+    // Build the optimization problem.  The objective carries
+    // second-order information but the constraints are first-order, so
+    // we wrap the objective in an explicit `First`-mode `FunctionExpr`
+    // via the mode-downgrading converting constructor.  The augmented
+    // Lagrangian composite is driven by a first-order inner solver
+    // (L-BFGS here), so the Hessian of the objective would be ignored
+    // anyway.
+    using FirstOrderExpr = cppoptlib::function::FunctionExpr<
+        TScalar, cppoptlib::function::DifferentiabilityMode::First>;
     ConstrainedOptimizationProblem optimization_problem(
-        objective, {FunctionExpr(-eqConstraint)}, {ineqConstraint});
+        FirstOrderExpr(objective), {-eqConstraint}, {ineqConstraint});
 
     LagrangeMultiplierState<double> l_state(1, 1);
     l_state.equality_multipliers[0] = 1;

@@ -73,6 +73,24 @@ struct FunctionInterface {
 //   VectorType *grad) const;
 //   - For DifferentiabilityMode::Second: double operator()(const VectorType &x,
 //   VectorType *grad, MatrixType *hess) const;
+// FunctionCRTP inherits `operator()(x, grad, hess)` from
+// `FunctionInterface`, but derived user classes typically supply a
+// shorter-arity `operator()(x, grad)` (or `operator()(x)`).  Under the
+// usual C++ hiding rules that shorter overload hides the inherited
+// three-arg virtual, which gcc-15 reports as `-Woverloaded-virtual` at
+// every single derived instantiation.  The warning is structural to
+// this CRTP design: the library's public shape requires the derived
+// class to define `operator()`, yet doing so triggers the warning.
+//
+// The textbook cure -- non-virtual interface, users override a
+// differently-named `DoEvaluate` -- would break the public API of every
+// existing user class.  Suppress the warning here and only here; every
+// derived class inherits the pragma scope of this template definition.
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Woverloaded-virtual"
+#endif
+
 template <class Derived, class TScalar, DifferentiabilityMode TMode,
           int TDimension = Eigen::Dynamic>
 struct FunctionCRTP : public FunctionInterface<TScalar, TMode, TDimension> {
@@ -103,8 +121,68 @@ struct FunctionCRTP : public FunctionInterface<TScalar, TMode, TDimension> {
   }
 };
 
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
 //-----------------------------------------------------------------
 // FunctionExpr type erasure wrapper.
+
+// Internal: adapter that presents a higher-mode `FunctionInterface` as a
+// lower-mode one.  Used by `FunctionExpr`'s converting constructor to
+// accept a `Second`-mode expression into a `First`-mode or `None`-mode
+// wrapper.  The adapter stores the original interface by
+// `unique_ptr<FunctionInterface<T, SourceMode, Dim>>` and forwards
+// `operator()` calls, discarding the fields the target mode does not
+// expose.  Downgrading from `Second` to `First` is safe: the Hessian
+// pointer is simply never passed through; the inner caller was going
+// to ignore it anyway (no first-order solver reads Hessians from the
+// composite).  Downgrading from `Second` to `None` similarly drops the
+// gradient and Hessian pointers.  Downgrading from `First` to `None`
+// drops only the gradient.  Upgrades (lower to higher) are refused at
+// compile time in `FunctionExpr`'s converting constructor; there is no
+// way to synthesise a gradient or Hessian out of thin air.
+template <typename TScalar, DifferentiabilityMode SourceMode,
+          DifferentiabilityMode TargetMode, int TDimension>
+struct ModeDowngradeAdapter
+    : public FunctionInterface<TScalar, TargetMode, TDimension> {
+  static_assert(static_cast<int>(SourceMode) >= static_cast<int>(TargetMode),
+                "ModeDowngradeAdapter only lowers the differentiability mode "
+                "-- attempting to upgrade.");
+
+  using VectorType = Eigen::Matrix<TScalar, TDimension, 1>;
+  using MatrixType = Eigen::Matrix<TScalar, TDimension, TDimension>;
+
+  std::unique_ptr<FunctionInterface<TScalar, SourceMode, TDimension>> source;
+
+  explicit ModeDowngradeAdapter(
+      std::unique_ptr<FunctionInterface<TScalar, SourceMode, TDimension>> s)
+      : source(std::move(s)) {}
+
+  TScalar operator()(const VectorType& x, VectorType* grad = nullptr,
+                     MatrixType* hess = nullptr) const override {
+    (void)hess;  // Never forwarded -- the target mode does not expose it.
+    if constexpr (TargetMode == DifferentiabilityMode::None) {
+      (void)grad;
+      return (*source)(x, nullptr, nullptr);
+    } else if constexpr (TargetMode == DifferentiabilityMode::First) {
+      return (*source)(x, grad, nullptr);
+    } else {
+      // TargetMode == Second: SourceMode must also be Second by the
+      // static_assert above, in which case the adapter is a no-op and
+      // nothing should ever construct it at this branch.  Keep the path
+      // defined in case some future code wires it up.
+      return (*source)(x, grad, hess);
+    }
+  }
+
+  std::unique_ptr<FunctionInterface<TScalar, TargetMode, TDimension>> clone()
+      const override {
+    return std::make_unique<
+        ModeDowngradeAdapter<TScalar, SourceMode, TargetMode, TDimension>>(
+        source->clone());
+  }
+};
 
 template <typename TScalar,
           DifferentiabilityMode TMode = DifferentiabilityMode::First,
@@ -118,16 +196,33 @@ struct FunctionExpr {
 
   std::unique_ptr<FunctionInterface<TScalar, TMode, TDimension>> ptr;
 
-  // Converting constructor: accepts any expression type by const reference,
-  // provided it's not already an FunctionExpr.
+  // Converting constructor.  Accepts any non-FunctionExpr expression
+  // whose differentiability is at least as strong as `TMode` -- that is,
+  // we let a `Second`-mode source land in a `First`-mode wrapper (or a
+  // `First`-mode source land in a `None`-mode wrapper), discarding the
+  // extra derivative information.  The static_asserts refuse upgrades.
   template <typename F, typename = std::enable_if_t<
                             !std::is_same_v<std::decay_t<F>, FunctionExpr>>>
-  FunctionExpr(const F& f) : ptr(f.clone()) {
-    static_assert(F::Differentiability == TMode,
-                  "Differentiability mode mismatch");
+  FunctionExpr(const F& f) {
+    static_assert(
+        static_cast<int>(F::Differentiability) >= static_cast<int>(TMode),
+        "Differentiability mode mismatch: source must supply at "
+        "least as much derivative information as the target mode "
+        "requires (downgrades are accepted, upgrades are not).");
     static_assert(F::Dimension == TDimension, "Dimension mismatch");
     static_assert(std::is_same<typename F::ScalarType, ScalarType>::value,
                   "Compile-time scalar-type mismatch");
+    if constexpr (F::Differentiability == TMode) {
+      ptr = f.clone();
+    } else {
+      // Downgrade adapter: wrap the stronger-mode clone so the stored
+      // pointer type matches `FunctionInterface<TScalar, TMode, Dim>`.
+      auto source =
+          f.clone();  // unique_ptr<FunctionInterface<T, F::Mode, Dim>>
+      ptr = std::make_unique<ModeDowngradeAdapter<TScalar, F::Differentiability,
+                                                  TMode, TDimension>>(
+          std::move(source));
+    }
   }
 
   // Copy constructor.
@@ -148,6 +243,15 @@ struct FunctionExpr {
   ScalarType operator()(const VectorType& x, VectorType* grad = nullptr,
                         MatrixType* hess = nullptr) const {
     return (*ptr)(x, grad, hess);
+  }
+
+  // Exposes the stored interface for mode-downgrading converting
+  // construction into a weaker-mode `FunctionExpr`.  Returns a
+  // deep-copied interface pointer so the caller owns independent
+  // lifetime; `FunctionExpr` itself does not implement
+  // `FunctionInterface` so this is not `virtual`.
+  std::unique_ptr<FunctionInterface<TScalar, TMode, TDimension>> clone() const {
+    return ptr ? ptr->clone() : nullptr;
   }
 };
 
@@ -188,7 +292,10 @@ FunctionExpr(const Expr&)
 // that showed up in traces against libLBFGS and L-BFGS-B Fortran 3.0.
 template <typename TScalar, int TDimension = Eigen::Dynamic>
 struct FunctionState {
-  static constexpr int NumConstraints = 0;
+  // Plain unconstrained state; `Progress::Update` uses this to pick the
+  // gradient/f-delta convergence branch rather than the feasibility
+  // branch that `AugmentedLagrangeState` takes.
+  static constexpr bool IsConstrained = false;
   using ScalarType = TScalar;
   using VectorType = Eigen::Matrix<TScalar, TDimension, 1>;
 

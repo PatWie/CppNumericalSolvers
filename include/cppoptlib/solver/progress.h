@@ -146,7 +146,7 @@ struct Progress {
     VectorType previous_gradient, current_gradient;
     ScalarType previous_value;
     ScalarType current_value;
-    if constexpr (StateType::NumConstraints > 0) {
+    if constexpr (StateType::IsConstrained) {
       // Augmented-Lagrangian path: value/gradient live in the composite
       // objective, not on the state, so we still evaluate here.
       const auto previous_function = cppoptlib::function::ToAugmentedLagrangian(
@@ -196,7 +196,7 @@ struct Progress {
       status = Status::IterationLimit;
       return;
     }
-    if constexpr (StateType::NumConstraints > 0) {
+    if constexpr (StateType::IsConstrained) {
       if (std::abs(current_function_state.max_violation) >
           stop_progress.constraint_threshold) {
         status = Status::Continue;
