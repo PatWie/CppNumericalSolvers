@@ -1,10 +1,13 @@
 # CppNumericalSolvers
 
 A header-only C++17 optimization library that is fast, reliable, and
-easy to integrate.  On an [83-problem benchmark][bench] it converges on 95% of
-problems with the most first-place wins and the lowest mean
-function-evaluation count of any solver tested -- ahead of Nocedal's
-Fortran L-BFGS, libLBFGS, LBFGSpp, and LBFGS-Lite.
+easy to integrate.
+
+On an [83-problem benchmark][bench] against Nocedal's Fortran L-BFGS,
+libLBFGS, LBFGSpp, and LBFGS-Lite, CppNumericalSolvers has the
+highest reliability (95% converged), the most first-place wins
+(43 / 83, 2× the next library), and the lowest mean nfev of any
+solver tested.
 
 [bench]: https://patwie.github.io/CppNumericalSolversBenchmark/
 
@@ -60,14 +63,6 @@ is Eigen3.
 | Nelder-Mead | `solver/nelder_mead.h` | 0th | — |
 | L-BFGS-B | `solver/lbfgsb.h` | 1st | box |
 | Augmented Lagrangian | `solver/augmented_lagrangian.h` | any | equality / inequality |
-
-L-BFGS supports two line searches via a template parameter: Moré-Thuente
-(default) and Hager-Zhang.
-
-```cpp
-#include "cppoptlib/linesearch/hager_zhang.h"
-using HZSolver = cppoptlib::solver::Lbfgs<MyFunc, 10, cppoptlib::solver::linesearch::HagerZhang>;
-```
 
 ## Expression Templates
 
@@ -184,19 +179,9 @@ verify your derivatives against finite differences during development.
 
 ## Benchmark
 
-Tested on the 35-problem Moré-Garbow-Hillstrom (1981) set plus 47
-unconstrained Hock-Schittkowski / Toint-Petrova problems from
-NLSProblems.jl plus logistic regression on Iris, against Nocedal's
-Fortran L-BFGS, libLBFGS, LBFGSpp, and LBFGS-Lite:
-
-| Metric | cppoptlib | Fortran L-BFGS | libLBFGS | LBFGSpp | LBFGS-Lite |
-|---|---|---|---|---|---|
-| Convergence | 79/83 (95%) | 78/83 (94%) | 76/82 (93%) | 76/83 (92%) | 59/83 (71%) |
-| 1st-place wins | **45** | 34 | 28 | 23 | 32 |
-| Mean nfev | **56.9** | 81.9 | 65.6 | 67.4 | 51.1 |
-
 Full reproducible benchmark with driver sources, per-iteration
-convergence traces, and interactive results:
+convergence traces, interactive performance profiles, and
+per-problem side-by-side results:
 **[View results](https://patwie.github.io/CppNumericalSolversBenchmark/)** ·
 [Source](https://github.com/PatWie/CppNumericalSolversBenchmark).
 
