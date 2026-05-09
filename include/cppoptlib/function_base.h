@@ -106,8 +106,12 @@ struct FunctionCRTP : public FunctionInterface<TScalar, TMode, TDimension> {
       return static_cast<const Derived*>(this)->operator()(x);
     } else if constexpr (TMode == DifferentiabilityMode::First) {
       if (hess) {
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS) || defined(_CPPUNWIND)
         throw std::runtime_error(
             "Hessian not available for first order function.");
+#else
+        std::abort();
+#endif
       }
       return static_cast<const Derived*>(this)->operator()(x, grad);
     } else {  // DifferentiabilityMode::Second
