@@ -128,6 +128,32 @@ class NelderMeadTest : public testing::Test {};
   }                                                                       \
   EXPECT_NEAR(fx, f(solution.x), PRECISION);
 
+// Same as SOLVE_PROBLEM but with the conservative stopping preset.
+// The library default accepts convergence aggressively (small
+// `past` window + loose `past_delta`); solvers that converge
+// slowly on Rosenbrock -- gradient descent's zig-zag path, the
+// Nelder-Mead simplex -- can stop short of the `PRECISION = 1e-4`
+// bar used by these verification tests unless we ask for the
+// tighter stopping explicitly.
+#define SOLVE_PROBLEM_CONSERVATIVE(sol, func, a, b, fx)                   \
+  using Function = func<TypeParam>;                                       \
+  using Solver = sol<Function>;                                           \
+  using StateType =                                                       \
+      cppoptlib::function::FunctionState<TypeParam, Function::Dimension>; \
+  Function f;                                                             \
+  typename Function::VectorType x(2);                                     \
+  x << a, b;                                                              \
+  auto initial_state = cppoptlib::function::FunctionState(x);             \
+  auto progress =                                                         \
+      cppoptlib::solver::ConservativeStoppingSolverProgress<Function,     \
+                                                            StateType>(); \
+  Solver solver(progress);                                                \
+  auto [solution, solver_state] = solver.Minimize(f, initial_state);      \
+  if (solver_state.status == cppoptlib::solver::Status::IterationLimit) { \
+    std::cout << solver_state.status << std::endl;                        \
+  }                                                                       \
+  EXPECT_NEAR(fx, f(solution.x), PRECISION);
+
 typedef ::testing::Types<double> DoublePrecision;
 TYPED_TEST_CASE(GradientDescentTest, DoublePrecision);
 TYPED_TEST_CASE(ConjugatedGradientDescentTest, DoublePrecision);
@@ -146,7 +172,17 @@ TYPED_TEST_CASE(NelderMeadTest, DoublePrecision);
     SOLVE_PROBLEM(cppoptlib::solver::sol, func, -1.0, 2.0, 0.0)               \
   }
 
-SOLVER_SETUP(GradientDescent, RosenbrockGradient)
+// Conservative variant: solvers that need tight stopping on
+// Rosenbrock at `PRECISION = 1e-4` (gradient descent's zig-zag,
+// the Nelder-Mead simplex).
+#define SOLVER_SETUP_CONSERVATIVE(sol, func)                                  \
+  TYPED_TEST(sol##Test, func##Far){SOLVE_PROBLEM_CONSERVATIVE(                \
+      cppoptlib::solver::sol, func, 15.0, 8.0, 0.0)} TYPED_TEST(sol##Test,    \
+                                                                func##Near) { \
+    SOLVE_PROBLEM_CONSERVATIVE(cppoptlib::solver::sol, func, -1.0, 2.0, 0.0)  \
+  }
+
+SOLVER_SETUP_CONSERVATIVE(GradientDescent, RosenbrockGradient)
 SOLVER_SETUP(ConjugatedGradientDescent, RosenbrockGradient)
 SOLVER_SETUP(Bfgs, RosenbrockGradient)
 SOLVER_SETUP(Lbfgs, RosenbrockGradient)

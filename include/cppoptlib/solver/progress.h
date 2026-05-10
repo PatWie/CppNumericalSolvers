@@ -327,6 +327,29 @@ struct Progress {
   }
 };
 // Returns the default stopping solver state.
+//
+// The default preset is tuned to stop as soon as the iterate has
+// plausibly reached a stationary point.  It accepts a solution
+// when either of two tests fires:
+//
+//   * Gradient-norm test.  `|g|_inf < 1e-5 * max(1, |x|_inf)`,
+//     the same relative tolerance used by Nocedal's reference
+//     `lbfgs_um` and Okazaki's libLBFGS.
+//
+//   * Plateau test.  The objective has moved by less than
+//     `past_delta = 1e-6` (relative to `max(1, |f|)`) over the
+//     last `past = 3` iterations.  Catches convergence on
+//     problems where the gradient never reaches the threshold
+//     because the iterate is already at a local minimum whose
+//     gradient is at the machine-precision floor.
+//
+// The plateau test is aggressive: it will stop a solver that is
+// moving slowly through a narrow valley before the bottom.  For
+// problems with deliberately-flat regions on the way to the
+// minimum (e.g. higher-order-contact singularities), use the
+// `ConservativeStoppingSolverProgress` variant below, which
+// requires a deeper plateau (`past = 5`, `past_delta = 1e-10`)
+// and a tighter gradient norm (`5e-6`) to stop.
 template <class FunctionType, class StateType>
 Progress<FunctionType, StateType> DefaultStoppingSolverProgress() {
   Progress<FunctionType, StateType> progress;
@@ -350,12 +373,12 @@ Progress<FunctionType, StateType> DefaultStoppingSolverProgress() {
   progress.f_delta = ScalarType{0};
   progress.f_delta_violations = 1;
   progress.gradient_norm =
-      static_cast<ScalarType>(env_or("CPPOPT_GRAD_NORM", 1e-6));
+      static_cast<ScalarType>(env_or("CPPOPT_GRAD_NORM", 1e-5));
   progress.condition_hessian = ScalarType{0};
   progress.constraint_threshold = ScalarType{1e-5};
-  progress.past = env_int_or("CPPOPT_PAST", 5);
+  progress.past = env_int_or("CPPOPT_PAST", 3);
   progress.past_delta =
-      static_cast<ScalarType>(env_or("CPPOPT_PAST_DELTA", 1e-10));
+      static_cast<ScalarType>(env_or("CPPOPT_PAST_DELTA", 1e-6));
 #else
   progress.x_delta = ScalarType{1e-9};
   // One consecutive x-delta violation is enough for gradient-based solvers:
@@ -382,18 +405,61 @@ Progress<FunctionType, StateType> DefaultStoppingSolverProgress() {
   // Gradient-norm convergence: `|g|_inf < gradient_norm * max(1, |x|_inf)`.
   // The `gradient_norm_relative = true` default matches Nocedal's
   // `lbfgs_um` (`gnorm/xnorm <= eps`, eps = 1e-5) and libLBFGS
-  // (`||g|| < epsilon * max(1, ||x||)`, epsilon = 1e-5).  We keep a
-  // slightly tighter default threshold of 1e-6 -- still in the same
-  // convergence class as those libraries but one order of magnitude
-  // tighter, which matters for well-scaled problems whose `|x|` is
-  // O(1) and where a looser threshold leaves measurable residual error.
-  progress.gradient_norm = ScalarType{5e-6};
+  // (`||g|| < epsilon * max(1, ||x||)`, epsilon = 1e-5).  A tighter
+  // default (`5e-6`) costs noticeable function evaluations on
+  // well-behaved problems where the gradient plateaus just above
+  // that threshold while the objective has already converged; the
+  // conservative preset below re-tightens the knob for callers
+  // who need it.
+  progress.gradient_norm = ScalarType{1e-5};
   progress.condition_hessian = ScalarType{0};
   progress.constraint_threshold = ScalarType{1e-5};
-  progress.past = 5;
-  progress.past_delta = ScalarType{1e-10};
+  // Plateau stopping: accept convergence when the objective has
+  // moved by less than `past_delta` over the past `past`
+  // iterations.  `past = 3, past_delta = 1e-6` is the same
+  // aggressive setting used by reference implementations that
+  // match Nocedal's original L-BFGS memo.  A few test problems
+  // with carefully-flat valleys before their minimum (Powell
+  // singular, Powell badly scaled, Meyer) need a deeper plateau
+  // window or a tighter delta to avoid a premature stop; those
+  // callers should use `ConservativeStoppingSolverProgress`.
+  progress.past = 3;
+  progress.past_delta = ScalarType{1e-6};
 #endif  // CPPOPT_SWEEP
   progress.status = Status::NotStarted;
+  return progress;
+}
+
+// Returns a conservative stopping solver state.
+//
+// Same general stopping mechanism as
+// `DefaultStoppingSolverProgress`, but every tolerance is
+// tightened so the solver keeps working well beyond where the
+// default would accept convergence.  Use this when the objective
+// has genuinely flat regions on the way to the minimum -- a
+// fourth-order-contact stationary point, a degenerate saddle,
+// or a Powell-singular-style valley -- where the plateau test
+// would otherwise fire at a non-minimiser.
+//
+// Differences from the default preset:
+//   * `gradient_norm = 5e-6`   (default: 1e-5)
+//   * `past = 5`               (default: 3)
+//   * `past_delta = 1e-10`     (default: 1e-6)
+//
+// The tighter plateau test means the solver must see `past`
+// consecutive iterations of objective change below `past_delta`
+// before it declares convergence; in practice the test rarely
+// fires and the gradient-norm check drives termination.  Expect
+// several times more function evaluations than the default on
+// well-behaved problems in exchange for reliably finding the
+// minimum on pathological ones.
+template <class FunctionType, class StateType>
+Progress<FunctionType, StateType> ConservativeStoppingSolverProgress() {
+  auto progress = DefaultStoppingSolverProgress<FunctionType, StateType>();
+  using ScalarType = typename Progress<FunctionType, StateType>::ScalarType;
+  progress.gradient_norm = ScalarType{5e-6};
+  progress.past = 5;
+  progress.past_delta = ScalarType{1e-10};
   return progress;
 }
 }  // namespace cppoptlib::solver

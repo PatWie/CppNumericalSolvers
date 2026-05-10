@@ -75,10 +75,18 @@ class NelderMead
   // by the library's other derivative-free convergence paths.  Gradient-
   // based solvers keep the one-strike default because a zero-step with
   // non-zero gradient is a genuine line-search failure, not a pause.
+  //
+  // The wider-window `ConservativeStoppingSolverProgress` (rather than
+  // the aggressive default) is the right baseline here for the same
+  // structural reason: a short plateau window plus a loose
+  // `past_delta` fires far too early on a simplex that is legitimately
+  // contracting around the minimum.  Nelder-Mead's per-iteration
+  // objective change can easily drop below `1e-6` on a contract
+  // step while the simplex still has dozens of shrinks to go before
+  // it actually bounds the optimum.
   NelderMead()
-      : Superclass(
-            cppoptlib::solver::DefaultStoppingSolverProgress<FunctionType,
-                                                             StateType>()) {
+      : Superclass(cppoptlib::solver::ConservativeStoppingSolverProgress<
+                   FunctionType, StateType>()) {
     this->stopping_progress.x_delta_violations = 5;
   }
 

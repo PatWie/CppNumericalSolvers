@@ -177,6 +177,66 @@ class My3D : public cppoptlib::function::FunctionCRTP<
 Use `cppoptlib::utils::IsGradientCorrect` and `IsHessianCorrect` to
 verify your derivatives against finite differences during development.
 
+## Stopping criteria
+
+Every solver accepts a `Progress` state at construction that
+configures when `Minimize` should return.  Two presets are
+shipped; pick the one that matches the shape of your problem.
+
+### Default preset: `DefaultStoppingSolverProgress`
+
+```cpp
+auto stop = cppoptlib::solver::DefaultStoppingSolverProgress<Fn, State>();
+cppoptlib::solver::Lbfgs<Fn> solver(stop);
+```
+
+Accepts convergence as soon as either test fires:
+
+- **Gradient norm.** `|g|_inf < 1e-5 * max(1, |x|_inf)`.
+- **Plateau.** The objective has moved by less than `1e-6`
+  (relative to `max(1, |f|)`) over the last 3 iterations.
+
+This is the preset the default-constructed solver uses and it is
+the right choice for well-conditioned problems where the
+gradient drops cleanly to the noise floor as the iterate
+approaches the minimum.  It exits quickly on such problems.
+
+### Alternative: `ConservativeStoppingSolverProgress`
+
+```cpp
+auto stop = cppoptlib::solver::ConservativeStoppingSolverProgress<Fn, State>();
+cppoptlib::solver::Lbfgs<Fn> solver(stop);
+```
+
+Same stopping mechanism as the default, but every tolerance is
+tightened:
+
+- **Gradient norm** `5e-6` (default: `1e-5`).
+- **Plateau window** `past = 5` (default: `3`).
+- **Plateau delta** `past_delta = 1e-10` (default: `1e-6`).
+
+The plateau test becomes very hard to trigger, so the solver
+terminates almost exclusively on the gradient-norm check.  Use
+this preset when the objective has genuinely flat regions on the
+way to the minimum -- a higher-order-contact stationary point, a
+degenerate saddle, or a Powell-singular-style valley -- where
+the default preset would mistake an intermediate plateau for the
+minimum.  Expect several times more function evaluations than
+the default on well-behaved problems.
+
+### Per-field overrides
+
+Both helpers return a plain struct; a caller that needs a
+different combination can tweak individual fields without
+copying the whole preset:
+
+```cpp
+auto stop = cppoptlib::solver::DefaultStoppingSolverProgress<Fn, State>();
+stop.num_iterations = 500;
+stop.gradient_norm = 1e-7;
+cppoptlib::solver::Lbfgs<Fn> solver(stop);
+```
+
 ## Benchmark
 
 Full reproducible benchmark with driver sources, per-iteration
