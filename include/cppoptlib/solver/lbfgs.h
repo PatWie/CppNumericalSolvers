@@ -231,6 +231,15 @@ class Lbfgs
     const StateType next = LineSearch<FunctionType, 1>::Search(
         current, -search_direction, function, alpha_init);
 
+    // Guard: if the line search landed on a non-finite objective
+    // (NaN or Inf), the iterate is irrecoverable.  Return the last
+    // finite state so the outer stopping criterion fires on the
+    // zero x-delta and the caller gets a usable result rather than
+    // grinding through thousands of NaN iterations.
+    if (!std::isfinite(next.value)) {
+      return current;
+    }
+
     // Compute the differences for the new correction pair.  Use
     // scratch buffers stored on the solver so we do not allocate a
     // fresh vector per outer iteration; at small problem sizes
