@@ -36,7 +36,11 @@ int main() {
 }
 ```
 
-Add to your project via CMake FetchContent:
+## Integration
+
+The only dependency is Eigen3.
+
+### CMake (FetchContent)
 
 ```cmake
 include(FetchContent)
@@ -44,11 +48,57 @@ FetchContent_Declare(cppoptlib
   GIT_REPOSITORY https://github.com/PatWie/CppNumericalSolvers.git
   GIT_TAG main)
 FetchContent_MakeAvailable(cppoptlib)
-target_link_libraries(your_target PRIVATE CppNumericalSolvers)
+
+find_package(Eigen3 REQUIRED NO_MODULE)
+target_link_libraries(your_target PRIVATE CppNumericalSolvers Eigen3::Eigen)
 ```
 
-Or clone and add `include/` to your include path.  The only dependency
-is Eigen3.
+### CMake (find_package after install)
+
+```bash
+cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --install build
+```
+
+Then in your project:
+
+```cmake
+find_package(CppNumericalSolvers REQUIRED)
+find_package(Eigen3 REQUIRED NO_MODULE)
+target_link_libraries(your_target PRIVATE CppNumericalSolvers::CppNumericalSolvers Eigen3::Eigen)
+```
+
+### pkg-config (after install)
+
+```bash
+g++ -std=c++17 $(pkg-config --cflags cppoptlib) main.cpp -o main
+```
+
+### Bazel
+
+Add to your `MODULE.bazel`:
+
+```starlark
+bazel_dep(name = "cppoptlib", version = "1.1.0")
+git_override(
+    module_name = "cppoptlib",
+    remote = "https://github.com/PatWie/CppNumericalSolvers.git",
+    commit = "<commit>",
+)
+```
+
+Then depend on `@cppoptlib//include:cppoptlib`:
+
+```starlark
+cc_binary(
+    name = "main",
+    srcs = ["main.cpp"],
+    deps = [
+        "@cppoptlib//include:cppoptlib",
+        "@eigen//:eigen",
+    ],
+)
+```
 
 ## Solvers
 

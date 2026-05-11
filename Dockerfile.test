@@ -1,0 +1,115 @@
+FROM ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    g++ cmake make pkg-config libeigen3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the library source into the image.
+COPY . /opt/cppoptlib
+
+# Create the example project inline.
+RUN mkdir -p /tmp/example
+COPY <<'MAIN_CPP' /tmp/example/main.cpp
+#include <cassert>
+#include <cmath>
+#include <iostream>
+
+#include "Eigen/Core"
+#include "cppoptlib/function.h"
+#include "cppoptlib/solver/lbfgs.h"
+
+class Quadratic : public cppoptlib::function::FunctionCRTP<
+                      Quadratic, double,
+                      cppoptlib::function::DifferentiabilityMode::First, 2> {
+ public:
+  ScalarType operator()(const VectorType &x, VectorType *grad) const {
+    if (grad) *grad = Eigen::Vector2d(10 * x[0], 200 * x[1]);
+    return 5 * x[0] * x[0] + 100 * x[1] * x[1] + 5;
+  }
+};
+
+int main() {
+  Quadratic f;
+  Eigen::Vector2d x0(-10, 2);
+
+  cppoptlib::solver::Lbfgs<Quadratic> solver;
+  auto [solution, state] =
+      solver.Minimize(f, cppoptlib::function::FunctionState(x0));
+
+  constexpr double convergence_tolerance = 1e-4;
+  assert(std::abs(solution.x[0]) < convergence_tolerance);
+  assert(std::abs(solution.x[1]) < convergence_tolerance);
+  assert(std::abs(solution.value - 5.0) < convergence_tolerance);
+
+  std::cout << "x* = " << solution.x.transpose() << "\n";
+  std::cout << "f* = " << solution.value << "\n";
+  std::cout << "iterations = " << state.num_iterations << "\n";
+  std::cout << "PASS\n";
+  return 0;
+}
+MAIN_CPP
+
+COPY <<'CMAKELISTS' /tmp/example/CMakeLists.txt
+cmake_minimum_required(VERSION 3.14)
+project(cppoptlib_example LANGUAGES CXX)
+
+option(ENABLE_EXCEPTIONS "Enable C++ exceptions" ON)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+include(FetchContent)
+FetchContent_Declare(cppoptlib
+  SOURCE_DIR ${CPPOPTLIB_SOURCE}
+)
+FetchContent_MakeAvailable(cppoptlib)
+
+find_package(Eigen3 REQUIRED NO_MODULE)
+
+add_executable(example main.cpp)
+target_link_libraries(example PRIVATE CppNumericalSolvers Eigen3::Eigen)
+
+if(NOT ENABLE_EXCEPTIONS)
+  target_compile_options(example PRIVATE -fno-exceptions)
+endif()
+CMAKELISTS
+
+# ===========================================================
+# Test 1: FetchContent workflow
+# ===========================================================
+RUN echo "=== TEST: FetchContent ===" \
+    && cmake -S /tmp/example -B /tmp/build-fc \
+         -DCPPOPTLIB_SOURCE=/opt/cppoptlib \
+    && cmake --build /tmp/build-fc \
+    && /tmp/build-fc/example \
+    && rm -rf /tmp/build-fc
+
+# ===========================================================
+# Test 2: FetchContent with exceptions disabled
+# ===========================================================
+RUN echo "=== TEST: FetchContent (no exceptions) ===" \
+    && cmake -S /tmp/example -B /tmp/build-noexcept \
+         -DCPPOPTLIB_SOURCE=/opt/cppoptlib \
+         -DENABLE_EXCEPTIONS=OFF \
+    && cmake --build /tmp/build-noexcept \
+    && /tmp/build-noexcept/example \
+    && rm -rf /tmp/build-noexcept
+
+# ===========================================================
+# Test 3: CMake install + pkg-config workflow
+# ===========================================================
+RUN echo "=== TEST: CMake install ===" \
+    && cmake -S /opt/cppoptlib -B /tmp/build-install \
+         -DCMAKE_INSTALL_PREFIX=/usr/local \
+         -DCppNumericalSolvers_INSTALL=ON \
+    && cmake --install /tmp/build-install \
+    && rm -rf /tmp/build-install
+
+RUN echo "=== TEST: pkg-config ===" \
+    && pkg-config --modversion cppoptlib \
+    && pkg-config --cflags cppoptlib \
+    && g++ -std=c++17 -O2 $(pkg-config --cflags cppoptlib) \
+         /tmp/example/main.cpp -o /tmp/example-pkgconfig \
+    && /tmp/example-pkgconfig
+
+RUN echo "ALL TESTS PASSED"

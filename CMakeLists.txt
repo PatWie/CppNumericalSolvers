@@ -15,7 +15,7 @@ target_include_directories(CppNumericalSolvers
     $<INSTALL_INTERFACE:include>
 )
 
-target_compile_features(CppNumericalSolvers INTERFACE cxx_std_11)
+target_compile_features(CppNumericalSolvers INTERFACE cxx_std_17)
 
 if(CppNumericalSolvers_INSTALL)
   # Install the interface target and export it.
@@ -60,6 +60,17 @@ if(CppNumericalSolvers_INSTALL)
   # Export the target for use from the build tree.
   export(TARGETS CppNumericalSolvers NAMESPACE CppNumericalSolvers:: FILE CppNumericalSolversTargets.cmake)
   export(PACKAGE CppNumericalSolvers)
+
+  # pkg-config support.
+  configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cppoptlib.pc.in
+    ${CMAKE_CURRENT_BINARY_DIR}/cppoptlib.pc
+    @ONLY
+  )
+  install(
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/cppoptlib.pc
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+  )
 endif()
 
 if(BUILD_EXAMPLES)
