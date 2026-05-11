@@ -3,10 +3,10 @@
 A header-only C++17 optimization library that is fast, reliable, and
 easy to integrate.
 
-On an [83-problem benchmark][bench] against Nocedal's Fortran L-BFGS,
+On a [376-problem benchmark][bench] against Nocedal's Fortran L-BFGS,
 libLBFGS, LBFGSpp, and LBFGS-Lite, CppNumericalSolvers has the
 highest reliability (95% converged), the most first-place wins
-(43 / 83, 2× the next library), and the lowest mean nfev of any
+(230 / 376, 2× the next library), and the lowest mean nfev of any
 solver tested.
 
 [bench]: https://patwie.github.io/CppNumericalSolversBenchmark/
