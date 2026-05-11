@@ -28,6 +28,7 @@
 #define INCLUDE_CPPOPTLIB_SOLVER_LBFGSB_H_
 
 #include <algorithm>
+#include <cassert>
 #include <limits>
 #include <tuple>
 #include <utility>
@@ -81,7 +82,7 @@ class Lbfgsb
   // magnitude.  Match that exactly by setting `f_delta_relative = true`
   // and `f_delta = 2.22e-9`.
   Lbfgsb() : Superclass() {
-    this->stopping_progress.f_delta = ScalarType{2.22e-9};
+    this->stopping_progress.f_delta = ScalarType(2.22e-9);
     this->stopping_progress.f_delta_relative = true;
   }
 
@@ -106,11 +107,11 @@ class Lbfgsb
     if (!bounds_initialized_) {
       return gradient.template lpNorm<Eigen::Infinity>();
     }
-    ScalarType norm = ScalarType{0};
+    ScalarType norm = ScalarType(0);
     for (int j = 0; j < x.size(); ++j) {
       ScalarType gj = gradient(j);
-      if (x(j) <= lower_bound_(j) && gj > 0) gj = ScalarType{0};
-      if (x(j) >= upper_bound_(j) && gj < 0) gj = ScalarType{0};
+      if (x(j) <= lower_bound_(j) && gj > 0) gj = ScalarType(0);
+      if (x(j) >= upper_bound_(j) && gj < 0) gj = ScalarType(0);
       norm = std::max<ScalarType>(norm, std::abs(gj));
     }
     return norm;
@@ -128,7 +129,7 @@ class Lbfgsb
       bounds_initialized_ = true;
     }
 
-    theta_ = 1.0;
+    theta_ = ScalarType(1);
 
     W_ = dyn_MatrixType::Zero(dim_, 0);
     // MM_lu_ will be initialized when first L-BFGS update occurs
@@ -186,7 +187,7 @@ class Lbfgsb
     if (do_line_search) {
       const VectorType direction = subspace_min - x;
       next = LineSearch<FunctionType, 1>::Search(next, direction, function,
-                                                 /*alpha_init=*/ScalarType{1});
+                                                 /*alpha_init=*/ScalarType(1));
     } else {
       next = StateType(function, subspace_min);
     }
@@ -218,8 +219,8 @@ class Lbfgsb
       y_history_.rightCols(1) = new_y;
       s_history_.rightCols(1) = new_s;
       // STEP 7:
-      theta_ =
-          (ScalarType)(new_y.transpose() * new_y) / (new_y.transpose() * new_s);
+      theta_ = static_cast<ScalarType>(new_y.transpose() * new_y) /
+               static_cast<ScalarType>(new_y.transpose() * new_s);
       W_ = dyn_MatrixType::Zero(y_history_.rows(),
                                 y_history_.cols() + s_history_.cols());
       W_ << y_history_, (theta_ * s_history_);
@@ -256,7 +257,7 @@ class Lbfgsb
     // convergence based on that tolerance.
     const ScalarType projected_gradient_tolerance =
         this->stopping_progress.gradient_norm;
-    this->stopping_progress.gradient_norm = ScalarType{0};
+    this->stopping_progress.gradient_norm = ScalarType(0);
 
     this->InitializeSolver(function, function_state);
 
@@ -357,8 +358,8 @@ class Lbfgsb
     // f'' :=   \theta_*d^ScalarType*d-d^ScalarType*W*M*W^ScalarType*d =
     // -\theta_*f' - p^ScalarType*M*p
     // Use triangular solve: M*p means solve(MM, p)
-    ScalarType f_doubleprime = (ScalarType)(-1.0 * theta_) * f_prime -
-                               p.dot(SolveM(p));  // (O(m^2) operations)
+    ScalarType f_doubleprime =
+        (-theta_) * f_prime - p.dot(SolveM(p));  // (O(m^2) operations)
     f_doubleprime = std::max<ScalarType>(epsilon, f_doubleprime);
     ScalarType f_dp_orig = f_doubleprime;
     // \delta t_min :=  -f'/f''
@@ -409,7 +410,7 @@ class Lbfgsb
         dt = t - t_old;
       }
     }
-    dt_min = std::max<ScalarType>(dt_min, ScalarType{0});
+    dt_min = std::max<ScalarType>(dt_min, ScalarType(0));
     t_old += dt_min;
 
     // Apply the final drift t_old * d only to coordinates that were not

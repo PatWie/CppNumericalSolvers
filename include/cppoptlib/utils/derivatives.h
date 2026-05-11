@@ -36,10 +36,10 @@ namespace cppoptlib::utils {
 
 template <class FunctionType>
 void ComputeFiniteGradient(
-    const FunctionType &function,
-    const Eigen::Matrix<typename FunctionType::ScalarType, Eigen::Dynamic, 1>
-        &x0,
-    Eigen::Matrix<typename FunctionType::ScalarType, Eigen::Dynamic, 1> *grad,
+    const FunctionType& function,
+    const Eigen::Matrix<typename FunctionType::ScalarType, Eigen::Dynamic, 1>&
+        x0,
+    Eigen::Matrix<typename FunctionType::ScalarType, Eigen::Dynamic, 1>* grad,
     const int accuracy = 0) {
   using ScalarType = typename FunctionType::ScalarType;
   using VectorType = typename FunctionType::VectorType;
@@ -85,11 +85,11 @@ void ComputeFiniteGradient(
 // Approximates the Hessian of the given function in x0.
 template <class FunctionType>
 void ComputeFiniteHessian(
-    const FunctionType &function,
-    const Eigen::Matrix<typename FunctionType::ScalarType, Eigen::Dynamic, 1>
-        &x0,
+    const FunctionType& function,
+    const Eigen::Matrix<typename FunctionType::ScalarType, Eigen::Dynamic, 1>&
+        x0,
     Eigen::Matrix<typename FunctionType::ScalarType, Eigen::Dynamic,
-                  Eigen::Dynamic> *hessian,
+                  Eigen::Dynamic>* hessian,
     int accuracy = 0) {
   using ScalarType = typename FunctionType::ScalarType;
   using VectorType = Eigen::Matrix<ScalarType, Eigen::Dynamic, 1>;
@@ -252,8 +252,8 @@ void ComputeFiniteHessian(
 }
 
 template <class FunctionType>
-bool IsGradientCorrect(const FunctionType &function,
-                       const typename FunctionType::VectorType &x0,
+bool IsGradientCorrect(const FunctionType& function,
+                       const typename FunctionType::VectorType& x0,
                        int accuracy = 3) {
   constexpr float tolerance = 1e-2;
 
@@ -269,19 +269,19 @@ bool IsGradientCorrect(const FunctionType &function,
   ComputeFiniteGradient(function, x0, &expected_gradient, accuracy);
 
   for (index_t d = 0; d < D; ++d) {
-    ScalarType scale =
-        std::max(static_cast<ScalarType>(std::max(fabs(actual_gradient[d]),
-                                                  fabs(expected_gradient[d]))),
-                 ScalarType(1.));
-    if (fabs(actual_gradient[d] - expected_gradient[d]) > tolerance * scale)
+    ScalarType scale = std::max(
+        static_cast<ScalarType>(std::max(std::abs(actual_gradient[d]),
+                                         std::abs(expected_gradient[d]))),
+        ScalarType(1.));
+    if (std::abs(actual_gradient[d] - expected_gradient[d]) > tolerance * scale)
       return false;
   }
   return true;
 }
 
 template <class FunctionType>
-bool IsHessianCorrect(const FunctionType &function,
-                      const typename FunctionType::VectorType &x0,
+bool IsHessianCorrect(const FunctionType& function,
+                      const typename FunctionType::VectorType& x0,
                       int accuracy = 3) {
   constexpr float tolerance = 1e-1;
 
@@ -299,10 +299,10 @@ bool IsHessianCorrect(const FunctionType &function,
   for (index_t d = 0; d < D; ++d) {
     for (index_t e = 0; e < D; ++e) {
       ScalarType scale = std::max(
-          static_cast<ScalarType>(std::max(fabs(actual_hessian(d, e)),
-                                           fabs(expected_hessian(d, e)))),
+          static_cast<ScalarType>(std::max(std::abs(actual_hessian(d, e)),
+                                           std::abs(expected_hessian(d, e)))),
           ScalarType(1.));
-      if (fabs(actual_hessian(d, e) - expected_hessian(d, e)) >
+      if (std::abs(actual_hessian(d, e) - expected_hessian(d, e)) >
           tolerance * scale)
         return false;
     }

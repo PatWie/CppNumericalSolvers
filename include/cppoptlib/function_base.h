@@ -304,7 +304,7 @@ struct FunctionState {
   using VectorType = Eigen::Matrix<TScalar, TDimension, 1>;
 
   VectorType x;
-  ScalarType value = ScalarType{0};
+  ScalarType value = ScalarType(0);
   VectorType gradient;  // empty for DifferentiabilityMode::None.
 
   // Legacy x-only constructor.  Leaves value = 0 and gradient = empty; the

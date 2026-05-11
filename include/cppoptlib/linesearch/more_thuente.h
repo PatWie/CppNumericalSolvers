@@ -63,7 +63,7 @@ class MoreThuente {
   static ScalarType Search(const VectorType& x,
                            const VectorType& search_direction,
                            const FunctionType& function,
-                           const ScalarType alpha_init = 1.0) {
+                           const ScalarType alpha_init = ScalarType(1)) {
     ScalarType alpha = alpha_init;
     VectorType g;
     ScalarType f = function(x, &g);
@@ -120,7 +120,7 @@ class MoreThuente {
   template <class State>
   static State Search(const State& start, const VectorType& search_direction,
                       const FunctionType& function,
-                      const ScalarType alpha_init = ScalarType{1},
+                      const ScalarType alpha_init = ScalarType(1),
                       ScalarType* alpha_out = nullptr) {
     ScalarType alpha = alpha_init;
     ScalarType f = start.value;
@@ -139,17 +139,17 @@ class MoreThuente {
     // we rewrite this from MIN-LAPACK and some MATLAB code
     int info = 0;
     int infoc = 1;
-    constexpr ScalarType xtol = 1e-15;
-    constexpr ScalarType ftol = 1e-4;
-    constexpr ScalarType gtol = 0.9;
-    constexpr ScalarType stpmin = 1e-15;
-    constexpr ScalarType stpmax = 1e15;
-    constexpr ScalarType xtrapf = 4;
+    constexpr ScalarType xtol = ScalarType(1e-15);
+    constexpr ScalarType ftol = ScalarType(1e-4);
+    constexpr ScalarType gtol = ScalarType(0.9);
+    constexpr ScalarType stpmin = ScalarType(1e-15);
+    constexpr ScalarType stpmax = ScalarType(1e15);
+    constexpr ScalarType xtrapf = ScalarType(4);
     constexpr int maxfev = 20;
     int nfev = 0;
 
     ScalarType dginit = g->dot(s);
-    if (dginit >= 0.0) {
+    if (dginit >= ScalarType(0)) {
       // There is no descent direction.
       // TODO(patwie): Handle this case.
       return -1;
@@ -161,13 +161,13 @@ class MoreThuente {
     ScalarType finit = *f;
     ScalarType dgtest = ftol * dginit;
     ScalarType width = stpmax - stpmin;
-    ScalarType width1 = 2 * width;
+    ScalarType width1 = ScalarType(2) * width;
     VectorType wa = x->eval();
 
-    ScalarType stx = 0.0;
+    ScalarType stx = ScalarType(0);
     ScalarType fx = finit;
     ScalarType dgx = dginit;
-    ScalarType sty = 0.0;
+    ScalarType sty = ScalarType(0);
     ScalarType fy = finit;
     ScalarType dgy = dginit;
 
@@ -213,7 +213,7 @@ class MoreThuente {
 
       if (brackt & (stmax - stmin <= xtol * stmax)) info = 2;
 
-      if ((*f <= ftest1) & (fabs(dg) <= gtol * (-dginit))) info = 1;
+      if ((*f <= ftest1) & (std::abs(dg) <= gtol * (-dginit))) info = 1;
 
       // Terminate when convergence reached.
       if (info != 0) return -1;
@@ -244,11 +244,11 @@ class MoreThuente {
       }
 
       if (brackt) {
-        if (fabs(sty - stx) >= 0.66 * width1) {
-          *stp = stx + 0.5 * (sty - stx);
+        if (std::abs(sty - stx) >= ScalarType(0.66) * width1) {
+          *stp = stx + ScalarType(0.5) * (sty - stx);
         }
         width1 = width;
-        width = fabs(sty - stx);
+        width = std::abs(sty - stx);
       }
     }
 
@@ -270,11 +270,11 @@ class MoreThuente {
     // Check the input parameters for errors.
     if ((brackt && ((stp <= std::min<ScalarType>(stx, sty)) ||
                     (stp >= std::max<ScalarType>(stx, sty)))) ||
-        (dx * (stp - stx) >= 0.0) || (stpmax < stpmin)) {
+        (dx * (stp - stx) >= ScalarType(0)) || (stpmax < stpmin)) {
       return -1;
     }
 
-    ScalarType sgnd = dp * (dx / fabs(dx));
+    ScalarType sgnd = dp * (dx / std::abs(dx));
 
     ScalarType stpf = 0;
     ScalarType stpc = 0;
@@ -283,28 +283,29 @@ class MoreThuente {
     if (fp > fx) {
       info = 1;
       bound = true;
-      ScalarType theta = 3. * (fx - fp) / (stp - stx) + dx + dp;
+      ScalarType theta = ScalarType(3) * (fx - fp) / (stp - stx) + dx + dp;
       ScalarType s = max_abs(theta, dx, dp);
       ScalarType gamma =
-          s * sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
+          s * std::sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
       if (stp < stx) gamma = -gamma;
       ScalarType p = (gamma - dx) + theta;
       ScalarType q = ((gamma - dx) + gamma) + dp;
       ScalarType r = p / q;
       stpc = stx + r * (stp - stx);
-      stpq = stx + ((dx / ((fx - fp) / (stp - stx) + dx)) / 2.) * (stp - stx);
-      if (fabs(stpc - stx) < fabs(stpq - stx))
+      stpq = stx + ((dx / ((fx - fp) / (stp - stx) + dx)) / ScalarType(2)) *
+                       (stp - stx);
+      if (std::abs(stpc - stx) < std::abs(stpq - stx))
         stpf = stpc;
       else
         stpf = stpc + (stpq - stpc) / 2;
       brackt = true;
-    } else if (sgnd < 0.0) {
+    } else if (sgnd < ScalarType(0)) {
       info = 2;
       bound = false;
       ScalarType theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
       ScalarType s = max_abs(theta, dx, dp);
       ScalarType gamma =
-          s * sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
+          s * std::sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
       if (stp > stx) gamma = -gamma;
 
       ScalarType p = (gamma - dp) + theta;
@@ -312,25 +313,25 @@ class MoreThuente {
       ScalarType r = p / q;
       stpc = stp + r * (stx - stp);
       stpq = stp + (dp / (dp - dx)) * (stx - stp);
-      if (fabs(stpc - stp) > fabs(stpq - stp))
+      if (std::abs(stpc - stp) > std::abs(stpq - stp))
         stpf = stpc;
       else
         stpf = stpq;
       brackt = true;
-    } else if (fabs(dp) < fabs(dx)) {
+    } else if (std::abs(dp) < std::abs(dx)) {
       info = 3;
       bound = true;
       ScalarType theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
       ScalarType s = max_abs(theta, dx, dp);
       ScalarType gamma =
-          s * sqrt(std::max<ScalarType>(
+          s * std::sqrt(std::max<ScalarType>(
                   static_cast<ScalarType>(0.),
                   (theta / s) * (theta / s) - (dx / s) * (dp / s)));
       if (stp > stx) gamma = -gamma;
       ScalarType p = (gamma - dp) + theta;
       ScalarType q = (gamma + (dx - dp)) + gamma;
       ScalarType r = p / q;
-      if ((r < 0.0) & (gamma != 0.0)) {
+      if ((r < ScalarType(0)) & (gamma != ScalarType(0))) {
         stpc = stp + r * (stx - stp);
       } else if (stp > stx) {
         stpc = stpmax;
@@ -339,13 +340,13 @@ class MoreThuente {
       }
       stpq = stp + (dp / (dp - dx)) * (stx - stp);
       if (brackt) {
-        if (fabs(stp - stpc) < fabs(stp - stpq)) {
+        if (std::abs(stp - stpc) < std::abs(stp - stpq)) {
           stpf = stpc;
         } else {
           stpf = stpq;
         }
       } else {
-        if (fabs(stp - stpc) > fabs(stp - stpq)) {
+        if (std::abs(stp - stpc) > std::abs(stp - stpq)) {
           stpf = stpc;
         } else {
           stpf = stpq;
@@ -358,7 +359,7 @@ class MoreThuente {
         ScalarType theta = 3 * (fp - fy) / (sty - stp) + dy + dp;
         ScalarType s = max_abs(theta, dy, dp);
         ScalarType gamma =
-            s * sqrt((theta / s) * (theta / s) - (dy / s) * (dp / s));
+            s * std::sqrt((theta / s) * (theta / s) - (dy / s) * (dp / s));
         if (stp > sty) gamma = -gamma;
 
         ScalarType p = (gamma - dp) + theta;
@@ -378,7 +379,7 @@ class MoreThuente {
       fy = fp;
       dy = dp;
     } else {
-      if (sgnd < 0.0) {
+      if (sgnd < ScalarType(0)) {
         sty = stx;
         fy = fx;
         dy = dx;

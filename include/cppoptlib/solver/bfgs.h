@@ -97,12 +97,12 @@ class Bfgs
     // inverse Hessian carries real curvature information, `alpha_init = 1`
     // is the standard quasi-Newton choice that the Wolfe line search accepts
     // in one evaluation for well-conditioned problems.
-    ScalarType alpha_init = ScalarType{1};
+    ScalarType alpha_init = ScalarType(1);
     if (fresh_inverse_hessian_) {
       const ScalarType search_direction_norm = search_direction.norm();
       alpha_init = (search_direction_norm > eps)
-                       ? ScalarType{1} / search_direction_norm
-                       : ScalarType{1};
+                       ? ScalarType(1) / search_direction_norm
+                       : ScalarType(1);
     }
 
     // Line search consumes the populated `current` and returns a populated
@@ -123,12 +123,12 @@ class Bfgs
     const VectorType y = next.gradient - current_gradient;
     const ScalarType ys = y.dot(s);
     if (ys > eps * s.norm() * y.norm()) {
-      const ScalarType rho = ScalarType{1} / ys;
+      const ScalarType rho = ScalarType(1) / ys;
       const VectorType Hy = inverse_hessian_ * y;
       const ScalarType yHy = y.dot(Hy);
       inverse_hessian_ =
           inverse_hessian_ - rho * (s * Hy.transpose() + Hy * s.transpose()) +
-          rho * (rho * yHy + ScalarType{1}) * (s * s.transpose());
+          rho * (rho * yHy + ScalarType(1)) * (s * s.transpose());
       fresh_inverse_hessian_ = false;
     }
     // else: keep the previous inverse_hessian_ -- it was valid last step.

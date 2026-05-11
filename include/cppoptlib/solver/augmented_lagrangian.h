@@ -311,7 +311,7 @@ class AugmentedLagrangian
     // objective curvature prevents that.
     if (outer_iteration_count_ == 1 && config_.auto_scale_initial_penalty &&
         !next_state.penalty_was_auto_scaled &&
-        next_state.penalty_state.penalty == ScalarType{0}) {
+        next_state.penalty_state.penalty == ScalarType(0)) {
       next_state.penalty_state.penalty =
           ComputeAutoScaledPenalty(function, next_state.x);
       next_state.penalty_was_auto_scaled = true;
@@ -355,7 +355,7 @@ class AugmentedLagrangian
 
     // --- Step 4: update multipliers and measure constraint residuals ---
     const ScalarType penalty = next_state.penalty_state.penalty;
-    ScalarType max_violation = ScalarType{0};
+    ScalarType max_violation = ScalarType(0);
 
     // Equality: first-order multiplier update
     //   lambda_{k+1} = lambda_k + rho_k * c(x_k)
@@ -379,11 +379,11 @@ class AugmentedLagrangian
       const ScalarType constraint_value =
           function.inequality_constraints[i](next_state.x);
       const ScalarType violation =
-          std::max<ScalarType>(ScalarType{0}, -constraint_value);
+          std::max<ScalarType>(ScalarType(0), -constraint_value);
       max_violation = std::max<ScalarType>(max_violation, violation);
       ScalarType& mu = next_state.multiplier_state.inequality_multipliers[i];
       mu = ClampInequalityMultiplier(
-          std::max<ScalarType>(ScalarType{0}, mu - penalty * constraint_value));
+          std::max<ScalarType>(ScalarType(0), mu - penalty * constraint_value));
     }
 
     // --- Step 5: measure Lagrangian-gradient stationarity ---
@@ -477,22 +477,22 @@ class AugmentedLagrangian
                                       const VectorType& x) const {
     ScalarType objective_magnitude = std::abs(function.objective(x));
     objective_magnitude =
-        std::max<ScalarType>(objective_magnitude, ScalarType{1});
+        std::max<ScalarType>(objective_magnitude, ScalarType(1));
 
-    ScalarType squared_residual_sum = ScalarType{0};
+    ScalarType squared_residual_sum = ScalarType(0);
     for (const auto& c : function.equality_constraints) {
       const ScalarType value = c(x);
-      squared_residual_sum += ScalarType{0.5} * value * value;
+      squared_residual_sum += ScalarType(0.5) * value * value;
     }
     for (const auto& c : function.inequality_constraints) {
       const ScalarType value = c(x);
       // Convention `c >= 0`: the violated side is `c < 0`.
-      if (value < ScalarType{0}) {
-        squared_residual_sum += ScalarType{0.5} * value * value;
+      if (value < ScalarType(0)) {
+        squared_residual_sum += ScalarType(0.5) * value * value;
       }
     }
     const ScalarType denom =
-        std::max<ScalarType>(squared_residual_sum, ScalarType{1});
+        std::max<ScalarType>(squared_residual_sum, ScalarType(1));
     const ScalarType rho =
         config_.penalty_auto_objective_scale * objective_magnitude / denom;
     return std::clamp(rho, config_.penalty_auto_min, config_.penalty_auto_max);
@@ -529,7 +529,7 @@ class AugmentedLagrangian
   //     clone.
   void ConfigureInnerSubproblem(const ProblemType& function,
                                 solver_t& working_inner) const {
-    working_inner.stopping_progress.f_delta = ScalarType{0};
+    working_inner.stopping_progress.f_delta = ScalarType(0);
     const bool has_general_constraints =
         !function.equality_constraints.empty() ||
         !function.inequality_constraints.empty();
@@ -548,7 +548,7 @@ class AugmentedLagrangian
   // the no-information state rather than propagating NaN into the
   // composite.
   ScalarType ClampEqualityMultiplier(ScalarType candidate) const {
-    if (!std::isfinite(candidate)) return ScalarType{0};
+    if (!std::isfinite(candidate)) return ScalarType(0);
     return std::clamp(candidate, -config_.multiplier_max,
                       config_.multiplier_max);
   }
@@ -558,8 +558,8 @@ class AugmentedLagrangian
   // projection; this clamp only handles the upper edge and NaN
   // sanitisation.
   ScalarType ClampInequalityMultiplier(ScalarType candidate) const {
-    if (!std::isfinite(candidate)) return ScalarType{0};
-    return std::clamp(candidate, ScalarType{0}, config_.multiplier_max);
+    if (!std::isfinite(candidate)) return ScalarType(0);
+    return std::clamp(candidate, ScalarType(0), config_.multiplier_max);
   }
 
   // Evaluate grad_x L(x, lambda, mu) at the current state and return
@@ -595,7 +595,7 @@ class AugmentedLagrangian
       return unconstrained_solver_template_.ProjectedGradientInfNorm(state.x,
                                                                      sum_grad);
     } else {
-      ScalarType sup = ScalarType{0};
+      ScalarType sup = ScalarType(0);
       for (std::size_t k = 0; k < n; ++k) {
         sup = std::max<ScalarType>(sup, std::abs(sum_grad[k]));
       }
@@ -635,7 +635,7 @@ class AugmentedLagrangian
     best_iterate_objective_ = std::numeric_limits<ScalarType>::infinity();
     best_iterate_violation_ = std::numeric_limits<ScalarType>::infinity();
     best_iterate_kkt_gradient_ = std::numeric_limits<ScalarType>::infinity();
-    best_iterate_penalty_ = ScalarType{0};
+    best_iterate_penalty_ = ScalarType(0);
   }
 
   // Pareto comparison for the "best iterate so far" tracker.  The
@@ -655,7 +655,7 @@ class AugmentedLagrangian
   // previously-feasible iterates.
   void UpdateBestIterateInPlace(const ProblemType& function,
                                 const StateType& candidate) {
-    constexpr ScalarType filter_feasibility_tolerance = ScalarType{1e-5};
+    constexpr ScalarType filter_feasibility_tolerance = ScalarType(1e-5);
     const ScalarType candidate_objective = function.objective(candidate.x);
     const ScalarType candidate_violation = candidate.max_violation;
     // NaN-guard: reject candidates whose `x`, objective, or violation

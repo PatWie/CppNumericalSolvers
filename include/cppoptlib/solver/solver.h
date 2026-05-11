@@ -166,9 +166,9 @@ class Solver {
   ProgressType stopping_progress;
 
  public:
-  explicit Solver(const ProgressType& stopping_progress =
+  explicit Solver(const ProgressType& progress =
                       DefaultStoppingSolverProgress<FunctionType, StateType>())
-      : stopping_progress(stopping_progress),
+      : stopping_progress(progress),
         step_callback_(NoOpCallback<FunctionType, StateType>()) {}
 
   virtual ~Solver() = default;

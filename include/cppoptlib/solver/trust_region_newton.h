@@ -215,7 +215,7 @@ class TrustRegionNewton
     const ScalarType gradient_norm =
         gradient.template lpNorm<Eigen::Infinity>();
     const ScalarType forcing =
-        std::min<ScalarType>(ScalarType{0.5}, std::sqrt(gradient_norm));
+        std::min<ScalarType>(ScalarType(0.5), std::sqrt(gradient_norm));
     const ScalarType cg_tolerance =
         config_.cg_forcing_coefficient * forcing * gradient_norm;
 
@@ -255,7 +255,7 @@ class TrustRegionNewton
       const VectorType trial_x = current.x + step;
       const ScalarType trial_value = function(trial_x);
       const ScalarType predicted_reduction =
-          -gradient.dot(step) - ScalarType{0.5} * step.dot(hessian * step);
+          -gradient.dot(step) - ScalarType(0.5) * step.dot(hessian * step);
       const ScalarType actual_reduction = current_value - trial_value;
 
       // Defend against degenerate predicted reductions.  A non-positive
@@ -265,7 +265,7 @@ class TrustRegionNewton
       // in that case the agreement test is not meaningful, and we
       // shrink the radius without accepting the step.
       ScalarType rho;
-      if (predicted_reduction <= ScalarType{0}) {
+      if (predicted_reduction <= ScalarType(0)) {
         rho = -std::numeric_limits<ScalarType>::infinity();
       } else {
         rho = actual_reduction / predicted_reduction;
@@ -377,7 +377,7 @@ class TrustRegionNewton
       // boundary.
       const VectorType hd = hessian * direction;
       const ScalarType curvature = direction.dot(hd);
-      if (!(curvature > ScalarType{0})) {
+      if (!(curvature > ScalarType(0))) {
         // A non-positive curvature covers negative curvature AND exact
         // zero; `!(curvature > 0)` additionally absorbs NaN if the
         // Hessian has a rogue coordinate, sending us to the safe
@@ -437,16 +437,16 @@ class TrustRegionNewton
                                    const VectorType& direction,
                                    ScalarType radius, VectorType* step) {
     const ScalarType a = direction.squaredNorm();
-    const ScalarType b = ScalarType{2} * p.dot(direction);
+    const ScalarType b = ScalarType(2) * p.dot(direction);
     const ScalarType c = p.squaredNorm() - radius * radius;
     // `a > 0` by construction; a zero would mean `direction == 0`,
     // which CG rules out before calling here.
-    const ScalarType discriminant = b * b - ScalarType{4} * a * c;
+    const ScalarType discriminant = b * b - ScalarType(4) * a * c;
     // `discriminant >= 0` because `c <= 0` (p is inside the TR) and
     // `a > 0`; `- 4 a c` is non-negative so `b^2 - 4 a c >= b^2 >= 0`.
     const ScalarType tau =
-        (-b + std::sqrt(std::max<ScalarType>(discriminant, ScalarType{0}))) /
-        (ScalarType{2} * a);
+        (-b + std::sqrt(std::max<ScalarType>(discriminant, ScalarType(0)))) /
+        (ScalarType(2) * a);
     *step = p + tau * direction;
   }
 

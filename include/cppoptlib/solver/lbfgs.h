@@ -92,7 +92,7 @@ class Lbfgs
     constexpr ScalarType eps = std::numeric_limits<ScalarType>::epsilon();
     const ScalarType relative_eps =
         static_cast<ScalarType>(eps) *
-        std::max<ScalarType>(ScalarType{1.0}, current.x.norm());
+        std::max<ScalarType>(ScalarType(1.0), current.x.norm());
 
     // --- Preconditioner for the two-loop recursion ---
     // If second-order information is available, build a diagonal
@@ -159,13 +159,13 @@ class Lbfgs
       // When mem_count_ < m, corrections are stored in order [0 ...
       // mem_count_-1]. When full, they are stored cyclically starting at
       // mem_pos_ (oldest) up to (mem_pos_ + m - 1) mod m.
-      int idx = (mem_count_ < m ? i : ((mem_pos_ + i) % m));
+      int idx = static_cast<int>(mem_count_ < m ? i : ((mem_pos_ + i) % m));
       const ScalarType denom =
           x_diff_memory_.col(idx).dot(grad_diff_memory_.col(idx));
       if (std::abs(denom) < eps) {
         continue;
       }
-      const ScalarType rho = 1.0 / denom;
+      const ScalarType rho = ScalarType(1) / denom;
       alpha(i) = rho * x_diff_memory_.col(idx).dot(search_direction);
       search_direction -= alpha(i) * grad_diff_memory_.col(idx);
     }
@@ -183,13 +183,13 @@ class Lbfgs
 
     // --- Second Loop (Forward Pass) ---
     for (int i = 0; i < k; i++) {
-      int idx = (mem_count_ < m ? i : ((mem_pos_ + i) % m));
+      int idx = static_cast<int>(mem_count_ < m ? i : ((mem_pos_ + i) % m));
       const ScalarType denom =
           x_diff_memory_.col(idx).dot(grad_diff_memory_.col(idx));
       if (std::abs(denom) < eps) {
         continue;
       }
-      const ScalarType rho = 1.0 / denom;
+      const ScalarType rho = ScalarType(1) / denom;
       const ScalarType beta =
           rho * grad_diff_memory_.col(idx).dot(search_direction);
       search_direction += x_diff_memory_.col(idx) * (alpha(i) - beta);
@@ -204,12 +204,12 @@ class Lbfgs
     // two-loop direction already carries the Hessian scaling, so the
     // standard choice `alpha_init = 1` gives full Newton-like steps that
     // are accepted in one function evaluation for well-conditioned problems.
-    ScalarType alpha_init = ScalarType{1};
+    ScalarType alpha_init = ScalarType(1);
     if (mem_count_ == 0) {
       const ScalarType search_direction_norm = search_direction.norm();
       alpha_init = (search_direction_norm > eps)
-                       ? ScalarType{1} / search_direction_norm
-                       : ScalarType{1};
+                       ? ScalarType(1) / search_direction_norm
+                       : ScalarType(1);
     }
     if (!std::isfinite(descent_direction) ||
         descent_direction > -eps * relative_eps) {
@@ -220,7 +220,7 @@ class Lbfgs
       mem_pos_ = 0;
       const ScalarType gradient_norm = current_gradient.norm();
       alpha_init =
-          (gradient_norm > eps) ? ScalarType{1} / gradient_norm : ScalarType{1};
+          (gradient_norm > eps) ? ScalarType(1) / gradient_norm : ScalarType(1);
     }
 
     // Perform a line search.  The incoming `current` already carries

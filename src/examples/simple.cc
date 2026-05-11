@@ -30,8 +30,8 @@ class Function : public FunctionXd<Function> {
   //     Differentiability = cppoptlib::function::DifferentiabilityMode::Second;
   // using ScalarType = double;
 
-  ScalarType operator()(const VectorType &x, VectorType *gradient = nullptr,
-                        MatrixType *hessian = nullptr
+  ScalarType operator()(const VectorType& x, VectorType* gradient = nullptr,
+                        MatrixType* hessian = nullptr
 
   ) const {
     if (gradient) {

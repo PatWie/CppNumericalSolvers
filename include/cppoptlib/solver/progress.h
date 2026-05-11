@@ -85,9 +85,9 @@ struct Progress {
   using MatrixType = typename FunctionType::MatrixType;
 
   size_t num_iterations = 0;           // Maximum number of allowed iterations.
-  ScalarType x_delta = ScalarType{0};  // Minimum change in parameter vector.
+  ScalarType x_delta = ScalarType(0);  // Minimum change in parameter vector.
   int x_delta_violations = 0;  // Number of violations in pareameter vector.
-  ScalarType f_delta = ScalarType{0};  // Minimum change in cost function.
+  ScalarType f_delta = ScalarType(0);  // Minimum change in cost function.
   int f_delta_violations = 0;          // Number of violations in cost function.
   // When true, `f_delta` is interpreted as `factr * epsmch` in Fortran
   // L-BFGS-B 3.0's `|f_k - f_{k+1}| <= factr * epsmch * max(|f_k|,
@@ -96,7 +96,7 @@ struct Progress {
   // absolute threshold.  Default false; `Lbfgsb` sets it true in its own
   // constructor to match Fortran's convergence test exactly.
   bool f_delta_relative = false;
-  ScalarType gradient_norm = ScalarType{0};  // Minimum norm of gradient vector.
+  ScalarType gradient_norm = ScalarType(0);  // Minimum norm of gradient vector.
   // When true, `gradient_norm` is interpreted as a relative tolerance against
   // the current iterate: the solver stops when
   //     `|g|_inf < gradient_norm * max(1, |x|_inf)`.
@@ -108,9 +108,9 @@ struct Progress {
   // threshold, matching LBFGSpp.
   bool gradient_norm_relative = true;
   ScalarType condition_hessian =
-      ScalarType{0};  // Maximum condition number of hessian_t.
+      ScalarType(0);  // Maximum condition number of hessian_t.
   ScalarType constraint_threshold =
-      ScalarType{0};  // Minimum norm of constraint violations.
+      ScalarType(0);  // Minimum norm of constraint violations.
   // Outer-loop KKT-stationarity tolerance.  The constrained solver
   // (`AugmentedLagrangian`) reports `Status::Finished` only when
   // primal feasibility AND Lagrangian-gradient stationarity both
@@ -123,7 +123,7 @@ struct Progress {
   // accumulates roundoff from all constraint evaluations, so a
   // Lagrangian gradient at the `1e-6` level is often unattainable
   // even when every per-constraint residual is at machine epsilon.
-  ScalarType kkt_stationarity_threshold = ScalarType{1e-4};
+  ScalarType kkt_stationarity_threshold = ScalarType(1e-4);
   Status status = Status::NotStarted;  // Status of state.
 
   // Past-delta stopping: stop when the function value has not decreased
@@ -133,7 +133,7 @@ struct Progress {
   // LBFGS-Lite uses past=3, delta=1e-6 and this is a major contributor
   // to its lower nfev count on well-behaved problems.
   int past = 0;
-  ScalarType past_delta = ScalarType{1e-6};
+  ScalarType past_delta = ScalarType(1e-6);
 
   // Ring buffer for the past-delta stopping test (internal state).
   std::vector<ScalarType> past_f_ring_;
@@ -241,7 +241,7 @@ struct Progress {
           std::abs(current_function_state.max_violation) <=
           stop_progress.constraint_threshold;
       const bool kkt_stationary =
-          (stop_progress.kkt_stationarity_threshold <= ScalarType{0}) ||
+          (stop_progress.kkt_stationarity_threshold <= ScalarType(0)) ||
           (current_function_state.max_lagrangian_gradient <=
            stop_progress.kkt_stationarity_threshold);
       if (primal_feasible && kkt_stationary) {
@@ -265,8 +265,8 @@ struct Progress {
          stop_progress.f_delta *
              (stop_progress.f_delta_relative
                   ? std::max({std::abs(current_value), std::abs(previous_value),
-                              ScalarType{1}})
-                  : ScalarType{1}))) {
+                              ScalarType(1)})
+                  : ScalarType(1)))) {
       f_delta_violations++;
       if (f_delta_violations >= stop_progress.f_delta_violations) {
         status = Status::FDeltaViolation;
@@ -287,7 +287,7 @@ struct Progress {
         const ScalarType past_f = past_f_ring_[past_f_pos_];
         const ScalarType rate =
             std::abs(past_f - current_value) /
-            std::max(ScalarType{1}, std::abs(current_value));
+            std::max(ScalarType(1), std::abs(current_value));
         if (rate < stop_progress.past_delta) {
           status = Status::FDeltaViolation;
           return;
@@ -306,9 +306,9 @@ struct Progress {
         const ScalarType scale =
             stop_progress.gradient_norm_relative
                 ? std::max<ScalarType>(
-                      ScalarType{1},
+                      ScalarType(1),
                       current_x.template lpNorm<Eigen::Infinity>())
-                : ScalarType{1};
+                : ScalarType(1);
         if (gradient_norm < stop_progress.gradient_norm * scale) {
           status = Status::GradientNormViolation;
           return;
@@ -370,17 +370,17 @@ Progress<FunctionType, StateType> DefaultStoppingSolverProgress() {
   };
   progress.x_delta = static_cast<ScalarType>(env_or("CPPOPT_X_DELTA", 1e-9));
   progress.x_delta_violations = env_int_or("CPPOPT_X_DELTA_VIOL", 1);
-  progress.f_delta = ScalarType{0};
+  progress.f_delta = ScalarType(0);
   progress.f_delta_violations = 1;
   progress.gradient_norm =
       static_cast<ScalarType>(env_or("CPPOPT_GRAD_NORM", 1e-5));
-  progress.condition_hessian = ScalarType{0};
-  progress.constraint_threshold = ScalarType{1e-5};
+  progress.condition_hessian = ScalarType(0);
+  progress.constraint_threshold = ScalarType(1e-5);
   progress.past = env_int_or("CPPOPT_PAST", 3);
   progress.past_delta =
       static_cast<ScalarType>(env_or("CPPOPT_PAST_DELTA", 1e-6));
 #else
-  progress.x_delta = ScalarType{1e-9};
+  progress.x_delta = ScalarType(1e-9);
   // One consecutive x-delta violation is enough for gradient-based solvers:
   // a step that moves `x` by less than `1e-9` while `|g|` has not met the
   // gradient-norm test is a line-search failure, not a legitimate pause.
@@ -400,7 +400,7 @@ Progress<FunctionType, StateType> DefaultStoppingSolverProgress() {
   // `Lbfgsb` re-enables it in its own constructor with
   // `f_delta_relative = true` to match Fortran L-BFGS-B's
   // `factr*epsmch*max(|f_k|,|f_{k+1}|,1)` convergence test.
-  progress.f_delta = ScalarType{0};
+  progress.f_delta = ScalarType(0);
   progress.f_delta_violations = 1;
   // Gradient-norm convergence: `|g|_inf < gradient_norm * max(1, |x|_inf)`.
   // The `gradient_norm_relative = true` default matches Nocedal's
@@ -411,9 +411,9 @@ Progress<FunctionType, StateType> DefaultStoppingSolverProgress() {
   // that threshold while the objective has already converged; the
   // conservative preset below re-tightens the knob for callers
   // who need it.
-  progress.gradient_norm = ScalarType{1e-5};
-  progress.condition_hessian = ScalarType{0};
-  progress.constraint_threshold = ScalarType{1e-5};
+  progress.gradient_norm = ScalarType(1e-5);
+  progress.condition_hessian = ScalarType(0);
+  progress.constraint_threshold = ScalarType(1e-5);
   // Plateau stopping: accept convergence when the objective has
   // moved by less than `past_delta` over the past `past`
   // iterations.  `past = 3, past_delta = 1e-6` is the same
@@ -424,7 +424,7 @@ Progress<FunctionType, StateType> DefaultStoppingSolverProgress() {
   // window or a tighter delta to avoid a premature stop; those
   // callers should use `ConservativeStoppingSolverProgress`.
   progress.past = 3;
-  progress.past_delta = ScalarType{1e-6};
+  progress.past_delta = ScalarType(1e-6);
 #endif  // CPPOPT_SWEEP
   progress.status = Status::NotStarted;
   return progress;
@@ -457,9 +457,9 @@ template <class FunctionType, class StateType>
 Progress<FunctionType, StateType> ConservativeStoppingSolverProgress() {
   auto progress = DefaultStoppingSolverProgress<FunctionType, StateType>();
   using ScalarType = typename Progress<FunctionType, StateType>::ScalarType;
-  progress.gradient_norm = ScalarType{5e-6};
+  progress.gradient_norm = ScalarType(5e-6);
   progress.past = 5;
-  progress.past_delta = ScalarType{1e-10};
+  progress.past_delta = ScalarType(1e-10);
   return progress;
 }
 }  // namespace cppoptlib::solver

@@ -101,7 +101,7 @@ class HagerZhang {
   template <class State>
   static State Search(const State& start, const VectorType& search_direction,
                       const FunctionType& function,
-                      const ScalarType alpha_init = ScalarType{1},
+                      const ScalarType alpha_init = ScalarType(1),
                       ScalarType* alpha_out = nullptr) {
     ScalarType alpha = alpha_init;
     ScalarType f = start.value;
@@ -172,7 +172,7 @@ class HagerZhang {
     // HZ, U0: out-of-bracket points are rejected.
     if (c < a || c > b) return {ia, ib, false};
     // HZ, U1: upward slope means c is a new upper bound.
-    if (dphi_c >= ScalarType{0}) return {ia, ic, false};
+    if (dphi_c >= ScalarType(0)) return {ia, ic, false};
     // HZ, U2: downward slope with low value means c is a better lower bound.
     if (phi_c <= phi_lim) return {ic, ib, false};
     // HZ, U3: downward slope but value above phi_lim => minimum lies in
@@ -191,7 +191,7 @@ class HagerZhang {
     ScalarType a = (*history)[ia].alpha;
     ScalarType b = (*history)[ib].alpha;
     while (b - a > std::numeric_limits<ScalarType>::epsilon() * b) {
-      const ScalarType d = (a + b) / ScalarType{2};
+      const ScalarType d = (a + b) / ScalarType(2);
       EvalResult r;
       r.alpha = d;
       PhiDphi(function, x, s, d, xa, g, &r.phi, &r.dphi);
@@ -201,7 +201,7 @@ class HagerZhang {
                          sigma)) {
         return {ia, id, true};
       }
-      if (r.dphi >= ScalarType{0}) return {ia, id, false};
+      if (r.dphi >= ScalarType(0)) return {ia, id, false};
       if (r.phi <= phi_lim) {
         a = d;
         ia = id;
@@ -226,7 +226,7 @@ class HagerZhang {
     const ScalarType dphi_b = (*history)[ib].dphi;
     // HZ, S1: first secant between the two bracket endpoints.
     ScalarType c = Secant(a, b, dphi_a, dphi_b);
-    if (!std::isfinite(c)) c = (a + b) / ScalarType{2};
+    if (!std::isfinite(c)) c = (a + b) / ScalarType(2);
     EvalResult r;
     r.alpha = c;
     PhiDphi(function, x, s, c, xa, g, &r.phi, &r.dphi);
@@ -283,12 +283,12 @@ class HagerZhang {
                   VectorType* g, ScalarType* stp, const VectorType& s) {
     // HZ paper defaults -- do NOT expose a config struct (match
     // `more_thuente.h` style).
-    constexpr ScalarType delta = ScalarType{1} / ScalarType{10};  // c_1
-    constexpr ScalarType sigma = ScalarType{9} / ScalarType{10};  // c_2
-    constexpr ScalarType epsilon_k = ScalarType{1e-6};            // HZ eps
-    constexpr ScalarType gamma = ScalarType{0.66};                // shrink
-    constexpr ScalarType rho = ScalarType{5};                     // expand
-    constexpr ScalarType psi3 = ScalarType{0.1};                  // HZ I0
+    constexpr ScalarType delta = ScalarType(1) / ScalarType(10);  // c_1
+    constexpr ScalarType sigma = ScalarType(9) / ScalarType(10);  // c_2
+    constexpr ScalarType epsilon_k = ScalarType(1e-6);            // HZ eps
+    constexpr ScalarType gamma = ScalarType(0.66);                // shrink
+    constexpr ScalarType rho = ScalarType(5);                     // expand
+    constexpr ScalarType psi3 = ScalarType(0.1);                  // HZ I0
     constexpr int maxlinesearch = 50;
     // Reserve enough history up front: bracket phase + main loop each push
     // at most `maxlinesearch` evaluations, plus one for the initial step
@@ -299,13 +299,13 @@ class HagerZhang {
     const ScalarType phi_0 = *f;
     const ScalarType dphi_0 = g->dot(s);
     // No-descent guard matches MoreThuente's behaviour.
-    if (dphi_0 >= ScalarType{0}) return -1;
+    if (dphi_0 >= ScalarType(0)) return -1;
 
     const ScalarType phi_lim = phi_0 + epsilon_k * std::abs(phi_0);
 
     std::vector<EvalResult> history;
     history.reserve(history_reserve);
-    history.push_back({ScalarType{0}, phi_0, dphi_0});
+    history.push_back({ScalarType(0), phi_0, dphi_0});
 
     // Workspaces reused by every PhiDphi evaluation; never reallocated
     // inside the loop.
@@ -314,13 +314,13 @@ class HagerZhang {
 
     // Best-seen sample, kept updated so we can return a descending step
     // even if the bracket loop bails early.
-    ScalarType best_alpha = ScalarType{0};
+    ScalarType best_alpha = ScalarType(0);
     ScalarType best_phi = phi_0;
     VectorType best_x = *x;
     VectorType best_g = *g;
 
     auto update_best = [&](ScalarType alpha, ScalarType phi_val) {
-      if (alpha > ScalarType{0} && phi_val < best_phi) {
+      if (alpha > ScalarType(0) && phi_val < best_phi) {
         best_alpha = alpha;
         best_phi = phi_val;
         best_x = xa;
@@ -331,7 +331,7 @@ class HagerZhang {
     // Initial trial step.  Guard against alpha_init <= 0 which would
     // break the division in SatisfiesWolfe.
     ScalarType c = *stp;
-    if (!(c > ScalarType{0})) c = ScalarType{1};
+    if (!(c > ScalarType(0))) c = ScalarType(1);
 
     EvalResult ec;
     ec.alpha = c;
@@ -350,7 +350,7 @@ class HagerZhang {
     }
     if (!(std::isfinite(ec.phi) && std::isfinite(ec.dphi))) {
       // Give up: return alpha=0 with the starting state untouched.
-      *stp = ScalarType{0};
+      *stp = ScalarType(0);
       return -1;
     }
     history.push_back(ec);
@@ -372,7 +372,7 @@ class HagerZhang {
     int iter = 1;
     while (!bracketed && iter < maxlinesearch) {
       const EvalResult& last = history.back();
-      if (last.dphi >= ScalarType{0}) {
+      if (last.dphi >= ScalarType(0)) {
         // HZ, B1: upward slope -> we have `b`; scan back for a feasible a.
         ib = static_cast<int>(history.size()) - 1;
         for (int i = ib - 1; i >= 0; --i) {
@@ -410,21 +410,21 @@ class HagerZhang {
         while (!(std::isfinite(ec.phi) && std::isfinite(ec.dphi)) &&
                iterfinite < iterfinitemax) {
           // Bisect back toward the previous finite point.
-          c = (history.back().alpha + c) / ScalarType{2};
+          c = (history.back().alpha + c) / ScalarType(2);
           ec.alpha = c;
           PhiDphi(function, *x, s, c, &xa, &gx, &ec.phi, &ec.dphi);
           ++iterfinite;
         }
         if (!(std::isfinite(ec.phi) && std::isfinite(ec.dphi))) {
           // Fall back to best known.
-          if (best_alpha > ScalarType{0}) {
+          if (best_alpha > ScalarType(0)) {
             *x = best_x;
             *f = best_phi;
             *g = best_g;
             *stp = best_alpha;
             return 0;
           }
-          *stp = ScalarType{0};
+          *stp = ScalarType(0);
           return -1;
         }
         history.push_back(ec);
@@ -443,14 +443,14 @@ class HagerZhang {
 
     if (!bracketed) {
       // Bail with the best seen point (still a descent step).
-      if (best_alpha > ScalarType{0}) {
+      if (best_alpha > ScalarType(0)) {
         *x = best_x;
         *f = best_phi;
         *g = best_g;
         *stp = best_alpha;
         return 0;
       }
-      *stp = ScalarType{0};
+      *stp = ScalarType(0);
       return -1;
     }
 
@@ -462,7 +462,7 @@ class HagerZhang {
       if (b - a <= std::numeric_limits<ScalarType>::epsilon() * b) {
         // Interval collapsed; return the a-side (guaranteed feasible).
         // Recompute `xa, gx` at `a` so the output is self-consistent.
-        if (a > ScalarType{0}) {
+        if (a > ScalarType(0)) {
           PhiDphi(function, *x, s, a, &xa, &gx, &ec.phi, &ec.dphi);
           *x = xa;
           *f = ec.phi;
@@ -471,14 +471,14 @@ class HagerZhang {
           return 0;
         }
         // a == 0 is degenerate; return best-seen.
-        if (best_alpha > ScalarType{0}) {
+        if (best_alpha > ScalarType(0)) {
           *x = best_x;
           *f = best_phi;
           *g = best_g;
           *stp = best_alpha;
           return 0;
         }
-        *stp = ScalarType{0};
+        *stp = ScalarType(0);
         return -1;
       }
       auto [wolfe_hit, iA, iB] =
@@ -502,7 +502,7 @@ class HagerZhang {
         ib = iB;
       } else {
         // HZ, stage L2: secant too slow, fall back to bisection.
-        const ScalarType cm = (A + B) / ScalarType{2};
+        const ScalarType cm = (A + B) / ScalarType(2);
         EvalResult rm;
         rm.alpha = cm;
         PhiDphi(function, *x, s, cm, &xa, &gx, &rm.phi, &rm.dphi);
@@ -535,14 +535,14 @@ class HagerZhang {
     }
 
     // Max iterations hit without a Wolfe point: return best-seen.
-    if (best_alpha > ScalarType{0}) {
+    if (best_alpha > ScalarType(0)) {
       *x = best_x;
       *f = best_phi;
       *g = best_g;
       *stp = best_alpha;
       return 0;
     }
-    *stp = ScalarType{0};
+    *stp = ScalarType(0);
     return -1;
   }
 };
