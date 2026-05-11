@@ -79,7 +79,7 @@ g++ -std=c++17 $(pkg-config --cflags cppoptlib) main.cpp -o main
 Add to your `MODULE.bazel`:
 
 ```starlark
-bazel_dep(name = "cppoptlib", version = "1.1.0")
+bazel_dep(name = "cppoptlib", version = "2.0.0")
 git_override(
     module_name = "cppoptlib",
     remote = "https://github.com/PatWie/CppNumericalSolvers.git",

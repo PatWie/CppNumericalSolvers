@@ -1,0 +1,12 @@
+{
+  "homepage": "https://github.com/PatWie/CppNumericalSolvers",
+  "maintainers": [
+    {
+      "github": "PatWie",
+      "name": "Patrick Wieschollek"
+    }
+  ],
+  "repository": ["github:PatWie/CppNumericalSolvers"],
+  "versions": [],
+  "yanked_versions": {}
+}
