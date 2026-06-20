@@ -14,5 +14,8 @@ find_package(GTest REQUIRED)
 # Build tests
 build_test(verify)
 build_test(cstep_test)
+build_test(hager_zhang_test)
+build_test(augmented_lagrangian_test)
+build_test(trust_region_newton_test)
 
 

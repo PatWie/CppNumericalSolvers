@@ -363,6 +363,64 @@ TEST(TrustRegionNewton, IterationLimitStopFires) {
   EXPECT_EQ(progress.status, cppoptlib::solver::Status::IterationLimit);
 }
 
+// SECTION E: Eigen::Dynamic dimension.  Every objective above fixes the
+// dimension at compile time (`..., 2>` / `..., 1>`), so none exercises the
+// runtime-sized code path.  These tests use the default Dynamic dimension and
+// would crash before the `dim_` initialization fix (size-0 `p` in
+// SolveTrustRegionSubproblem -> Eigen size-mismatch assert / segfault).
+
+// f(x) = sum_i (i+1) x_i^2 on R^n.  Unique minimiser at the origin; diagonal
+// constant Hessian diag(2, 4, ..., 2n).
+class DynamicConvexQuadratic
+    : public FunctionCRTP<DynamicConvexQuadratic, double,
+                          DifferentiabilityMode::Second> {
+ public:
+  ScalarType operator()(const VectorType& x, VectorType* grad = nullptr,
+                        MatrixType* hess = nullptr) const {
+    const int n = static_cast<int>(x.size());
+    if (grad) {
+      grad->resize(n);
+      for (int i = 0; i < n; ++i) (*grad)(i) = 2.0 * (i + 1) * x(i);
+    }
+    if (hess) {
+      hess->setZero(n, n);
+      for (int i = 0; i < n; ++i) (*hess)(i, i) = 2.0 * (i + 1);
+    }
+    double s = 0.0;
+    for (int i = 0; i < n; ++i) s += (i + 1) * x(i) * x(i);
+    return s;
+  }
+};
+
+TEST(TrustRegionNewton, DynamicDimensionStrictlyConvexConverges) {
+  DynamicConvexQuadratic f;
+  TrustRegionNewton<DynamicConvexQuadratic> solver;
+  solver.stopping_progress.gradient_norm = 1e-10;
+  solver.stopping_progress.num_iterations = 50;
+
+  Eigen::VectorXd x0(2);
+  x0 << 10.0, -5.0;
+  auto [solution, progress] = solver.Minimize(f, FunctionState(x0));
+
+  ASSERT_EQ(solution.x.size(), 2);
+  EXPECT_NEAR(solution.x(0), 0.0, 1e-8);
+  EXPECT_NEAR(solution.x(1), 0.0, 1e-8);
+}
+
+TEST(TrustRegionNewton, DynamicDimensionHigherDimConverges) {
+  DynamicConvexQuadratic f;
+  TrustRegionNewton<DynamicConvexQuadratic> solver;
+  solver.stopping_progress.gradient_norm = 1e-10;
+  solver.stopping_progress.num_iterations = 100;
+
+  Eigen::VectorXd x0(5);
+  x0 << 1.0, -2.0, 3.0, -4.0, 5.0;
+  auto [solution, progress] = solver.Minimize(f, FunctionState(x0));
+
+  ASSERT_EQ(solution.x.size(), 5);
+  EXPECT_LT(solution.x.norm(), 1e-6);
+}
+
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

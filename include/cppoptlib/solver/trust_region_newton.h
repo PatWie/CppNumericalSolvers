@@ -183,8 +183,8 @@ class TrustRegionNewton
 
   void InitializeSolver(const FunctionType& /*function*/,
                         const StateType& initial_state) override {
-    dim_ = initial_state.x.rows();
     ResetInternal();
+    dim_ = initial_state.x.rows();
   }
 
   StateType OptimizationStep(const FunctionType& function,
