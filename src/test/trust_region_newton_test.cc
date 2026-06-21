@@ -206,6 +206,8 @@ TEST(TrustRegionNewton, TrustRegionBoundaryExitRespectsRadius) {
     }
   });
   auto [solution, progress] = solver.Minimize(f, FunctionState(x0));
+  (void)solution;
+  (void)progress;
 
   const double first_step_norm = (x_after_first_step - x0).norm();
   EXPECT_NEAR(first_step_norm, config.initial_radius, 1e-10);
@@ -234,6 +236,7 @@ TEST(TrustRegionNewton, IndefiniteHessianNegativeCurvatureStepIsBounded) {
     }
   });
   auto [solution, progress] = solver.Minimize(f, FunctionState(x0));
+  (void)progress;
 
   const double first_step_norm = (x_after_first_step - x0).norm();
   EXPECT_LE(first_step_norm, config.initial_radius + 1e-10);
@@ -339,6 +342,7 @@ TEST(TrustRegionNewton, GradientNormStopFires) {
 
   Eigen::Vector2d x0(3.0, 3.0);
   auto [solution, progress] = solver.Minimize(f, FunctionState(x0));
+  (void)solution;
 
   // A regression that disabled the gradient test would hit the
   // 100-iteration cap and return `IterationLimit`.  We want to see
@@ -359,6 +363,7 @@ TEST(TrustRegionNewton, IterationLimitStopFires) {
 
   Eigen::Vector2d x0(-1.2, 1.0);
   auto [solution, progress] = solver.Minimize(f, FunctionState(x0));
+  (void)solution;
 
   EXPECT_EQ(progress.status, cppoptlib::solver::Status::IterationLimit);
 }

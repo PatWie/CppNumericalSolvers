@@ -54,8 +54,9 @@ struct ConstExpression : public FunctionInterface<TScalar, TMode, TDimension> {
 
   TScalar c;
   explicit ConstExpression(TScalar c_) : c(c_) {}
-  virtual TScalar operator()(const VectorType& x, VectorType* grad = nullptr,
-                             MatrixType* hess = nullptr) const override {
+  virtual TScalar operator()(
+      const VectorType& x, VectorType* grad = nullptr,
+      [[maybe_unused]] MatrixType* hess = nullptr) const override {
     (void)x;
     if (grad) {
       *grad = VectorType::Zero(x.size());
@@ -164,8 +165,9 @@ struct SubExpression
   F f;
   G g;
   SubExpression(const F& f_, const G& g_) : f(f_), g(g_) {}
-  virtual ScalarType operator()(const VectorType& x, VectorType* grad = nullptr,
-                                MatrixType* hess = nullptr) const override {
+  virtual ScalarType operator()(
+      const VectorType& x, VectorType* grad = nullptr,
+      [[maybe_unused]] MatrixType* hess = nullptr) const override {
     if constexpr (TMode == DifferentiabilityMode::None) {
       return f(x) - g(x);
     } else if constexpr (TMode == DifferentiabilityMode::First) {
@@ -214,8 +216,9 @@ struct MulExpression : public FunctionInterface<TScalar, TMode, F::Dimension> {
   TScalar c;
   F f;
   MulExpression(const TScalar& c_, const F& f_) : c(c_), f(f_) {}
-  virtual ScalarType operator()(const VectorType& x, VectorType* grad = nullptr,
-                                MatrixType* hess = nullptr) const override {
+  virtual ScalarType operator()(
+      const VectorType& x, VectorType* grad = nullptr,
+      [[maybe_unused]] MatrixType* hess = nullptr) const override {
     if (c == TScalar(0)) {
       if (grad) {
         *grad = VectorType::Zero(x.size());
@@ -278,8 +281,9 @@ struct ProdExpression
 
   ProdExpression(const F& f_, const G& g_) : f(f_), g(g_) {}
 
-  virtual ScalarType operator()(const VectorType& x, VectorType* grad = nullptr,
-                                MatrixType* hess = nullptr) const override {
+  virtual ScalarType operator()(
+      const VectorType& x, VectorType* grad = nullptr,
+      [[maybe_unused]] MatrixType* hess = nullptr) const override {
     if constexpr (TMode == DifferentiabilityMode::None) {
       return f(x) * g(x);
     } else if constexpr (TMode == DifferentiabilityMode::First) {
@@ -329,8 +333,9 @@ struct MinZeroExpression
   F f;
   explicit MinZeroExpression(const F& f_) : f(f_) {}
 
-  virtual ScalarType operator()(const VectorType& x, VectorType* grad = nullptr,
-                                MatrixType* hess = nullptr) const override {
+  virtual ScalarType operator()(
+      const VectorType& x, VectorType* grad = nullptr,
+      [[maybe_unused]] MatrixType* hess = nullptr) const override {
     if constexpr (Differentiability == DifferentiabilityMode::None) {
       ScalarType val = f(x);
       // Use ConstExpression to return zero (with zero derivatives) if inactive.
@@ -372,8 +377,9 @@ struct MaxZeroExpression
   F f;
   explicit MaxZeroExpression(const F& f_) : f(f_) {}
 
-  virtual ScalarType operator()(const VectorType& x, VectorType* grad = nullptr,
-                                MatrixType* hess = nullptr) const override {
+  virtual ScalarType operator()(
+      const VectorType& x, VectorType* grad = nullptr,
+      [[maybe_unused]] MatrixType* hess = nullptr) const override {
     if constexpr (Differentiability == DifferentiabilityMode::None) {
       ScalarType val = f(x);
       return (val <= 0)

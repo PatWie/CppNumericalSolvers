@@ -255,11 +255,11 @@ template <class FunctionType>
 bool IsGradientCorrect(const FunctionType& function,
                        const typename FunctionType::VectorType& x0,
                        int accuracy = 3) {
-  constexpr float tolerance = 1e-2;
-
   using ScalarType = typename FunctionType::ScalarType;
   using VectorType = typename FunctionType::VectorType;
   using index_t = typename VectorType::Index;
+
+  constexpr ScalarType tolerance = ScalarType(1e-2);
 
   const index_t D = x0.rows();
   VectorType actual_gradient;
@@ -283,12 +283,12 @@ template <class FunctionType>
 bool IsHessianCorrect(const FunctionType& function,
                       const typename FunctionType::VectorType& x0,
                       int accuracy = 3) {
-  constexpr float tolerance = 1e-1;
-
   using ScalarType = typename FunctionType::ScalarType;
   using MatrixType = typename FunctionType::MatrixType;
   using VectorType = typename FunctionType::VectorType;
   using index_t = typename VectorType::Index;
+
+  constexpr ScalarType tolerance = ScalarType(1e-1);
 
   const index_t D = x0.rows();
 

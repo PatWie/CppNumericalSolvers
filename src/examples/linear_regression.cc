@@ -72,6 +72,7 @@ int main() {
 
   const auto initial_state = cppoptlib::function::FunctionState(x);
   auto [solution, solver_state] = solver.Minimize(f, initial_state);
+  (void)solver_state;
   std::cout << "argmin " << solution.x.transpose() << std::endl;
 
   // Or model it as a augmented Lagrangian
@@ -97,6 +98,7 @@ int main() {
   // Run the agumented solver.
   auto [aug_solution, aug_solver_state] = aug_solver.Minimize(l_state);
   std::cout << "argmin " << aug_solution.x.transpose() << std::endl;
+  (void)aug_solver_state;
 
   return 0;
 }

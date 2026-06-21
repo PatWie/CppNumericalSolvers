@@ -32,7 +32,6 @@ jobs:
             libeigen3-dev \
             libgtest-dev
 
-
       - name: Set up Bazel 9
         uses: bazel-contrib/setup-bazel@0.19.0
         with:
@@ -54,16 +53,17 @@ jobs:
           reporter: github-pr-review
           flags: '--extensions=h,hpp,c,cpp,cc,cu,hh,ipp --filter=-build/include_order,-whitespace/indent_namespace --recursive include'
 
-      - name: Verify
+      - name: Build (strict warnings)
         run: |
-          bazel run verify
+          bazel build //... \
+            --copt=-Wall --copt=-Wextra --copt=-Wpedantic \
+            --copt=-Wdouble-promotion --copt=-Werror
 
-      - name: Build
+      - name: Test
         run: |
-          bazel run simple
-          bazel run constrained_simple
-          bazel run constrained_simple2
-          bazel run debug
+          bazel test //... \
+            --copt=-Wall --copt=-Wextra --copt=-Wpedantic \
+            --copt=-Wdouble-promotion --copt=-Werror
 
       - name: Configure and Build with CMake
         run: |
@@ -72,3 +72,29 @@ jobs:
           cmake .. -DCMAKE_BUILD_TYPE=Release
           cmake --build .
           ctest --output-on-failure
+
+  sanitizers:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ libeigen3-dev
+
+      - name: Set up Bazel 9
+        uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}-san
+          repository-cache: true
+
+      - name: Test with ASAN + UBSAN
+        run: |
+          bazel test //... \
+            --copt=-fsanitize=address,undefined \
+            --copt=-fno-omit-frame-pointer \
+            --linkopt=-fsanitize=address,undefined

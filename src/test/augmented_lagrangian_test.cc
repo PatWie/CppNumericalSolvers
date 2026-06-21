@@ -507,6 +507,7 @@ TEST(AugmentedLagrangianKKT, EqualityOnlyQuadratic) {
   x0 << 5.0, 5.0;
   cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 1, 0, 1.0);
   auto [solution, progress] = solver.Minimize(state);
+  (void)progress;
 
   // Primal optimum.
   EXPECT_NEAR(1.0, solution.x[0], kkt_primal_tolerance);
@@ -558,6 +559,7 @@ TEST(AugmentedLagrangianKKT, InequalityActiveRecoversMultiplier) {
   x0 << 5.0, 5.0;
   cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 0, 1, 1.0);
   auto [solution, progress] = solver.Minimize(state);
+  (void)progress;
 
   EXPECT_NEAR(1.0, solution.x[0], kkt_primal_tolerance);
   EXPECT_NEAR(0.0, solution.x[1], kkt_primal_tolerance);
@@ -601,6 +603,7 @@ TEST(AugmentedLagrangianKKT, BothEqualityAndInequalityActive) {
   x0 << 1.0, 1.0;
   cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 1, 1, 1.0);
   auto [solution, progress] = solver.Minimize(state);
+  (void)progress;
 
   EXPECT_NEAR(0.5, solution.x[0], kkt_primal_tolerance);
   EXPECT_NEAR(1.5, solution.x[1], kkt_primal_tolerance);
@@ -643,6 +646,7 @@ TEST(AugmentedLagrangianOuter, FeasibleStartConvergesImmediately) {
   x0 << 0.0, 0.0;
   cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 1, 0, 1.0);
   auto [solution, progress] = solver.Minimize(state);
+  (void)progress;
 
   EXPECT_NEAR(0.0, solution.x[0], kkt_primal_tolerance);
   EXPECT_NEAR(0.0, solution.x[1], kkt_primal_tolerance);
@@ -676,6 +680,7 @@ TEST(AugmentedLagrangianOuter, NoConstraintsIsUnconstrained) {
   x0 << 5.0, 5.0;
   cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 0, 0, 1.0);
   auto [solution, progress] = solver.Minimize(state);
+  (void)progress;
 
   EXPECT_NEAR(0.0, solution.x[0], kkt_primal_tolerance);
   EXPECT_NEAR(0.0, solution.x[1], kkt_primal_tolerance);
@@ -711,6 +716,7 @@ TEST(AugmentedLagrangianOuter, PenaltyHoldsFlatOnFeasibleProblem) {
   cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 1, 0,
                                                              initial_penalty);
   auto [solution, progress] = solver.Minimize(state);
+  (void)progress;
 
   // The conditional schedule should never fire on a trivially feasible
   // problem.  The penalty is pinned exactly at its initial value.
@@ -748,6 +754,7 @@ TEST(AugmentedLagrangianOuter, PenaltyGrowthCanBeDisabled) {
   cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 1, 0,
                                                              initial_penalty);
   auto [solution, progress] = solver.Minimize(state);
+  (void)progress;
 
   EXPECT_EQ(initial_penalty, solution.penalty_state.penalty);
 }
@@ -781,6 +788,7 @@ TEST(AugmentedLagrangianOuter, PenaltyGrowsOnlyWhileViolationLags) {
   x0 << 5.0, 5.0;
   cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 1, 0, 1.0);
   auto [solution, progress] = solver.Minimize(state);
+  (void)progress;
 
   constexpr double penalty_upper_bound = 1e4;
   EXPECT_LE(solution.penalty_state.penalty, penalty_upper_bound);
@@ -1051,6 +1059,7 @@ TEST(AugmentedLagrangianNonConvex, Hs024TriangleEscapesSpuriousOrigin) {
   cppoptlib::solver::AugmentedLagrangeState<double, 2> state(
       x0, /*num_eq=*/0, /*num_ineq=*/3, /*penalty=*/0.0);
   auto [solution, progress] = solver.Minimize(state);
+  (void)progress;
 
   const double f_final = objective(solution.x);
 
@@ -1124,6 +1133,7 @@ TEST(AugmentedLagrangianNonConvex, Hs029EllipseEscapesOrigin) {
   cppoptlib::solver::AugmentedLagrangeState<double, 2> state(
       x0, /*num_eq=*/0, /*num_ineq=*/1, /*penalty=*/0.0);
   auto [solution, progress] = solver.Minimize(state);
+  (void)progress;
 
   const double f_final = objective(solution.x);
   // True optimum for `min -x0*x1 s.t. 48 - x0^2 - 2 x1^2 >= 0` is at
@@ -1171,6 +1181,7 @@ TEST(AugmentedLagrangianOuter, KktStationarityReportedOnFinishedState) {
   x0 << 5.0, 5.0;
   cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 1, 0, 1.0);
   auto [solution, progress] = solver.Minimize(state);
+  (void)progress;
 
   ASSERT_EQ(cppoptlib::solver::Status::Finished, progress.status);
   // The outer-loop KKT tolerance defaults match the primal one to a
@@ -1197,7 +1208,7 @@ TEST(AugmentedLagrangianOuter, KktStationarityReportedOnFinishedState) {
 // `progress.status == Finished` fails.
 TEST(AugmentedLagrangianBoxInterface, BoxPinnedOptimumStopsOnKkt) {
   using cppoptlib::function::FunctionExpr;
-  using VectorType = Eigen::Matrix<double, 2, 1>;
+  using VectorType [[maybe_unused]] = Eigen::Matrix<double, 2, 1>;
 
   class Rosenbrock : public cppoptlib::function::FunctionCRTP<
                          Rosenbrock, double,
@@ -1261,6 +1272,7 @@ TEST(AugmentedLagrangianBoxInterface, BoxPinnedOptimumStopsOnKkt) {
   cppoptlib::solver::AugmentedLagrangeState<double, 2> state(x0, 0, 2, 0.0);
 
   auto [solution, progress] = solver.Minimize(state);
+  (void)progress;
 
   // The outer loop must reach `Finished` status on its own -- an
   // `IterationLimit` exit would signal regression of the projected-

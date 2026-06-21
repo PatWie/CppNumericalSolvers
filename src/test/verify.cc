@@ -155,15 +155,15 @@ class NelderMeadTest : public testing::Test {};
   EXPECT_NEAR(fx, f(solution.x), PRECISION);
 
 typedef ::testing::Types<double> DoublePrecision;
-TYPED_TEST_CASE(GradientDescentTest, DoublePrecision);
-TYPED_TEST_CASE(ConjugatedGradientDescentTest, DoublePrecision);
-TYPED_TEST_CASE(NewtonDescentTest, DoublePrecision);
-TYPED_TEST_CASE(BfgsTest, DoublePrecision);
-TYPED_TEST_CASE(LbfgsTest, DoublePrecision);
+TYPED_TEST_SUITE(GradientDescentTest, DoublePrecision);
+TYPED_TEST_SUITE(ConjugatedGradientDescentTest, DoublePrecision);
+TYPED_TEST_SUITE(NewtonDescentTest, DoublePrecision);
+TYPED_TEST_SUITE(BfgsTest, DoublePrecision);
+TYPED_TEST_SUITE(LbfgsTest, DoublePrecision);
 #if EIGEN_VERSION_AT_LEAST(3, 4, 0)
-TYPED_TEST_CASE(LbfgsbTest, DoublePrecision);
+TYPED_TEST_SUITE(LbfgsbTest, DoublePrecision);
 #endif
-TYPED_TEST_CASE(NelderMeadTest, DoublePrecision);
+TYPED_TEST_SUITE(NelderMeadTest, DoublePrecision);
 
 #define SOLVER_SETUP(sol, func)                                               \
   TYPED_TEST(sol##Test, func##Far){SOLVE_PROBLEM(                             \
@@ -208,7 +208,7 @@ class SimpleFunction : public FunctionX2<T, SimpleFunction<T>> {
 
 template <class T>
 class CentralDifference : public testing::Test {};
-TYPED_TEST_CASE(CentralDifference, DoublePrecision);
+TYPED_TEST_SUITE(CentralDifference, DoublePrecision);
 
 TYPED_TEST(CentralDifference, Gradient) {
   typename SimpleFunction<TypeParam>::VectorType x0(2);
@@ -281,7 +281,7 @@ class Circle : public Function2d<Circle> {
 
 template <class T>
 class Constrained : public testing::Test {};
-TYPED_TEST_CASE(Constrained, DoublePrecision);
+TYPED_TEST_SUITE(Constrained, DoublePrecision);
 TYPED_TEST(Constrained, Simple) {
   constexpr auto dim = 2;
   SumObjective::VectorType x(dim);
@@ -307,6 +307,7 @@ TYPED_TEST(Constrained, Simple) {
 
   // Run the solver.
   auto [solution, solver_state] = solver.Minimize(l_state);
+  (void)solver_state;
   EXPECT_NEAR(solution.x[0], -1, 1e-3);
   EXPECT_NEAR(solution.x[1], -1, 1e-3);
 }

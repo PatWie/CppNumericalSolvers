@@ -1,5 +1,5 @@
 load("//:generator.bzl", "build_example", "build_test")
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 # Shared header library used by the SVM examples.  Exposes the
 # embedded Iris versicolor-vs-virginica dataset and a classification
@@ -22,6 +22,16 @@ build_test("cstep_test")
 build_test("hager_zhang_test")
 build_test("augmented_lagrangian_test")
 build_test("trust_region_newton_test")
+
+cc_test(
+    name = "float_scalar_test",
+    srcs = ["src/test/float_scalar_test.cc"],
+    copts = ["-std=c++17", "-Wall", "-Wextra", "-Wdouble-promotion", "-Werror"],
+    deps = [
+        "//include:cppoptlib",
+        "@eigen//:eigen",
+    ],
+)
 
 build_example("svm_primal_lbfgs", extra_deps = [":iris_data"])
 build_example("svm_primal_al", extra_deps = [":iris_data"])

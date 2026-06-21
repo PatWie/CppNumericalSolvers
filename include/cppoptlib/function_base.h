@@ -100,8 +100,9 @@ struct FunctionCRTP : public FunctionInterface<TScalar, TMode, TDimension> {
   using MatrixType = Eigen::Matrix<TScalar, Dimension, Dimension>;
   static constexpr DifferentiabilityMode Differentiability = TMode;
 
-  virtual TScalar operator()(const VectorType& x, VectorType* grad = nullptr,
-                             MatrixType* hess = nullptr) const override {
+  virtual TScalar operator()(
+      const VectorType& x, [[maybe_unused]] VectorType* grad = nullptr,
+      [[maybe_unused]] MatrixType* hess = nullptr) const override {
     if constexpr (TMode == DifferentiabilityMode::None) {
       return static_cast<const Derived*>(this)->operator()(x);
     } else if constexpr (TMode == DifferentiabilityMode::First) {

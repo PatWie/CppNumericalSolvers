@@ -45,19 +45,19 @@ class Armijo {
   static ScalarType Search(const VectorType& x,
                            const VectorType& search_direction,
                            const FunctionType& function,
-                           const ScalarType alpha_init = 1.0) {
+                           const ScalarType alpha_init = ScalarType(1)) {
     constexpr ScalarType c = ScalarType(0.2);
     constexpr ScalarType rho = ScalarType(0.9);
     ScalarType alpha = alpha_init;
     VectorType gradient;
     const ScalarType f_in = function(x, &gradient);
-    ScalarType f = function(x + alpha * search_direction);
+    ScalarType f = function((x + alpha * search_direction).eval());
     const ScalarType cache = c * gradient.dot(search_direction);
     constexpr ScalarType alpha_min = ScalarType(1e-8);
 
     while (f > f_in + alpha * cache && alpha > alpha_min) {
       alpha *= rho;
-      f = function(x + alpha * search_direction);
+      f = function((x + alpha * search_direction).eval());
     }
 
     return alpha;
@@ -84,11 +84,11 @@ class Armijo<FunctionType, 2> {
                            const FunctionType& function) {
     constexpr ScalarType c = ScalarType(0.2);
     constexpr ScalarType rho = ScalarType(0.9);
-    ScalarType alpha = 1.0;
+    ScalarType alpha = ScalarType(1);
     VectorType gradient;
     MatrixType hessian;
     const ScalarType f_in = function(x, &gradient, &hessian);
-    ScalarType f = function(x + alpha * search_direction);
+    ScalarType f = function((x + alpha * search_direction).eval());
     const ScalarType cache =
         c * gradient.dot(search_direction) + ScalarType(0.5) * c * c *
                                                  search_direction.transpose() *
@@ -96,7 +96,7 @@ class Armijo<FunctionType, 2> {
 
     while (f > f_in + alpha * cache) {
       alpha *= rho;
-      f = function(x + alpha * search_direction);
+      f = function((x + alpha * search_direction).eval());
     }
     return alpha;
   }

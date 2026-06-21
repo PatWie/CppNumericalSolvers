@@ -208,7 +208,7 @@ class Lbfgsb
 
     // STEP 6: Only update if positive curvature (s'*y > 0)
     const ScalarType sTy = new_s.dot(new_y);
-    if (sTy > 1e-7 * new_y.squaredNorm()) {
+    if (sTy > ScalarType(1e-7) * new_y.squaredNorm()) {
       if (y_history_.cols() < m) {
         y_history_.conservativeResize(dim_, y_history_.cols() + 1);
         s_history_.conservativeResize(dim_, s_history_.cols() + 1);
@@ -439,7 +439,7 @@ class Lbfgsb
     assert(du.rows() == n);
 
     for (unsigned int i = 0; i < n; i++) {
-      if (std::abs(du(i)) < 1e-7) {
+      if (std::abs(du(i)) < ScalarType(1e-7)) {
         continue;
       } else if (du(i) > 0) {
         alphastar = std::min<ScalarType>(
