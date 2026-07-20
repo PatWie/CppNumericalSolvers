@@ -29,8 +29,10 @@
 #include <stdint.h>
 
 #include <Eigen/Core>
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <limits>
 #include <vector>
 namespace cppoptlib::solver {
 // Status of the solver state.
@@ -194,19 +196,27 @@ struct Progress {
                   cppoptlib::function::DifferentiabilityMode::First) {
       gradient_norm = current_gradient.template lpNorm<Eigen::Infinity>();
     }
-    // Compute Hessian condition number if the function supports second-order
-    // derivatives.  Gated on `!StateType::IsConstrained` so
-    // constrained-solver state types (`AugmentedLagrangeState`) skip it:
-    // their `FunctionType` is `ConstrainedOptimizationProblem`, which
-    // has no `operator()` -- the solver evaluates objective and
-    // constraints separately via the struct's member fields.
+    // Compute the Hessian condition number ONLY when the caller
+    // enabled the corresponding stopping test: the diagnostic costs a
+    // full extra Hessian evaluation plus a dense inverse per
+    // iteration, which dominated the runtime of second-order solvers
+    // while the default threshold (0 = disabled) meant the number was
+    // never consulted.  When disabled, `condition_hessian` reports
+    // NaN, which `PrintProgressCallback` renders as "N/A".  Gated on
+    // `!StateType::IsConstrained` so constrained-solver state types
+    // (`AugmentedLagrangeState`) skip it: their `FunctionType` is
+    // `ConstrainedOptimizationProblem`, which has no `operator()`.
     if constexpr (!StateType::IsConstrained &&
                   FunctionType::Differentiability ==
                       cppoptlib::function::DifferentiabilityMode::Second) {
-      MatrixType current_hessian;
-      function(current_x, nullptr, &current_hessian);
-      condition_hessian =
-          current_hessian.norm() * current_hessian.inverse().norm();
+      if (stop_progress.condition_hessian > 0) {
+        MatrixType current_hessian;
+        function(current_x, nullptr, &current_hessian);
+        condition_hessian =
+            current_hessian.norm() * current_hessian.inverse().norm();
+      } else {
+        condition_hessian = std::numeric_limits<ScalarType>::quiet_NaN();
+      }
     }
 
     if ((stop_progress.num_iterations > 0) &&

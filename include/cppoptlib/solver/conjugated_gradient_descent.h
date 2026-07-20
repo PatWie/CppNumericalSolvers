@@ -59,16 +59,20 @@ class ConjugatedGradientDescent
 
   using Superclass::Superclass;
 
-  void InitializeSolver(const FunctionType& function,
-                        const StateType& initial_state) override {
-    function(initial_state.x, &previous_gradient_);
+  void InitializeSolver(const FunctionType& /*function*/,
+                        const StateType& /*initial_state*/) override {
+    // `previous_gradient_` is only read from iteration 1 onward and is
+    // written at the end of every step, so no starting-point
+    // evaluation is needed here.
   }
 
   StateType OptimizationStep(const FunctionType& function,
                              const StateType& current,
                              const ProgressType& progress) override {
-    VectorType current_gradient;
-    function(current.x, &current_gradient);
+    // `current` carries `(value, gradient)` at `current.x`; the
+    // previous re-evaluation here wasted one gradient call per
+    // iteration.
+    const VectorType& current_gradient = current.gradient;
     if (progress.num_iterations == 0) {
       search_direction_ = -current_gradient;
     } else {
@@ -78,8 +82,10 @@ class ConjugatedGradientDescent
     }
     previous_gradient_ = current_gradient;
 
-    const ScalarType rate = linesearch::Armijo<FunctionType, 1>::Search(
-        current.x, search_direction_, function);
+    const ScalarType rate =
+        linesearch::Armijo<FunctionType, 1>::SearchWithCachedStart(
+            current.x, current.value, current_gradient, search_direction_,
+            function);
 
     return StateType(current.x + rate * search_direction_);
   }

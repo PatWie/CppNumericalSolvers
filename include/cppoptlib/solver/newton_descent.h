@@ -59,9 +59,7 @@ class NewtonDescent
   using Superclass::Superclass;
 
   void InitializeSolver(const FunctionType& /*function*/,
-                        const StateType& initial_state) override {
-    dim_ = initial_state.x.rows();
-  }
+                        const StateType& /*initial_state*/) override {}
 
   StateType OptimizationStep(const FunctionType& function,
                              const StateType& current,
@@ -70,18 +68,19 @@ class NewtonDescent
 
     MatrixType hessian;
     VectorType gradient;
-    function(current.x, &gradient, &hessian);
-    hessian += safe_guard * MatrixType::Identity(dim_, dim_);
+    const ScalarType value = function(current.x, &gradient, &hessian);
+    hessian.diagonal().array() += safe_guard;
 
     const VectorType delta_x = hessian.lu().solve(-gradient);
-    const ScalarType rate = linesearch::Armijo<FunctionType, 2>::Search(
-        current.x, delta_x, function);
+    // The `(value, gradient, hessian)` triple at `current.x` was just
+    // computed; hand it to the line search instead of letting it
+    // re-evaluate the full second-order triple at the start point.
+    const ScalarType rate =
+        linesearch::Armijo<FunctionType, 2>::SearchWithCachedStart(
+            current.x, value, gradient, hessian, delta_x, function);
 
     return StateType(current.x + rate * delta_x);
   }
-
- private:
-  int dim_;
 };
 
 }  // namespace cppoptlib::solver

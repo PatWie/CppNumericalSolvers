@@ -64,12 +64,13 @@ class GradientDescent
   StateType OptimizationStep(const FunctionType& function,
                              const StateType& current,
                              const ProgressType& /*progress*/) override {
-    VectorType gradient;
-    function(current.x, &gradient);
-    const ScalarType rate =
-        LineSearch<FunctionType, 1>::Search(current.x, -gradient, function);
-
-    return StateType(current.x - rate * gradient);
+    // `current` carries `(value, gradient)` at `current.x` (the
+    // FunctionState invariant); evaluating the gradient again here
+    // wasted one full evaluation per iteration.  The state-returning
+    // line-search overload likewise hands back a fully-populated
+    // state, so the outer loop performs no post-step re-evaluation.
+    return LineSearch<FunctionType, 1>::Search(current, -current.gradient,
+                                               function);
   }
 };
 

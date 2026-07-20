@@ -170,7 +170,8 @@ class Lbfgs
       // pairs on small-scale problems (`||s|| * ||y|| << 1` near
       // convergence) and cost two extra dot products per pair per
       // iteration.
-      alpha(i) = rho_memory_(idx) * x_diff_memory_.col(idx).dot(search_direction);
+      alpha(i) =
+          rho_memory_(idx) * x_diff_memory_.col(idx).dot(search_direction);
       search_direction -= alpha(i) * grad_diff_memory_.col(idx);
     }
 
