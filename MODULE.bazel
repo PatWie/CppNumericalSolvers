@@ -5,5 +5,10 @@ module(
 )
 
 bazel_dep(name = "rules_cc", version = "0.0.17")
+
+# Minimum supported Eigen, not a pin. Bzlmod selects the highest version
+# requested anywhere in the module graph, and all BCR eigen releases
+# (3.4.0 through 5.x) share compatibility_level 1, so consumers on
+# Eigen 5.x build cppoptlib against Eigen 5 automatically.
 bazel_dep(name = "eigen", version = "3.4.0.bcr.3")
 bazel_dep(name = "googletest", version = "1.17.0.bcr.2", dev_dependency = True)

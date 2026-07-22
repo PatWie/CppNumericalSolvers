@@ -1,0 +1,52 @@
+name: Eigen 5 Compatibility
+
+# The Bazel module declares eigen 3.4.0.bcr.3 as its minimum, so the main
+# CI workflow exercises the compatibility floor. This workflow verifies the
+# other end of the supported range: it forces the module graph onto the
+# newest Eigen 5 release in the BCR and runs the full test suite, keeping
+# the "compatible with Eigen 3.4 through 5.x" claim in the README honest.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  # Newest Eigen in the Bazel Central Registry. Bump when a new release
+  # lands: https://registry.bazel.build/modules/eigen
+  EIGEN_VERSION: 5.0.1.bcr.2
+
+jobs:
+  eigen5:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bazel 9
+        uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
+
+      - name: Override Eigen to ${{ env.EIGEN_VERSION }}
+        # single_version_override is only honored in the root module, so it
+        # cannot live in the committed MODULE.bazel without also forcing the
+        # pin on consumers. Appending it here keeps the override CI-only.
+        run: |
+          cat >> MODULE.bazel <<EOF
+
+          single_version_override(
+              module_name = "eigen",
+              version = "${EIGEN_VERSION}",
+          )
+          EOF
+
+      - name: Test against Eigen ${{ env.EIGEN_VERSION }}
+        run: |
+          bazel test //... \
+            --copt=-Wall --copt=-Wextra --copt=-Wpedantic \
+            --copt=-Wdouble-promotion --copt=-Werror

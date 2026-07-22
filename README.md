@@ -38,7 +38,10 @@ int main() {
 
 ## Integration
 
-The only dependency is Eigen3.
+The only dependency is Eigen3. **Compatible with Eigen 3.4 through
+Eigen 5.x** — the versions referenced below are minimums, not pins.
+If your project already uses Eigen 5, cppoptlib builds against it
+unchanged.
 
 ### CMake (FetchContent)
 
@@ -98,6 +101,14 @@ cc_binary(
         "@eigen//:eigen",
     ],
 )
+```
+
+cppoptlib declares `eigen 3.4.0.bcr.3` as its *minimum*. To build
+against Eigen 5, simply request it in your own `MODULE.bazel` —
+bzlmod resolves to the highest requested version:
+
+```starlark
+bazel_dep(name = "eigen", version = "5.0.1.bcr.2")
 ```
 
 ## Solvers
